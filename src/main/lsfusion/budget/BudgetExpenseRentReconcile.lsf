@@ -1,0 +1,31 @@
+MODULE BudgetExpenseRentReconcile;
+
+REQUIRE BudgetExpenseRent, BudgetExpenseReconcile;
+
+NAMESPACE Budget;
+
+markAsRent 'Rent' (Expense e)  { 
+    CHANGECLASS e TO RentExpense;
+}
+
+EXTEND FORM expenses
+    PROPERTIES(ie) markAsRent PANEL
+    
+    PROPERTIES(ie) SHOWIF ie IS RentExpense PANEL nameLocation
+    OBJECTS ce = (cc = CostCenter, ee = Employee)
+    PROPERTIES SHOWIF ie IS RentExpense READONLY name(cc), name(ee), canonicalNameCostItem(ee), nameRentCostItem(ee), assigned(ie, cc, ee), amount(ie, cc, ee)
+    FILTERS assigned(ie, cc, ee)
+;
+
+DESIGN expenses {
+    expenseParams {
+        expenseMark {
+            MOVE PROPERTY(markAsRent(ie));
+        }
+        NEW rentParameters {
+            type = CONTAINERH;
+            MOVE PROPERTY(nameLocation(ie));
+        }
+        MOVE BOX(ce);        
+    }
+}

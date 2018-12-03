@@ -1,0 +1,129 @@
+MODULE BudgetCapCenterContractor;
+
+REQUIRE BudgetCapCenter, Contractor, BudgetCapCenterApproval, Utils;
+
+NAMESPACE Budget;
+
+hours 'Hours' = DATA NUMERIC[8,2] (Period, Contractor);
+sum 'Fixed amount' = DATA NUMERIC[10,2] (Period, Contractor);
+
+CONSTRAINT DROPPED(Contractor c IS Contractor) AND PREV(hours(Period p, c)) MESSAGE 'Cannot delete a contractor with assigned hours';
+
+contractors 'Total amount, USD' (Period p, Contractor e) = NUMERIC[16,3](round0((rate(e) * hours(p, e) (+) sum(p, e)) / defaultRateOn(currency(e), fromDate(p))));
+
+contractors (Period p, CostItem i) = 
+    GROUP SUM contractors(p, Contractor e) BY costItem(e) MATERIALIZED;
+
+EXTEND CLASS ExtraCap {
+    contractors 'Contractors'
+}
+cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.contractors AND contractors(p, i) THEN contractors(p, i); 
+
+EXTEND FORM costCenterBudget
+    OBJECTS cc = Contractor
+    PROPERTIES(cc) READONLY name, nameType, nameCostItem, nameCurrency, rate
+    PROPERTIES(cc) NEWSESSION NEW, EDIT, DELETE
+    PROPERTIES hours(p, cc), sum(p, cc), contractors(p, cc)
+;
+
+DESIGN costCenterBudget {
+    periodRightPane {
+        NEW contractorsPane {
+            caption = 'Contractors';
+            MOVE BOX(cc);
+        }
+    }
+}
+
+// Monthly
+
+//TABLE periodBudgetContractor(Period, Budget, Contractor);
+contractor 'Contractor' = DATA Contractor (BudgetDetail);
+nameContractor 'Contractor' (BudgetDetail d) = name(contractor(d));
+
+WHEN LOCAL CHANGED(costItem(contractor(BudgetDetail d))) AND NOT CHANGED(costItem(d)) DO
+    costItem(d) <- costItem(contractor(d));
+
+CONSTRAINT contractor(BudgetDetail d) AND NOT [ GROUP SUM 1 IF hours(Period p, Contractor c) OR sum(p, c) BY costCenter(p), c](costCenter(d), contractor(d)) 
+    CHECKED BY contractor[BudgetDetail] MESSAGE 'Selected contractor for budget detail doesn\'t have assigned hours or sum for the cost center';
+
+budgetDetail (CostCenter c, Budget b, Contractor cc) = GROUP LAST BudgetDetail d BY costCenter(d), budget(d), contractor(d);
+contractors 'Total amount, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM planned(BudgetDetail d) BY costCenter(d), budget(d), contractor(d);
+contractors 'Total amount (for month), USD' (Period p, Budget b, Contractor cc) = contractors(costCenter(p), b, cc); 
+
+monthlyContractors 'Total amount monthly, USD' (CostCenter c, Contractor cc) = GROUP SUM contractors(c, Budget b, cc);
+monthlyContractors 'Total amount monthly, USD' (Period p, Contractor cc) = monthlyContractors(costCenter(p), cc);
+
+changeContractors (CostCenter c, Budget b, Contractor cc)  { 
+    INPUT q = NUMERIC[16,3] DO { // запрашиваем число
+        IF budgetDetail(c, b, cc) THEN { // проверяем, есть ли хоть одна строка
+            IF q THEN // ввели число
+                planned(BudgetDetail d) <- q IF d == budgetDetail(c, b, cc) WHERE costCenter(d) == c AND budget(d) == b AND contractor(d) == cc; // записываем количество в последнюю строку с такой книгой
+            ELSE // сбросили число - удаляем строку
+                DELETE BudgetDetail d WHERE costCenter(d) == c AND budget(d) == b AND contractor(d) == cc;   
+        } ELSE
+            IF q THEN
+                NEW d = BudgetDetail { // создаем новую строку
+                    costCenter(d) <- c;
+                    budget(d) <- b;
+                    contractor(d) <- cc;
+                    planned(d) <- q;
+                }
+    }
+}
+
+changeContractors (Period p, Budget b, Contractor cc)  { 
+    changeContractors(costCenter(p), b, cc);
+}
+EXTEND FORM costCenterBudget
+    PROPERTIES(p, cc) READONLY monthlyContractors
+    
+    OBJECTS cb = Budget
+    PROPERTIES(cb) READONLY fromDate, toDate, name
+    PROPERTIES(p, cb, cc) READONLYIF readonly(cb, costCenter(p)) contractors ON CHANGE changeContractors(p, cb, cc)
+    FILTERS selected(p, cb)
+    
+    PROPERTIES(bmd) nameContractor
+;
+
+DESIGN costCenterBudget {
+    contractorsPane {
+        MOVE BOX(cb);
+    }
+}
+// Period approval
+
+EXTEND FORM periodApproval
+    OBJECTS cc = Contractor
+    PROPERTIES(cc) READONLY name, nameType, nameCostItem, nameCurrency, rate
+    PROPERTIES(p, cc) READONLY hours, sum, contractors
+    FILTERS hours(p, cc) OR sum(p, cc)
+;
+
+DESIGN periodApproval {
+    details {
+        MOVE BOX(cc);
+    }
+}
+
+hours 'Hours' (Contractor c) = GROUP SUM hours(Period p, c);
+sum 'Fixed amount' (Contractor c) = GROUP SUM sum(Period p, c);
+
+contractors 'Total amount, USD' (Contractor c) = GROUP SUM contractors(Period p, c);
+
+EXTEND FORM contractors
+    PROPERTIES(c) READONLY hours, sum, contractors
+    
+    OBJECTS p = Period
+    PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate
+    PROPERTIES(p, c) READONLY hours, sum
+    FILTERS hours(p, c) OR sum(p, c)
+;
+
+
+// Spending
+
+TABLE periodBudgetContractor (Period, Budget, Contractor); 
+hoursSpent 'Hours, spent' = DATA NUMERIC[8,2] (Period, Budget, Contractor);
+
+hoursSpent 'Total hours, spent' (Period p, Contractor c) = GROUP SUM hoursSpent(p, Budget b, c);

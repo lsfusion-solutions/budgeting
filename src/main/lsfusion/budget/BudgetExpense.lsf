@@ -1,0 +1,81 @@
+MODULE BudgetExpense;
+
+REQUIRE Budget, Expense;
+
+NAMESPACE Budget;
+
+budgetDetail = DATA BudgetDetail (Expense);
+budgetDetail (Expense e) += budgetDetail(e);
+
+nameBudgetDetail 'Budget detail' (Expense e) = name(budgetDetail(e));
+completeNameBudgetDetail 'Budget detail' (Expense e) = completeName(budgetDetail(e));
+
+WHEN LOCAL SETCHANGED(costCenter(budgetDetail(Expense e))) DO {
+    costCenter(e) <- costCenter(budgetDetail(e));
+}
+
+CONSTRAINT budgetDetail(Expense e) AND costCenter(e) AND costCenter(budgetDetail(e)) != costCenter(e) CHECKED BY budgetDetail[Expense]
+    MESSAGE 'Selected cost center is not equal to budget detail\'s cost center'; 
+
+WHEN LOCAL SETCHANGED(costItem(budgetDetail(Expense e))) DO {
+    costItem(e) <- costItem(budgetDetail(e));
+}
+
+CONSTRAINT budgetDetail(Expense e) AND costItem(e) AND costItem(budgetDetail(e)) != costItem(e) CHECKED BY budgetDetail[Expense]
+    MESSAGE 'Selected cost type is not equal to budget detail\'s cost type'; 
+
+budget = DATA Budget (Expense) NONULL;
+nameBudget 'Budget' (Expense e) = name(budget(e));;
+budget (Expense e) += budget(e);
+
+WHEN LOCAL SETCHANGED(budget(budgetDetail(Expense e))) DO {
+    budget(e) <- budget(budgetDetail(e));
+}
+
+WHEN CHANGED(date(Expense e)) AND NOT budget(e) DO {
+    budget(e) <- GROUP MAX Budget b IF date(e) >= fromDate(b) AND date(e) <= toDate(b);   
+}
+
+FORM expenses 'Expenses'
+    OBJECTS b = Budget PANEL
+    PROPERTIES(b) description SELECTOR
+    
+    OBJECTS d = BudgetDetail
+    PROPERTIES(d) READONLY nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
+    FILTERS budget(d) == b,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+    
+    OBJECTS e = Expense
+    PROPERTIES(e) date, nameCurrency, amount, note, reference, NEW, DELETE
+    FILTERS budgetDetail(e) == d,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser())) 
+;
+
+DESIGN expenses {
+    OBJECTS {
+        NEW pane {
+            type = TABBED;
+            fill = 1;
+            NEW budget {
+                caption = 'Budget';
+                fill = 1;
+                type = SPLITH;
+                NEW leftPane {
+                    fill = 3;
+                    MOVE BOX(b);
+                    MOVE BOX(d) {
+                        fill = 2;
+                    }
+                    MOVE PROPERTY(description(d)) { panelCaptionAbove = TRUE; fill = 1;}
+                }
+                MOVE BOX(e) {
+                    width = 350;
+                }
+            }
+        }
+    }
+}
+
+NAVIGATOR {
+    NEW expenses;
+}

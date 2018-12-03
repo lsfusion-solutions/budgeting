@@ -1,0 +1,30 @@
+MODULE CostCenterEmployee;
+
+REQUIRE CostCenter, Employee;
+
+NAMESPACE Cost;
+
+owner 'Owner' = DATA Employee (CostCenter);
+nameOwner 'Owner' (CostCenter c) = name(owner(c)) CHARWIDTH 15;
+emailOwner 'Owner' (CostCenter c) = email(owner(c));
+
+EXTEND FORM costCenter
+    PROPERTIES(c) nameOwner
+;
+
+TABLE costCenterEmployee (CostCenter, Employee);
+access 'Access' = DATA BOOLEAN (CostCenter, Employee);
+
+countCenterAccess (Employee e) = GROUP SUM 1 IF access(CostCenter c, e); 
+
+EXTEND FORM employee
+    OBJECTS c = CostCenter
+    PROPERTIES access(c, e)
+    PROPERTIES(c) READONLY name
+;
+
+DESIGN employee {
+    tabbedPane {
+        MOVE BOX(c);
+    }
+}

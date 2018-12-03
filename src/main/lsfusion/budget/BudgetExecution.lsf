@@ -1,0 +1,170 @@
+MODULE BudgetExecution;
+
+REQUIRE Budget, BudgetCapItem, BudgetCapCenterExpense, BudgetCapCenterApproval;
+
+NAMESPACE Budget;
+
+selected 'Selected' = DATA LOCAL BOOLEAN (Budget);
+
+cap 'Cap, USD' (CostItem i) = GROUP SUM childCap(Budget b, i) IF selected(b);
+
+costCenterCap 'Cost center cap, USD' (CostItem i) = GROUP SUM totalChildCap(Budget b, i) IF selected(b);
+
+planned 'Planned, USD' (CostItem i) = GROUP SUM planned(Budget b, i) IF selected(b);
+
+spent 'Spent, USD' (CostItem i) = GROUP SUM spent(Budget b, i) IF selected(b);
+childSpent 'Spent, USD' (CostItem i) = GROUP SUM childSpent(Budget b, i) IF selected(b);
+
+FORM budgetExecution 'Budget execution'
+    OBJECTS b = Budget
+    PROPERTIES(b) selected
+    PROPERTIES(b) READONLY fromDate, toDate, name
+    
+    TREE costItems c = CostItem PARENT parent
+    PROPERTIES(c) READONLY order, name, cap, costCenterCap, planned, childSpent
+    ORDER order(c)
+    
+    OBJECTS bd = BudgetDetail
+    PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    FILTERS selected(budget(bd)),
+            level(costItem(bd), c),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bd)) OR NOT hideSensitive(mainRole(currentUser()))
+
+    OBJECTS e = ExpenseLedger
+    PROPERTIES(e) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS selected(budget(e)),
+            NOT skip(e),
+            level(costItem(e), c),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser()))
+    ORDER amountUSD(e) DESC
+            
+    OBJECTS p = Period
+    PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate, nameOwner, submitted, approved, totalChildCap, planned, spentPercent, spent, spentCap BACKGROUND backgroundSpentCap(p)
+    
+    TREE periodCostItems pc = CostItem PARENT parent
+    PROPERTIES(pc) READONLY order, name
+    PROPERTIES(p, pc) READONLY totalChildCap, childPlanned, childSpentPercent, childSpent, spentCap BACKGROUND backgroundSpentCap(p, pc)
+    ORDER order(pc)
+
+    OBJECTS pbd = BudgetDetail
+    PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    FILTERS selected(p, budget(pbd)),
+            level(costItem(pbd), pc),
+            costCenter(pbd) = costCenter(p),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pbd)) OR NOT hideSensitive(mainRole(currentUser())) 
+
+    OBJECTS pe = ExpenseLedger
+    PROPERTIES(pe) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS selected(p, budget(pe)),
+            NOT skip(pe),
+            level(costItem(pe), pc),
+            costCenter(pe) = costCenter(p),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pe)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDER amountUSD(pe) DESC
+    
+    OBJECTS cm = CostCenter PANEL 
+    PROPERTIES (cm) name SELECTOR 
+    
+    OBJECTS bm = Budget
+    PROPERTIES (bm) READONLY fromDate, toDate, name
+    PROPERTIES (bm, cm) READONLY averageCap, planned, spent BACKGROUND backgroundSpent(bm, cm)
+    FILTERS planned(bm, cm) OR spent(bm, cm)
+    
+    TREE periodCostItemsM pcm = CostItem PARENT parent
+    PROPERTIES(pcm) READONLY order, name
+    PROPERTIES(bm, pcm, cm) READONLY averageCap, childPlanned, childSpent BACKGROUND backgroundSpent(bm, pcm, cm)
+    ORDER order(pcm)
+
+    OBJECTS bdm = BudgetDetail
+    PROPERTIES(bdm) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    FILTERS level(costItem(bdm), pcm),
+            costCenter(bdm) = cm,  
+            budget(bdm) == bm,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bdm)) OR NOT hideSensitive(mainRole(currentUser())) 
+
+    OBJECTS em = ExpenseLedger
+    PROPERTIES(em) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS NOT skip(em),
+            level(costItem(em), pcm),
+            costCenter(em) = cm,
+            budget(em) == bm,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(em)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDER amountUSD(em) DESC
+;
+
+DESIGN budgetExecution {
+    OBJECTS {
+        NEW pane {
+            type = TABBED;
+            fill = 1;
+            
+            NEW costItem {
+                fill = 1;
+                caption = 'By cost type';
+                type = SPLITH;
+                MOVE BOX(b) { caption = 'Budgets'; }
+                NEW costItemTabs {
+                    type = TABBED;
+                    fill = 5;
+                    NEW costItemPane {
+                        caption = 'Details';
+                        type = SPLITV;
+                        MOVE BOX(TREE costItems) {
+                            fill = 1;
+                        }
+                        NEW costItemDetails {
+                            type = TABBED;
+                            MOVE BOX(bd);
+                            MOVE BOX(e);
+                        } 
+                    }
+                }
+            }
+            NEW period {
+                fill = 1;
+                caption = 'By period';
+                type = TABBED;
+                NEW period1 {
+                    caption = 'Period';
+                    type = SPLITH;
+                    MOVE BOX(p);
+                    NEW periodDetails {
+                        fill = 1;
+                        type = SPLITV;
+                        MOVE BOX(TREE periodCostItems);
+                        NEW periodCostItemDetails {
+                            fill = 1;
+                            type = TABBED;
+                            MOVE BOX(pbd);
+                            MOVE BOX(pe);
+                        }
+                    }
+                }
+                NEW monthly {
+                    caption = 'Monthly';
+                    type = SPLITH;
+                    NEW left {
+                        type = CONTAINERV;
+                        MOVE PROPERTY (name(cm));
+                        MOVE BOX (bm);
+                    }
+                    NEW right {
+                        fill = 1;
+                        type = SPLITV;
+                        MOVE BOX(TREE periodCostItemsM);
+                        NEW periodCostItemDetailsM {
+                            fill = 1;
+                            type = TABBED;
+                            MOVE BOX(bdm);
+                            MOVE BOX(em);
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+NAVIGATOR {
+    NEW budgetExecution;
+}

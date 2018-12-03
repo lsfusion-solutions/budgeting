@@ -1,0 +1,52 @@
+MODULE EmployeeCorporateHousing;
+
+REQUIRE Employee, Time;
+
+NAMESPACE Employee;
+
+// Corporate house
+CLASS CorporateHouse 'Corporate house';
+TABLE corporateHouse (CorporateHouse);
+
+name 'Наименование' = DATA VARISTRING[100] (CorporateHouse) CHARWIDTH 15;
+
+FORM corporateHouse 'Corporate house'
+    OBJECTS o = CorporateHouse PANEL
+    PROPERTIES(o) name
+    
+    EDIT CorporateHouse OBJECT o
+;
+
+FORM corporateHouses 'Corporate house'
+    OBJECTS o = CorporateHouse
+    PROPERTIES(o) READONLY name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM dialogCorporateHouses 'Corporate house'
+    OBJECTS o = CorporateHouse
+    PROPERTIES(o) READONLY name
+    
+    LIST CorporateHouse OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW corporateHouses;
+    }
+}
+
+CLASS CorporateHousing 'Corporate housing';
+TABLE corporateHousing(CorporateHousing);
+
+employee 'Employee' = DATA Employee (CorporateHousing) NONULL DELETE;
+
+fromDate 'From' = DATA DATE (CorporateHousing) NONULL;
+fromDate(CorporateHousing t) <- currentDate() WHEN SET(t IS CorporateHousing);
+
+toDate 'To' = DATA DATE (CorporateHousing);
+
+note 'Note' = DATA VARSTRING[1000] (CorporateHousing) CHARWIDTH 20;
+
+house 'House' = DATA CorporateHouse (CorporateHousing);
+nameHouse 'House' (CorporateHousing t) = name(house(t)) NONULL;

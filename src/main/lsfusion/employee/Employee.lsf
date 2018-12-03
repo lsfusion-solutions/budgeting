@@ -1,0 +1,119 @@
+MODULE Employee;
+
+REQUIRE Security, Location, Utils;
+
+CLASS Employee 'Employee' : CustomUser;
+TABLE employee (Employee);
+
+CLASS Position 'Position';
+TABLE position(Position);
+
+name 'Name' = DATA VARSTRING[50] (Position) IN id;
+
+position 'Position' = DATA Position (Employee);
+namePosition 'Position' (Employee e) = name(position(e));
+
+inactive 'Inactive' = DATA BOOLEAN (Employee);
+referenceName 'Name (reference)' = DATA VARSTRING[50] (Employee) CHARWIDTH 20;
+
+location 'Location' = DATA Location (Employee);
+nameLocation 'Location' (Employee e) = name(location(e));
+countEmployees 'Employees count' (Location l) = GROUP SUM 1 BY location(Employee e); 
+
+manager 'Manager' = DATA Employee (Employee);
+nameManager 'Manager' (Employee e) = name(manager(e));
+
+responsibilities 'Responsibilities' = DATA VARSTRING[1000] (Employee) CHARWIDTH 40;
+
+hiringDate 'Hiring date' = DATA DATE(Employee);
+
+probationPeriod 'Probation period (months)' = DATA INTEGER (Employee);
+probationDate 'Probation date' (Employee e) = sumMonth(hiringDate(e), probationPeriod(e));
+ 
+passedProbation 'Passed probation' = DATA BOOLEAN (Employee);
+
+//RDOpenSpace 'R&D Open Space' = DATA NUMERIC[3,1] (Employee);
+
+FORM employee 'Employee'
+    OBJECTS e = Employee PANEL
+    PROPERTIES(e) firstName, lastName, referenceName, namePosition, nameLocation, 
+                  nameManager, responsibilities, inactive, //RDOpenSpace,
+                  hiringDate, probationPeriod, passedProbation,
+                  login, sha256Password ON CHANGE changeSHA256Password(e), email, nameMainRole
+    
+    EDIT Employee OBJECT e 
+;
+
+DESIGN employee {
+    OBJECTS {
+        NEW header {
+            type = CONTAINERH;
+            NEW info {
+                caption = 'Primary info';
+                MOVE PROPERTY(firstName(e));
+                MOVE PROPERTY(lastName(e));
+                MOVE PROPERTY(referenceName(e));
+                MOVE PROPERTY(email(e));
+                MOVE PROPERTY(namePosition(e));
+                MOVE PROPERTY(nameLocation(e));                
+            }
+            NEW column2 {
+                NEW additional {
+                    caption = 'Additional info';
+                    MOVE PROPERTY(nameManager(e));                
+                    MOVE PROPERTY(responsibilities(e));
+    //                MOVE PROPERTY(RDOpenSpace(e));                
+                }
+                NEW hiringHeader {
+                    caption = 'Hiring';
+                    MOVE PROPERTY(hiringDate(e));
+                    MOVE PROPERTY(probationPeriod(e));
+                    MOVE PROPERTY(passedProbation(e));
+                }
+            }
+            NEW column3 {
+                NEW application {
+                    caption = 'Application';
+                    MOVE PROPERTY(login(e));                
+                    MOVE PROPERTY(sha256Password(e));
+                    MOVE PROPERTY(nameMainRole(e));
+                    MOVE PROPERTY(inactive(e));                
+                }
+            }
+        }
+        NEW tabbedPane {
+            type = TABBED;
+            fill = 1;
+        }
+    }
+}
+
+background (Employee e) = CASE WHEN probationDate(e) < currentDate() AND NOT passedProbation(e) THEN RGB(255,212,212);
+
+FORM employees 'Employees'
+    OBJECTS e = Employee
+    PROPERTIES(e) READONLYIF isReadonly() BACKGROUND background(e)
+                                          firstName, lastName, namePosition, nameLocation, 
+                                          nameManager, responsibilities,// RDOpenSpace,
+                                          login, email, nameMainRole
+    PROPERTIES(e) NEWSESSION NEW, EDIT, DELETE
+    
+    FILTERGROUP inactive FILTER 'Active' NOT inactive(e) DEFAULT 
+;
+@extendFormEditable(employees);
+
+DESIGN employees {
+    OBJECTS {
+        NEW pane {
+            fill = 1;
+            type = TABBED;
+            MOVE BOX(e) {
+                caption = 'Employees';
+            }
+        }
+    }
+}
+
+NAVIGATOR {
+    NEW employees;
+}

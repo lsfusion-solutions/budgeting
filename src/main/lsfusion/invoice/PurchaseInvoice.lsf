@@ -1,0 +1,92 @@
+MODULE PurchaseInvoice;
+
+REQUIRE Currency, Utils;
+
+NAMESPACE Purchase;
+
+CLASS Invoice 'Purchase invoice';
+TABLE invoice(Invoice);
+
+date 'Date' = DATA DATE (Invoice);
+
+number 'Number' = DATA VARSTRING[50] (Invoice) CHARWIDTH 15;
+
+nameSupplier 'Supplier' = DATA VARSTRING[50] (Invoice);
+
+description 'Description' (Invoice i) = CONCAT ' / ', number(i), date(i), nameSupplier(i); 
+
+currency 'Currency' = DATA Currency (Invoice);
+nameCurrency 'Currency' (Invoice i) = name(currency(i));
+
+amount 'Sum' = DATA NUMERIC[14,2] (Invoice);
+
+note 'Note' = DATA VARSTRING[1000] (Invoice) CHARWIDTH 80;
+
+approved 'Approved' = DATA BOOLEAN (Invoice);
+dateTimeApproved 'Date/time of approve' = DATA DATETIME (Invoice);
+nameUserApproved 'Approved by' = DATA VARSTRING[200](Invoice) CHARWIDTH 20;
+
+file = DATA FILE (Invoice);
+hasFile (Invoice i) = TRUE IF file(i); 
+open 'Open' (Invoice i)  { open(file(i)); }
+load 'Load' (Invoice i)  { INPUT =file(i) CHANGE; }
+
+text 'Text' = DATA RICHTEXT (Invoice);
+
+FORM invoice 'Purchase invoice'
+    OBJECTS i = Invoice PANEL
+    PROPERTIES(i) date, number, nameSupplier, note, nameCurrency, amount, text
+    PROPERTIES(i) open SHOWIF hasFile(i), load
+    
+    EDIT Invoice OBJECT i
+;
+DESIGN invoice {
+    OBJECTS {
+        NEW parameters {
+            caption = 'Parameters';
+            type = CONTAINERH;
+            MOVE PROPERTY(date(i));
+            MOVE PROPERTY(number(i));
+            MOVE PROPERTY(nameSupplier(i));
+        }
+        NEW note {
+            caption = 'Note';
+            MOVE PROPERTY(note(i));
+        }
+        NEW sum {
+            caption = 'Sum';
+            type = CONTAINERH;
+            MOVE PROPERTY(nameCurrency(i));
+            MOVE PROPERTY(amount(i));
+        }
+        NEW file {
+            caption = 'File';
+            type = CONTAINERH;
+            MOVE PROPERTY(open(i));
+            MOVE PROPERTY(load(i));
+        }
+        MOVE PROPERTY(text(i)) {
+            fill = 1;
+        }
+    }
+}
+
+
+FORM invoices 'Purchase invoices'
+    OBJECTS i = Invoice
+    PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved
+    PROPERTIES(i) open SHOWIF hasFile(i) TOOLBAR
+    PROPERTIES(i) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM dialogInvoices 'Select purchase invoice'
+    OBJECTS i = Invoice
+    PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved
+    PROPERTIES(i) open SHOWIF hasFile(i)
+    
+    LIST Invoice OBJECT i
+;
+
+NAVIGATOR {
+    NEW invoices;
+}

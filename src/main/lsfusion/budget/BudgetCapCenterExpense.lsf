@@ -1,0 +1,21 @@
+MODULE BudgetCapCenterExpense;
+
+REQUIRE BudgetCapCenter, ExpenseLedger;
+
+NAMESPACE Budget;
+
+childSpentPercent 'Spent, %' (Period p, CostItem i) = round1(childSpent(p, i) * 100.0 / totalChildCap(p, i)) CHARWIDTH 6;
+spentPercent 'Spent, %' (Period p) = round1(spent(p) * 100.0 / totalChildCap(p)) CHARWIDTH 6;
+
+maxSpentDate (Period p) = GROUP MAX date(ExpenseLedger l) IF NOT skip(l) AND selected(p, budget(l)) MATERIALIZED;
+daysSpent (Period p) = daysInclBetweenDates(fromDate(p), maxSpentDate(p));
+
+daysSpentCoeff (Period p) = NUMERIC[16,6](daysSpent(p)) / days(p);
+
+spentCap 'Cap, part' (Period p, CostItem i) = round2(totalChildCap(p, i) * daysSpentCoeff(p));
+backgroundSpentCap (Period p, CostItem i) = CASE WHEN childSpent(p, i) < spentCap(p, i) THEN RGB(192,255,192)
+                                              WHEN childSpent(p, i) > spentCap(p, i) THEN RGB(255,192,192);
+
+spentCap 'Cap, part' (Period p) = round2(totalChildCap(p) * daysSpentCoeff(p));
+backgroundSpentCap (Period p) = CASE WHEN spent(p) < spentCap(p) THEN RGB(192,255,192)
+                                              WHEN spent(p) > spentCap(p) THEN RGB(255,192,192);

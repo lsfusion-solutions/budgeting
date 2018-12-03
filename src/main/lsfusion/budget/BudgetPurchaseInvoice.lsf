@@ -1,0 +1,36 @@
+MODULE BudgetPurchaseInvoice;
+
+REQUIRE Budget, PurchaseInvoice, Utils;
+
+NAMESPACE Budget;
+
+costCenter 'Cost center' = DATA CostCenter (Invoice);
+nameCostCenter 'Cost center' (Invoice i) = name(costCenter(i));
+
+budgetDetail 'Budget detail' = DATA BudgetDetail (Invoice);
+
+CONSTRAINT costCenter(Invoice i) != costCenter(budgetDetail(i)) CHECKED BY budgetDetail[Invoice] MESSAGE 'Cost center is not equal to cost center of budget detail'; 
+
+completeNameBudgetDetail 'Budget detail' (Invoice i) = completeName(budgetDetail(i));
+
+EXTEND FORM invoice
+    PROPERTIES(i) nameCostCenter, completeNameBudgetDetail
+;
+DESIGN invoice {
+    OBJECTS {
+        NEW budget AFTER file {
+            caption = 'Budget';
+            MOVE PROPERTY(nameCostCenter(i));
+            MOVE PROPERTY(completeNameBudgetDetail(i));
+        }
+    }
+}
+
+EXTEND FORM invoices
+    PROPERTIES(i) READONLY nameCostCenter, completeNameBudgetDetail
+;
+
+invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM round0(amount(Invoice i) / defaultRateOn(currency(i), date(i))) BY budgetDetail(i); 
+EXTEND FORM budgetDetails
+    PROPERTIES(d) READONLY invoiced
+;

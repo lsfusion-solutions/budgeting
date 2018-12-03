@@ -1,0 +1,24 @@
+MODULE CostItemEmployee;
+
+REQUIRE CostItem, Employee;
+
+NAMESPACE Cost;
+
+costItem 'Cost type' = DATA CostItem (Employee);
+canonicalNameCostItem 'Cost type' (Employee e) = canonicalName(costItem(e));
+
+EXTEND FORM employee
+    PROPERTIES(e) canonicalNameCostItem
+;
+
+EXTEND FORM employees
+    PROPERTIES(e) READONLY canonicalNameCostItem
+;
+DESIGN employee {
+    column3 {
+        NEW budget {
+            caption = 'Budget';
+            MOVE PROPERTY(canonicalNameCostItem(e));
+        }
+    }
+}

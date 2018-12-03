@@ -1,0 +1,198 @@
+MODULE EmployeeHiring;
+
+REQUIRE Employee, Country;
+
+NAMESPACE Employee;
+
+DESIGN employee {
+    tabbedPane {
+        NEW hiring {
+            caption = 'Hiring';
+        }
+    }
+}
+
+META addFile(id, cap)
+    id cap = DATA FILE (Employee);
+    open###id 'Open' (Employee e) { open(id(e)); }
+    load###id 'Load' (Employee e) { INPUT =id(e) CHANGE; }
+    
+    EXTEND FORM employee
+        PROPERTIES open###id(e) SHOWIF TRUE IF id(e), load###id(e) 
+    ;
+    
+    DESIGN employee { hiring { NEW id { caption = cap; MOVE PROPERTY(open###id(e)) { width = 100; }; MOVE PROPERTY(load###id(e)) { width = 100; }; } } }
+
+END
+
+@addFile(NDA, 'NDA');
+
+@addFile(employeeContract, 'Employee contract');
+
+@addFile(independentContract, 'Independent contract');
+
+@addFile(contractRUS, 'Contract RUS');
+
+@addFile(offerLetter, 'Offer letter');
+
+@addFile(w8ben, 'W-8BEN');
+
+slackAccount 'Slack account' = DATA BOOLEAN (Employee);
+trelloEstablished 'Trello established' = DATA BOOLEAN (Employee);
+
+// Citizenship
+
+citizenship 'Citizenship' = DATA Country(Employee);
+nameCitizenship 'Citizenship' (Employee e) = name(citizenship(e));
+includeCitizenship 'Inc.' = DATA BOOLEAN (Employee, Country);
+citizenships 'Citizenships' (Employee e) = GROUP CONCAT name(Country c) IF includeCitizenship(e, c), ', ' ORDER name(c) CHARWIDTH 15;
+
+FORM dialogCitizenships 'Citizenships'
+    OBJECTS e = Employee PANEL 
+    OBJECTS c = Country
+    PROPERTIES includeCitizenship(e, c), name(c) READONLY 
+    PROPERTIES (c) NEWSESSION NEW, EDIT, DELETE 
+;
+
+changeCitizenships (Employee e) {
+    SHOW dialogCitizenships OBJECTS e = e;
+}
+
+// Language level
+
+CLASS LanguageLevel 'Language level';
+TABLE languageLevel (LanguageLevel);
+
+name 'Наименование' = DATA VARISTRING[100] (LanguageLevel) CHARWIDTH 15;
+
+FORM languageLevel 'Language level'
+    OBJECTS o = LanguageLevel PANEL
+    PROPERTIES(o) name
+    
+    EDIT LanguageLevel OBJECT o
+;
+
+FORM languageLevels 'Language level'
+    OBJECTS o = LanguageLevel
+    PROPERTIES(o) READONLY name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+
+    LIST LanguageLevel OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW languageLevels;
+    }
+}
+
+languageLevel 'Language level' = DATA LanguageLevel(Employee);
+nameLanguageLevel 'Language level' (Employee e) = name(languageLevel(e));
+
+// Visa status
+CLASS VisaStatus 'Visa status';
+TABLE visaStatus (VisaStatus);
+
+name 'Наименование' = DATA VARISTRING[100] (VisaStatus) CHARWIDTH 15;
+
+FORM visaStatus 'Visa status'
+    OBJECTS o = VisaStatus PANEL
+    PROPERTIES(o) name
+    
+    EDIT VisaStatus OBJECT o
+;
+
+FORM visaStatuss 'Visa status'
+    OBJECTS o = VisaStatus
+    PROPERTIES(o) READONLY name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM dialogVisaStatuss 'Visa status'
+    OBJECTS o = VisaStatus
+    PROPERTIES(o) READONLY name
+    
+    LIST VisaStatus OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW visaStatuss;
+    }
+}
+CLASS Visa 'Visa';
+TABLE visa(Visa);
+
+from 'From' = DATA DATE (Visa);
+to 'To' = DATA DATE (Visa);
+
+employee = DATA Employee (Visa) NONULL DELETE;
+
+country 'Country' = DATA Country(Visa) NONULL;
+nameCountry 'Country' (Visa v) = name(country(v));
+
+visaStatus 'Status' = DATA VisaStatus (Visa);
+nameVisaStatus 'Status' (Visa v) = name(visaStatus(v));
+
+laptop 'Laptop' = DATA BOOLEAN (Employee);
+pc 'PC' = DATA BOOLEAN (Employee);
+
+// product owner
+scrum 'SCUM on-boarding' = DATA BOOLEAN (Employee);
+brexCard 'Brex card' = DATA BOOLEAN (Employee); 
+
+EXTEND FORM employees
+    PROPERTIES(e) READONLY slackAccount, trelloEstablished, 
+                           citizenships, nameLanguageLevel
+                  
+    PROPERTIES(e) READONLY laptop, pc
+                  
+    PROPERTIES(e) READONLY SHOWIF name(mainRole(e)) = 'Product Owner' scrum, brexCard
+;
+
+EXTEND FORM employee
+    PROPERTIES(e) slackAccount, trelloEstablished, 
+                  citizenships ON CHANGE changeCitizenships(e), nameLanguageLevel
+                  
+    PROPERTIES(e) laptop, pc
+                  
+    OBJECTS v = Visa
+    PROPERTIES(v) nameCountry, from, to, nameVisaStatus, NEW, DELETE
+    FILTERS employee(v) = e
+    
+    PROPERTIES(e) SHOWIF name(mainRole(e)) = 'Product Owner' scrum, brexCard
+;
+
+DESIGN employee {
+    hiring {
+        NEW documents {
+            type = CONTAINERH;
+            MOVE NDA;
+            MOVE employeeContract;
+            MOVE independentContract;
+            MOVE offerLetter;
+            MOVE contractRUS;
+            MOVE w8ben;        
+        }
+        NEW contactInfo {
+            type = CONTAINERH;
+            caption = 'Contact info';
+            MOVE PROPERTY(slackAccount(e));
+            MOVE PROPERTY(trelloEstablished(e));
+        }
+        NEW personalInfo {
+            type = CONTAINERH;
+            caption = 'Personal info';
+            MOVE PROPERTY(citizenships(e));
+            MOVE PROPERTY(nameLanguageLevel(e));
+            MOVE PROPERTY(laptop(e));
+            MOVE PROPERTY(pc(e));
+        }
+        MOVE BOX(v);
+        NEW productOwner {
+            type = CONTAINERH;
+            MOVE PROPERTY(scrum(e));
+            MOVE PROPERTY(brexCard(e));
+        }
+    }
+}

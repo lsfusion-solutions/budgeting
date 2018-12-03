@@ -1,0 +1,30 @@
+MODULE EmployeeCalendar;
+
+REQUIRE Employee, Time;
+
+NAMESPACE Employee;
+
+CLASS EmployeeStatus 'Employee status' {
+    workingDay 'Working day',
+    dayOff 'Day off'
+}
+TABLE employeeStatus (EmployeeStatus);
+
+name 'Наименование' (EmployeeStatus o) = staticCaption(o) IF o IS EmployeeStatus CHARWIDTH 15;
+
+FORM dialogEmployeeStatuss 'Employee status'
+    OBJECTS o = EmployeeStatus
+    PROPERTIES(o) READONLY name
+    
+    LIST EmployeeStatus OBJECT o
+;
+
+status = ABSTRACT CASE EmployeeStatus (Employee, DATE);
+nameStatus 'Status' (Employee e, DATE d) = name(status(e, d));
+
+backgroundStatus = ABSTRACT CASE COLOR (Employee, DATE);
+
+status(Employee e, DATE d) += WHEN e IS Employee AND d IS DATE THEN EmployeeStatus.workingDay;
+backgroundStatus (Employee e, DATE d) += WHEN status(e, d) == EmployeeStatus.workingDay THEN RGB(236,255,236);
+
+status(Employee e, DATE d) += WHEN e IS Employee AND extractDOWNumber(d) >= 5 THEN EmployeeStatus.dayOff;

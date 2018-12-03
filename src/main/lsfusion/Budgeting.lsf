@@ -1,0 +1,21 @@
+MODULE Budgeting;
+
+REQUIRE Time, Utils, I18n, EvalScript, Security, Service, Scheduler, SQLUtils, Chat, Backup,
+        BudgetPlan, BudgetLocation, BudgetRent,
+        BudgetEmployee, BudgetEmployeeLocation,
+        BudgetRunway, BudgetRunwayCapItem,
+        BudgetCapItem, 
+        BudgetCapCenter, BudgetCapCenterEmployee, BudgetCapCenterRent,
+        BudgetCapCenterApproval,  
+        BudgetExpense, BudgetExpenseReconcile, 
+        BudgetExpenseEmployeeReconcile, BudgetExpenseRentReconcile, BudgetExpenseEmployeeTaxReconcile, 
+        BudgetCapCenterExpense, BudgetCapCenterContractor, 
+        BudgetExecution, BudgetExecutionCostItemGroup,
+        BudgetPurchaseInvoice, BudgetPurchaseInvoiceExpense, PurchaseInvoiceEmail, BudgetPurchaseInvoiceEmail,
+        BudgetProjectStatus,
+        BudgetBI, CashFlowBI,
+        CostCenter, CostItem, CostItemEmployee, CostCenterEmployee,
+        Expense, ExpenseLedger,
+        Location, Contractor, 
+        Employee, EmployeeLocation, EmployeeHiring,
+        Account, BudgetAccount;

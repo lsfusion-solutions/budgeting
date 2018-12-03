@@ -1,0 +1,155 @@
+MODULE BudgetCapCenterEmployee;
+
+REQUIRE BudgetCapCenter, CostCenterEmployee, CostItemEmployee, BudgetEmployee, BudgetEmployeeLocation, BudgetCapCenterApproval, Utils;
+
+NAMESPACE Budget;
+
+monthFrom  = DATA Budget(Employee);
+nameMonthFrom 'Hiring month' (Employee e) = name(monthFrom(e));
+
+WHEN LOCAL SETCHANGED(hiringDate(Employee e)) DO
+    monthFrom (e) <- GROUP LAST Budget b ORDER fromDate(b), b WHERE fromDate(b) <= hiringDate(e);
+
+monthTo = DATA Budget(Employee);
+nameMonthTo 'Month of dismissal' (Employee e) = name(monthTo(e));
+
+assigned 'Assigned, %' = DATA NUMERIC[8,2] (Period, Employee);
+
+TABLE periodBudgetEmployee (Period, Budget, Employee);
+dataAssigned 'Assigned, %' = DATA NUMERIC[8,2] (Period, Budget, Employee);
+
+assigned 'Assigned, %' (Period p, Budget b, Employee e) = (OVERRIDE dataAssigned(p, b, e), (assigned(p, e) IF selected(p, b))) 
+    IF NOT fromDate(b) < fromDate(monthFrom(e)) AND NOT fromDate(b) > fromDate(monthTo(e)) MATERIALIZED; 
+    
+assigned 'Assigned (total), %' (Budget b, Employee e) = GROUP SUM assigned(Period p, b, e);
+
+assigned 'Assigned, %' (Budget b, CostCenter c, Employee e) = 
+    GROUP SUM assigned(Period p, b, e) BY costCenter(p) MATERIALIZED;     
+
+salary 'Salary, USD' (Period p, Employee e, Budget b) = 
+    GROUP SUM NUMERIC[16,3](round0(salary(e, b, Currency c) * (OVERRIDE taxCoefficient(b, e), 1.0) * 
+                                   assigned(p, b, e) / 100.0 
+                                   / defaultRateOn(c, fromDate(b)))) MATERIALIZED;
+
+salary 'Salary, USD' (CostCenter c, Employee e, Budget b) = 
+    GROUP SUM salary(Period p, e, b) IF selected(p, b) BY costCenter(p);
+
+salary 'Salary, USD' (CostCenter c, CostItem i, Budget b) = 
+    GROUP SUM salary(c, Employee e, b) BY costItem(e);
+
+salary 'Salary, USD' (Period p, Employee e) = 
+    GROUP SUM salary(p, e, Budget b) IF selected(p, b);
+
+salary 'Salary, USD' (Period p, CostItem i) = 
+    GROUP SUM salary(p, Employee e) BY costItem(e) MATERIALIZED;
+
+EXTEND CLASS ExtraCap {
+    salary 'Salary'
+}
+sensitive (ExtraCap e) += e == ExtraCap.salary;
+cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.salary AND salary(p, i) THEN salary(p, i);
+
+backgroundAssigned (Budget b, Employee e) = RGB(255,212,212) IF assigned(b, e) > 100;
+EXTEND FORM costCenterBudget
+    OBJECTS e = Employee
+    PROPERTIES(e) READONLY firstName, lastName, namePosition
+    PROPERTIES assigned(p, e)
+    
+    OBJECTS eb = Budget
+    PROPERTIES(eb) READONLY fromDate, toDate, name
+    PROPERTIES(eb, e) READONLY assigned BACKGROUND backgroundAssigned(eb, e) 
+    PROPERTIES(p, eb, e) assigned
+    FILTERS selected(p, eb)
+;
+
+DESIGN costCenterBudget {
+    periodRightPane {
+        NEW teamPane {
+            caption = 'Team';
+            MOVE BOX(e);
+            MOVE BOX(eb);
+        }
+    }
+}
+
+// Total Assigned 
+EXTEND FORM employees
+    OBJECTS b = Budget
+
+    OBJECTS be = Employee
+    PROPERTIES(be) READONLY firstName, lastName, namePosition, nameLocation, canonicalNameCostItem, nameMonthFrom, nameMonthTo
+    PROPERTIES READONLY assigned(b, be) COLUMNS (b) HEADER name(b)
+    
+    OBJECTS pb = (pe = Period, bb = Budget)
+    PROPERTIES READONLY nameCostCenter(pe), name(bb)
+    PROPERTIES assigned(pe, bb, be)
+    FILTERS assigned(pe, bb, be)
+;
+
+DESIGN employees {
+    pane {
+        NEW load {
+            caption = 'Load';
+            type = SPLITV;
+            MOVE BOX(be) { fill = 2; }
+            MOVE BOX(pb);
+        }
+    }
+}
+
+EXTEND FORM employee PROPERTIES (e) nameMonthFrom, nameMonthTo;
+
+DESIGN employee {
+    hiringHeader {
+        MOVE PROPERTY (nameMonthFrom(e));
+        MOVE PROPERTY (nameMonthTo(e));
+    }
+}
+
+// Period approval
+
+EXTEND FORM periodApproval
+    OBJECTS e = Employee
+    PROPERTIES(e) READONLY firstName, lastName, namePosition, canonicalNameCostItem
+    PROPERTIES(p, e) READONLY assigned, salary
+    FILTERS assigned(p, e)
+    
+    OBJECTS eb = Budget
+    PROPERTIES(eb) READONLY fromDate, toDate, name
+    PROPERTIES READONLY salary(p, e, eb)
+    FILTERS selected(p, eb)
+;
+
+DESIGN periodApproval {
+    details {
+        NEW team {
+            caption = 'Team';
+            MOVE BOX(e);
+            MOVE BOX(eb);
+        }
+    }
+}
+
+// create budget detail
+
+CLASS SalaryBudgetDetail 'Budget detail (salary)' : BudgetDetail;
+TABLE salaryBudgetDetail (SalaryBudgetDetail);
+
+sensitive (SalaryBudgetDetail d) += TRUE IF d IS SalaryBudgetDetail;
+
+salaryBudgetDetail (CostCenter costCenter, CostItem costItem, Budget budget) = AGGR SalaryBudgetDetail WHERE salary(costCenter, costItem, budget) MATERIALIZED INDEXED;
+
+WHEN SETCHANGED(costCenter[SalaryBudgetDetail](SalaryBudgetDetail d)) DO
+    costCenter[BudgetDetail](d) <- costCenter[SalaryBudgetDetail](d);
+
+WHEN SETCHANGED(costItem[SalaryBudgetDetail](SalaryBudgetDetail d)) DO
+    costItem[BudgetDetail](d) <- costItem[SalaryBudgetDetail](d);
+
+WHEN SETCHANGED(budget[SalaryBudgetDetail](SalaryBudgetDetail d)) DO
+    budget[BudgetDetail](d) <- budget[SalaryBudgetDetail](d);
+
+WHEN SETCHANGED(SalaryBudgetDetail d IS SalaryBudgetDetail) DO
+    name[BudgetDetail](d) <- 'Salary';
+
+WHEN SETCHANGED(salary(costCenter(SalaryBudgetDetail d), costItem(d), budget(d))) DO
+    planned[BudgetDetail](d) <- salary(costCenter(d), costItem(d), budget(d));

@@ -1,0 +1,233 @@
+MODULE BudgetExpenseReconcile;
+
+REQUIRE BudgetPurchaseInvoiceExpense, Utils, CostItemEmployee;
+
+NAMESPACE Budget;
+
+// ----- GLAccount 
+
+CLASS GLAccount 'General ledger account';
+TABLE GLAccount (GLAccount);
+
+name 'Name' = DATA VARSTRING[200] (GLAccount) CHARWIDTH 30;
+GLAccount = GROUP AGGR GLAccount a BY name(a);  
+
+GLAccount 'General ledger account' = DATA GLAccount (Expense);
+nameGLAccount 'General ledger account' (Expense e) = name(GLAccount(e));
+
+costItem 'Cost type' = DATA CostItem (GLAccount);
+nameCostItem 'Cost type' (GLAccount a) = canonicalName(costItem(a));
+
+skip 'Skip' = DATA BOOLEAN (GLAccount);
+
+setCostItemAuto 'Set cost type auto' ()  { 
+    costItem(GLAccount a) <- (GROUP LAST CostItem i ORDER charLength(canonicalName(i)), i WHERE isSubstring(replace(name(a), ' ', ''), replace(canonicalName(i), ' ', '')) == 1) WHERE NOT costItem(a);
+}
+
+EXTEND FORM expenses
+    OBJECTS g = GLAccount
+    PROPERTIES(g) name, nameCostItem, skip
+    PROPERTIES() setCostItemAuto DRAW g TOOLBAR
+    PROPERTIES(g) NEW, DELETE
+;
+
+DESIGN expenses {
+    pane {
+        NEW GLAccount {
+            caption = 'General ledger accounts';
+            MOVE BOX(g);
+        }
+    }
+}
+
+// ----- Import 
+
+importXero 'Import from Xero' ()  { 
+    INPUT f = EXCELFILE DO {
+            
+        LOCAL dateRow = VARSTRING[200] (INTEGER);
+        LOCAL date = DATE (INTEGER);
+        LOCAL type = VARSTRING[100] (INTEGER);
+        LOCAL note = VARSTRING[1000] (INTEGER);
+        LOCAL reference = VARSTRING[1000] (INTEGER);
+        LOCAL debit = NUMERIC[16,2] (INTEGER);
+        LOCAL credit = NUMERIC[16,2] (INTEGER);
+
+        LOCAL GLAccount = GLAccount ();
+        
+        IMPORT XLS NOHEADER FROM f TO dateRow = A, type = B, note = C, reference = D, debit = E, credit = F;
+
+        IMPORT XLS NOHEADER FROM f TO date = A;
+        
+        FOR imported(INTEGER i) AND i > 4 ORDER i DO {
+            IF NOT debit(i) AND NOT credit(i) AND NOT note(i) AND NOT reference(i) THEN {
+                IF dateRow(i) != '' AND NOT GLAccount(dateRow(i)) THEN NEW g = GLAccount {
+                    name(g) <- dateRow(i);
+                }
+                GLAccount() <- GLAccount(dateRow(i));                
+            }
+            IF date(i) AND type(i) != '' AND (debit(i) OR credit(i)) AND GLAccount() THEN NEW e = Expense {
+                date(e) <- date(i);
+                
+                GLAccount(e) <- GLAccount();
+                currency(e) <- currencyName('USD');
+                note(e) <- note(i);
+                reference(e) <- reference(i);
+                amount(e) <- debit(i) (-) credit(i);
+//                costItem(e) <- costItem(GLAccount());
+            } 
+        }
+    }
+}
+
+import1C 'Import from 1C' ()  { 
+    INPUT f = EXCELFILE DO {
+            
+        LOCAL dateRow = VARSTRING[200] (INTEGER);
+        LOCAL date = DATE (INTEGER);
+        LOCAL note = VARSTRING[1000] (INTEGER);
+        LOCAL reference = VARSTRING[1000] (INTEGER);
+        LOCAL debetAccount = VARSTRING[1000] (INTEGER);
+        LOCAL creditAccount = VARSTRING[1000] (INTEGER);
+        LOCAL amount = NUMERIC[16,2] (INTEGER);
+
+        IMPORT XLS NOHEADER FROM f TO dateRow = A, note = B, reference = D, debetAccount = F, creditAccount = I, amount = J;
+
+        IMPORT XLS NOHEADER FROM f TO date = A;
+        
+        FOR imported(INTEGER i) AND i > 9 ORDER i DO {
+            IF date(i) AND creditAccount(i) == '51' THEN NEW e = Expense {
+                date(e) <- date(i);
+                currency(e) <- currencyName('RUR');
+                note(e) <- getWord(note(i), '\n', 2);
+                reference(e) <- reference(i);
+                amount(e) <- amount(i);
+                IF NOT GLAccount(debetAccount(i)) THEN NEW g = GLAccount {
+                    name(g) <- VARSTRING[200](debetAccount(i));
+                }
+                GLAccount(e) <- GLAccount(debetAccount(i));
+            } 
+        }
+    }
+}
+
+// ----------- Reconcile
+
+FORM splitParameters 'Split parameters'
+    OBJECTS am = NUMERIC[16,2] PANEL
+    PROPERTIES(am) 'Split amount' = VALUE
+;
+split 'Split' (Expense e)  { 
+    DIALOG splitParameters OBJECTS am INPUT DO {
+        NEW en = Expense {
+            date(en) <- date(e);
+            GLAccount(en) <- GLAccount(e);
+            note(en) <- note(e);
+            reference(en) <- reference(e);
+            currency(en) <- currency(e);
+            amount(en) <- am;
+            amount(e) <- amount(e) (-) am;
+        } 
+    } 
+}
+toReconcile (Expense e) = e IS Expense AND NOT costItem(e) AND NOT skip(e); 
+
+FORM reconcileBudgetDetail 'Reconcile budget detail'
+    OBJECTS dt = DATE PANEL
+    
+    OBJECTS d = BudgetDetail
+    PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
+    FILTERS (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+    
+    FILTERGROUP date
+        FILTER 'Same month' dt >= fromDate(budget(d)) AND dt <= toDate(budget(d)) DEFAULT
+;
+changeBudgetDetail (Expense e)  { 
+    DIALOG reconcileBudgetDetail OBJECTS d = budgetDetail(e) CHANGE, dt = date(e);
+}
+
+expenseType 'Type' (Expense e) = objectClassName(e) IF e IS Expense CHARWIDTH 10;
+
+EXTEND FORM expenses
+    OBJECTS dates = (dFrom = DATE, dTo = DATE) PANEL
+    PROPERTIES 'From' = VALUE(dFrom), 'To' = VALUE(dTo)
+    
+    OBJECTS c = Currency PANEL
+    PROPERTIES(c) name SELECTOR 
+    
+    OBJECTS ie = Expense
+    PROPERTIES(ie) expenseType READONLY, date, nameGLAccount READONLY, note, reference, nameCurrency READONLY, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie), descriptionPurchaseInvoice, split TOOLBAR, NEW, DELETE
+    FILTERS date(ie) >= dFrom AND date(ie) <= dTo,
+            currency(ie) == c,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(ie)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDER date(ie), nameGLAccount(ie)
+    
+    FILTERGROUP toReconcile
+        FILTER 'To reconcile' CHANGED(toReconcile(ie)) OR toReconcile(ie)
+;
+
+reconcilePurchaseInvoice 'Purchase Invoice' = DATA BOOLEAN (GLAccount);
+
+EXTEND FORM expenses
+    PROPERTIES(g) reconcilePurchaseInvoice
+;
+
+reconcileAuto 'Reconcile auto'  ABSTRACT LIST ( );
+
+reconcileAuto () + { 
+    costItem(Expense e) <- costItem(GLAccount(e)) WHERE toReconcile(e) AND [ FILTER expenses.ie](e);
+
+    purchaseInvoice(Expense e) <- (GROUP LAST Invoice i IF isSubstring(note(e), toDateDDMMYYYY(date(i))) == 1 AND isSubstring(note(e), number(i)) == 1 ORDER i) 
+                                  WHERE toReconcile(e) AND [ FILTER expenses.ie](e) AND reconcilePurchaseInvoice(GLAccount(e));
+
+    DELETE Expense e WHERE toReconcile(e) AND [ FILTER expenses.ie](e) AND skip(GLAccount(e));
+}
+
+markAsExpense 'Expense' (Expense e)  { 
+    CHANGECLASS e TO Expense;
+}
+
+EXTEND FORM expenses    
+    PROPERTIES() DRAW ie TOOLBAR importXero, import1C, reconcileAuto
+    
+    PROPERTIES(ie) PANEL nameBudget, markAsExpense
+;
+
+DESIGN expenses {
+    pane {
+        NEW reconcile {
+            caption = 'Reconcile';
+            NEW filters {
+                type = CONTAINERH;
+                MOVE BOX(dates);
+                MOVE BOX(c);
+                MOVE FILTERGROUPS(ie) {
+                    caption = 'Reconcile';
+                    MOVE PROPERTY(reconcileAuto());
+                }
+            }
+            NEW reconcilePane { 
+                fill = 1;
+                type = SPLITV;
+                MOVE BOX(ie) {
+                    fill = 2;
+                }
+                NEW expensePane {
+                    height = 150;
+                    caption = 'Expense parameters';
+                    fill = 1;
+                    type = CONTAINERH;
+                    NEW expenseMark {
+                        caption = 'Mark as';
+                        type = CONTAINERV;
+                        MOVE PROPERTY(nameBudget(ie));
+                        MOVE PROPERTY(markAsExpense(ie));
+                    }
+                    NEW expenseParams {
+                        fill = 1;
+                    }
+                }
+            }
+        }
+    }
+}

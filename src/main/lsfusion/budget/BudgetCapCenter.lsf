@@ -1,0 +1,264 @@
+MODULE BudgetCapCenter;
+
+REQUIRE CostCenter, Budget, CostCenterEmployee;
+
+NAMESPACE Budget;
+
+// Period
+
+CLASS Period 'Period';
+TABLE period(Period);
+
+costCenter 'Cost center' = DATA CostCenter (Period) NONULL DELETE;
+nameCostCenter 'Cost center' (Period p) = name(costCenter(p));
+nameOwner 'Owner' (Period p) = nameOwner(costCenter(p));
+
+TABLE periodBudget (Period, Budget);
+selected 'Selected' = DATA BOOLEAN (Period, Budget);
+
+budgetCount 'Budget count' (Period p) = GROUP SUM 1 IF selected(p, Budget b); 
+
+period (CostCenter c, Budget b) = GROUP AGGR Period p WHERE selected(p, b) BY costCenter(p); 
+
+fromDate 'From' = GROUP MIN fromDate(Budget b) IF selected(Period p, b) BY p; 
+toDate 'To' = GROUP MAX toDate(Budget b) IF selected(Period p, b) BY p; 
+
+days (Period p) = daysInclBetweenDates(fromDate(p), toDate(p));
+
+calcSelected (Budget b, CostCenter c) = GROUP SUM 1 IF selected(Period p, b) BY costCenter(p);
+
+WHEN CHANGED(calcSelected(Budget b, CostCenter c)) DO
+    selected(b, c) <- TRUE IF calcSelected(b, c);
+
+TABLE periodCostItem (Period, CostItem); 
+cap 'Cap, USD' = DATA NUMERIC[16,3] (Period, CostItem);
+
+CONSTRAINT DROPPED(CostItem c IS CostItem) AND PREV(cap(Period p, c)) MESSAGE 'Cannot delete a cost type with assigned period cap';
+
+childCap (Period p, CostItem parent) = GROUP SUM cap(p, CostItem child) IF level(child, parent);
+
+CLASS ExtraCap 'Extra Cap';
+TABLE extraCap(ExtraCap);
+
+sensitive = ABSTRACT BOOLEAN (ExtraCap) MATERIALIZED;
+
+TABLE extraCapPeriodCostItem (ExtraCap, Period, CostItem);
+cap = ABSTRACT CASE NUMERIC[16,3] (ExtraCap, Period, CostItem) MATERIALIZED;
+
+extraSensitiveCap 'Extra cap (sensitive), USD' (Period p, CostItem i) = GROUP SUM cap(ExtraCap e, p, i) IF sensitive(e);
+extraInsensitiveCap 'Extra cap (insensitive), USD' (Period p, CostItem i) = GROUP SUM cap(ExtraCap e, p, i) IF NOT sensitive(e);
+
+totalInsensitiveCap 'Total cap, USD' (Period p, CostItem i) = cap(p, i) (+) extraInsensitiveCap(p, i) MATERIALIZED;
+totalCap 'Total cap, USD' (Period p, CostItem i) = totalInsensitiveCap(p, i) (+) extraSensitiveCap(p, i) MATERIALIZED; 
+
+totalChildInsensitiveCap (Period p, CostItem parent) = GROUP SUM totalInsensitiveCap(p, CostItem child) IF level(child, parent) MATERIALIZED;
+overInsensitiveCap 'Cap, USD' (Period p, CostItem i) = OVERRIDE cap(p, i), PREV(totalChildInsensitiveCap(p, i));  
+
+totalChildCap 'Cap, USD' (Period p, CostItem i) = GROUP SUM totalCap(p, CostItem child) IF level(child, i);
+overTotalChildCap 'Cap, USD' (Period p, CostItem i) = OVERRIDE cap(p, i), PREV(totalChildCap(p, i));  
+
+planned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND costItem(d) == i AND costCenter(d) == costCenter(p);
+childPlanned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND level(costItem(d), i) AND costCenter(d) == costCenter(p);
+insensitivePlanned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND level(costItem(d), i) AND costCenter(d) == costCenter(p) AND NOT sensitive(d);
+insensitiveSpent 'Spent, USD' (Period p, CostItem i) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) AND selected(p, budget(l)) AND level(costItem(l), i) AND costCenter(l) == costCenter(p) AND NOT sensitive(l);
+
+backgroundCap (Period p, CostItem i) = CASE WHEN CHANGED(cap(p, i)) THEN RGB(255,255,128)
+                                                     WHEN cap(p, i) THEN RGB(255,255,192);
+
+hideProjectBudet 'Hide in Project Budget' = DATA BOOLEAN (CostItem);
+readonlyProjectBudet 'Readonly in Project Budget' = DATA BOOLEAN (CostItem);
+EXTEND FORM costItem
+    PROPERTIES(c) hideProjectBudet, readonlyProjectBudet
+;
+
+readonly (Period p) = ABSTRACT BOOLEAN (Period);
+readonly (Period p, CostItem i) = readonly(p) OR readonlyProjectBudet(i);
+
+spent 'Spent, USD' (Budget b, CostItem i, CostCenter c) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costItem(l), costCenter(l);
+
+spent 'Spent, USD' (Period p, CostItem i) = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), i) AND NOT skip(l) AND costCenter(p) == costCenter(l) AND selected(p, budget(l));
+childSpent 'Spent, USD' (Period p, CostItem i) = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), i) AND NOT skip(l) AND costCenter(p) == costCenter(l) AND selected(p, budget(l));
+
+spent 'Spent, USD' (Period p) = GROUP SUM amountUSD(ExpenseLedger l) IF costCenter(p) == costCenter(l) AND NOT skip(l) AND selected(p, budget(l));
+
+FORM costCenterBudget 'Project budget'
+    OBJECTS c = CostCenter PANEL
+    PROPERTIES(c) name SELECTOR
+    FILTERS access(c, currentUser())
+    
+    OBJECTS p = Period
+    PROPERTIES(p) fromDate, toDate
+    PROPERTIES(p) NEW, DELETE SHOWIF NOT readonly(p)
+    FILTERS costCenter(p) == c
+    
+    OBJECTS b = Budget
+    PROPERTIES READONLYIF readonly(p) selected(p, b)
+    PROPERTIES(b) READONLY fromDate, toDate, name
+    FILTERS period(c, b) == p OR NOT period(c, b) 
+    
+    TREE costItems ci = CostItem PARENT parent
+    PROPERTIES(ci) READONLY order, name
+    PROPERTIES(p, ci) overTotalChildCap READONLYIF readonly(p, ci) BACKGROUND backgroundCap(p, ci)
+    PROPERTIES(p, ci) READONLY childPlanned, spent
+//    FILTERS NOT hideProjectBudet(ci)
+    ORDER order(ci)
+
+    OBJECTS pbd = BudgetDetail
+    PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    FILTERS selected(p, budget(pbd)),
+            NOT sensitive(pbd),
+            level(costItem(pbd), ci),
+            costCenter(pbd) = costCenter(p)  
+
+    OBJECTS pe = ExpenseLedger
+    PROPERTIES(pe) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS selected(p, budget(pe)),
+            NOT sensitive(pe),
+            NOT skip(pe),
+            level(costItem(pe), ci),
+            costCenter(pe) = costCenter(p)  
+    ORDER amountUSD(pe) DESC
+;
+
+DESIGN costCenterBudget {
+    OBJECTS {
+        NEW header {
+            MOVE BOX(c);
+        }
+        NEW pane {
+            type = TABBED;
+            fill = 1;
+            NEW periodPane {
+                caption = 'Period';
+                type = SPLITH;
+                NEW periodLeftPane {
+                    type = SPLITV;
+                    MOVE BOX(p);
+                    NEW periodLeftTab {
+                        type = TABBED;
+                        MOVE BOX(b) {
+                            caption = 'Monthes';
+                            fill = 5;
+                        }
+                    }
+                }
+                NEW periodRightPane {
+                    fill = 3;
+                    type = TABBED;
+                    NEW costTypes {
+                        caption = 'Cost types';
+                        type = SPLITV;
+                        MOVE BOX(TREE costItems) {
+                            fill = 2;
+                        }
+                        NEW costTypeDetails {
+                            fill = 1;
+                            type = TABBED;
+                            MOVE BOX(pbd);
+                            MOVE BOX(pe);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+}
+
+// Monthly
+
+EXTEND FORM costCenterBudget
+    OBJECTS bm = Budget
+    PROPERTIES(bm) READONLY fromDate, toDate, name
+    PROPERTIES READONLY planned(bm, c)
+    FILTERS selected(bm, c)
+    
+    OBJECTS bmd = BudgetDetail
+    PROPERTIES(bmd) READONLYIF readonly(bmd, c) canonicalNameCostItem, name, planned, spent, description PANEL, NEW, DELETE
+    FILTERS costCenter(bmd) == c,
+            budget(bmd) == bm,
+            NOT sensitive(bmd)
+            
+    OBJECTS pem = ExpenseLedger
+    PROPERTIES(pem) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS NOT sensitive(pem),
+            NOT skip(pem),
+            costCenter(pem) = c,
+            budget(pem) == bm  
+    ORDER amountUSD(pem) DESC
+;
+
+DESIGN costCenterBudget {
+    pane {
+        NEW monthlyPane {
+            caption = 'Monthly';
+            type = SPLITH;
+            MOVE BOX(bm);
+            NEW montlyDetailPane {
+                fill = 3;
+                type = SPLITV;
+                NEW monthlyTabPane {
+                    type = TABBED;
+                    fill = 3;
+                    MOVE BOX(bmd);
+                    MOVE BOX (pem);
+                }
+                MOVE PROPERTY(description(bmd)) {
+                    panelCaptionAbove = TRUE;
+                    fill = 1;
+                }
+            }
+        }
+    }
+}
+
+NAVIGATOR {
+    NEW costCenterBudget;
+}
+
+// Total budget cost
+
+totalChildCap 'Cap, USD' (Period p) = GROUP SUM totalCap(p, CostItem i);
+
+planned 'Planned, USD' (Period p) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND costCenter(d) == costCenter(p);
+
+totalChildCap (Period p, Budget b, CostItem i) = totalChildCap(p, i) / budgetCount(p) IF selected(p, b);
+
+totalChildCap 'Cost center cap, USD' (Budget b, CostItem i) = GROUP SUM totalChildCap(Period p, b, i); 
+
+totalCap (Period p, Budget b, CostItem i) = totalCap(p, i) / budgetCount(p) IF selected(p, b);
+
+totalCap 'Cost center cap, USD' (Budget b) = GROUP SUM totalCap(Period p, b, CostItem i);
+
+averageBudgetCap (Period p) = NUMERIC[16,2] (totalChildCap(p) / budgetCount(p));
+averageCap 'Average cap, USD' (Budget b, CostCenter c) = averageBudgetCap(period(c, b));
+averageCap 'Average cap, USD' (Budget b, CostItem i, CostCenter c) = NUMERIC[16,2] (totalChildCap(period(c, b), i) /  budgetCount(period(c, b)));
+
+backgroundSpent (Budget b, CostCenter c) = CASE WHEN spent(b, c) > averageBudgetCap(period(c, b)) THEN RGB (255,192,192)
+                                                         WHEN spent(b, c) < averageBudgetCap(period(c, b)) THEN RGB (192,255,192);
+                                                         
+backgroundSpent (Budget b, CostItem i, CostCenter c) = CASE WHEN childSpent(b, i, c) > averageCap(b, i, c) THEN RGB (255,192,192)
+                                                                     WHEN childSpent(b, i, c) < averageCap(b, i, c) THEN RGB (192,255,192);
+EXTEND FORM budgets
+    PROPERTIES(b) READONLY totalCap BEFORE planned(b)
+;
+
+EXTEND FORM costCenterBudget 
+    PROPERTIES averageCap(bm, c) BEFORE planned(bm, c), spent(bm, c) BACKGROUND backgroundSpent(bm, c);
+
+FORM dialogMoveBudget 'Budgets'
+    OBJECTS d = BudgetDetail PANEL 
+    OBJECTS b = Budget
+    PROPERTIES(b) READONLY name, fromDate, toDate
+    FILTERS selected(b, costCenter(d)), fromDate(b) >= monthReadonlyDate()
+;
+
+moveBudgetDetail 'Move' (BudgetDetail d) {
+    DIALOG dialogMoveBudget OBJECTS d = d, b INPUT DO {
+        budget(d) <- b;
+        SEEK costCenterBudget.bm = b; 
+        SEEK costCenterBudget.bmd = d;
+    }
+}
+
+EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) moveBudgetDetail(bmd) DRAW bmd TOOLBAR;

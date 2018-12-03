@@ -1,0 +1,48 @@
+MODULE BudgetExpenseRent;
+
+REQUIRE BudgetExpense, BudgetRent, Location, BudgetCapCenterEmployee, EmployeeBusinessTrip;
+
+NAMESPACE Budget;
+
+CLASS RentExpense 'Rent expense' : Expense;
+
+skip (RentExpense e) += e IS RentExpense;
+
+location 'Location' = DATA Location (RentExpense) NONULL;
+nameLocation 'Location' (RentExpense e) = name(location(e));
+
+TABLE budgetEmployeeLocation(Budget, Employee, Location);
+
+assignedTrip 'Assigned, %' (Budget b, Employee e, Location l) = 
+    [GROUP SUM daysInclBetweenDates((MAX fromDate(BusinessTrip t), fromDate(b)), (MIN toDate(t), toDate(b))) 
+            IF fromDate(b) <= toDate(t) AND fromDate(t) <= toDate(b) BY employee(t), location(t)](e, l) / 
+    NUMERIC[5,2] (daysInclBetweenDates(fromDate(b), toDate(b))) MATERIALIZED;
+
+assigned 'Assigned, %' (RentExpense e, CostCenter c, Employee em) =
+    assigned(budget(e), c, em) * ((1 IF location(em) == location(e)) (+) assignedTrip(budget(e), em, location(e))) MATERIALIZED;
+
+amount 'Amount' (RentExpense e, CostCenter c, Employee em) =
+    PARTITION UNGROUP amount PROPORTION STRICT ROUND(2)
+        NUMERIC[16,2](assigned(e, c, em))
+        ORDER c, em
+        BY e;
+        
+amount 'Amount' (RentExpense e, CostCenter c, CostItem i) = GROUP SUM amount(e, c, Employee em) IF location(em) = location(e) BY rentCostItem(em) MATERIALIZED;
+
+CONSTRAINT amount(RentExpense e, CostCenter c, Employee em) AND NOT rentCostItem(em) MESSAGE 'Rent cost type for employee should be specified';
+CONSTRAINT amount(RentExpense e, CostCenter c, Employee em) AND NOT location(em) MESSAGE 'Location for employee should be specified';
+
+employees(RentExpense e, CostCenter c, CostItem i) = GROUP CONCAT name(Employee em) IF assigned(budget(e), c, em) AND location(em) = location(e) AND rentCostItem(em) == i, ',' ORDER em; 
+
+CLASS RentExpenseLedger 'Rent expense ledger' : ExpenseLedger;
+RentExpenseLedger = AGGR RentExpenseLedger WHERE amount(RentExpense rentExpense, CostCenter costCenter, CostItem costItem) MATERIALIZED INDEXED;
+
+date(RentExpenseLedger e) += date(rentExpense(e));
+costItem(RentExpenseLedger e) += costItem(e);
+costCenter(RentExpenseLedger e) += costCenter(e);
+currency(RentExpenseLedger e) += currency(rentExpense(e));
+amount(RentExpenseLedger e) += amount(rentExpense(e), costCenter(e), costItem(e));
+note(RentExpenseLedger e) += note(rentExpense(e));
+reference(RentExpenseLedger e) += reference(rentExpense(e));
+info(RentExpenseLedger e) += employees(rentExpense(e), costCenter(e), costItem(e));
+budget(RentExpenseLedger e) += budget(rentExpense(e));

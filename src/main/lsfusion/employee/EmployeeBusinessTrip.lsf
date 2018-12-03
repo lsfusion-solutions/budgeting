@@ -1,0 +1,20 @@
+MODULE EmployeeBusinessTrip;
+
+REQUIRE Employee, Location, Time;
+
+NAMESPACE Employee;
+
+CLASS BusinessTrip 'Business Trip';
+TABLE businessTrip(BusinessTrip);
+
+employee 'Employee' = DATA Employee (BusinessTrip) NONULL DELETE;
+
+fromDate 'From' = DATA DATE (BusinessTrip) NONULL;
+fromDate(BusinessTrip t) <- currentDate() WHEN SET(t IS BusinessTrip);
+
+toDate 'To' = DATA DATE (BusinessTrip);
+
+location 'Location' = DATA Location (BusinessTrip);
+nameLocation 'Location' (BusinessTrip t) = name(location(t)) NONULL;
+
+note 'Note' = DATA VARSTRING[1000] (BusinessTrip) CHARWIDTH 20;

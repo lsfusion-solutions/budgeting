@@ -1,0 +1,39 @@
+MODULE BudgetContract;
+
+REQUIRE BudgetCapCenterContractor;
+
+NAMESPACE Budget;
+
+CLASS Contract 'Contract';
+TABLE contract (Contract);
+
+contractor 'Contractor' = DATA Contractor (Contract) NONULL DELETE;
+period 'Period' = DATA Period (Contract) NONULL;
+
+number 'Number' = DATA VARSTRING[30] (Contract) CHARWIDTH 10;
+date 'Date' = DATA DATE (Contract);
+
+note 'Note' = DATA VARSTRING[500] (Contract) CHARWIDTH 30;
+
+currency 'Currency' = DATA Currency (Contract);
+nameCurrency 'Currency' (Contract c) = name(currency(c));
+
+amount 'Amount' = DATA NUMERIC[10,2] (Contract);
+
+amountUSD 'Amount, USD' (Contract c) = round2(amount(c) / defaultRateOn(currency(c), date(c)));
+
+contractAmount 'Contract amount' (Period p, Contractor cr) = GROUP SUM amountUSD(Contract c) BY period(c), contractor(c);
+
+percentComplete 'Complete, %' = DATA NUMERIC[4,1] (Contract, Budget);
+prevMonthPercentComplete 'Complete (prev month), %' (Contract c, Budget b) = 
+    GROUP LAST percentComplete(c, Budget bl) 
+          ORDER fromDate(bl), bl 
+          WHERE fromDate(b) > fromDate(bl);    
+          
+FORM dialogContracts 'Contracts'
+    OBJECTS c = Contract
+    PROPERTIES (c) READONLY number, date, note, nameCurrency, amount, amountUSD
+    ORDER date(c)
+    
+    LIST Contract OBJECT c
+;

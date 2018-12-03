@@ -1,0 +1,140 @@
+MODULE BudgetBI;
+
+REQUIRE Utils, Time, Authentication,
+        BudgetCapCenterExpense;
+
+host 'Хост для подключения' = DATA VARSTRING[100] ();
+maxRowCount 'Максимальное количество записей' = DATA INTEGER ();
+// ----------------- Загрузка данных ------------------- //
+
+exportDirectory 'Путь для экспорта файлов' = DATA VARSTRING[500] ();
+// file:///mnt/backup/csv/
+// ftp://ftpuser:f7y45cnb@195.201.124.251:21/csv/
+
+importDirectory 'Путь для импорта файлов' = DATA VARSTRING[500] ();
+// /mnt/backup/csv/
+
+
+EXTEND FORM integrationData
+    PROPERTIES host(), maxRowCount(), exportDirectory(), importDirectory()
+
+    OBJECTS dates = (druidFrom = DATE, druidTo = DATE) PANEL
+    PROPERTIES druidFrom 'С' = VALUE(druidFrom), druidTo 'По' = VALUE(druidTo)
+;
+
+DESIGN integrationData {
+    pane {
+        NEW druid {
+            caption = 'Druid';
+            MOVE PROPERTY(host());
+            MOVE PROPERTY(maxRowCount());
+            MOVE PROPERTY(exportDirectory());
+            MOVE PROPERTY(importDirectory());
+
+            MOVE BOX(dates);
+        }
+    }
+} 
+
+runImportTask(VARSTRING[100] id)  { 
+    LOCAL template = FILE();
+    READ 'file://bi/' + id + '.json' TO template;
+    fileToString(template(), 'UTF-8');
+
+    stringToFile(replace(replace(resultString(), '<DIRECTORY>', importDirectory()),
+                                                       '<FILE>', id + '.csv')
+                                                       , 'UTF-8', 'json');
+
+    LOCAL result = FILE();
+    EXTERNAL HTTP 'http://' + host() + ':8090/druid/indexer/v1/task' PARAMS resultFile() TO result;
+}
+
+ingestBatch (VARSTRING[100] id)  { 
+    printToLog('' + currentDateTime() + ' Started WRITE ');
+    WRITE exportDirectory() + id FROM exportFile();
+    printToLog('' + currentDateTime() + 'Ended WRITE ');
+
+    runImportTask(id);
+}
+
+loadLookups 'Загрузить справочники'  ABSTRACT LIST ( );
+loadLookups () + { 
+    stringToFile('\{\}', 'UTF-8', 'json');
+    LOCAL result = FILE();
+    TRY { EXTERNAL HTTP 'http://' + host() + ':8081/druid/coordinator/v1/lookups/config' PARAMS resultFile() TO result; }
+}
+
+escapeJSONValue (TEXT t) = replace(replace(replace(replace(t, '\\', '\\\\'), '"', '\\"'), '\n', ''), '\r', '');
+
+loadLookup (VARSTRING[100] id, TEXT json)  { 
+    IF json != '' THEN {
+        printToLog('' + currentDateTime() + ' Started Load lookup ' + id);    
+        stringToFile('\{ "version": "' + lpad(TEXT([ FORMULA LONG 'SELECT EXTRACT (epoch FROM ($1))'](currentDateTime())), 12, '0') + '", "lookupExtractorFactory": \{ "type": "map", "injective" : true, "map": \{' + json + ' \} \} \}', 'UTF-8', 'json');
+        LOCAL result = FILE();
+//        WRITE 'file://d:/temp/test.json' FROM resultFile(); 
+        EXTERNAL HTTP 'http://' + host() + ':8081/druid/coordinator/v1/lookups/config/__default/' + id PARAMS resultFile() TO result; 
+        printToLog('' + currentDateTime() + 'Ended Load lookup ' + id);
+    }
+}
+
+EXTEND FORM integrationData
+    PROPERTIES() loadLookups
+;
+
+DESIGN integrationData {
+    druid {
+        MOVE PROPERTY(loadLookups());
+    }
+}
+
+runKillTask(VARSTRING[100] id, DATE dFrom, DATE dTo)  { 
+    stringToFile('\{ "type":"kill", "dataSource" : "' + id + '", "interval" : "' + dFrom + '/' + sum(dTo, 1) + '" \}' 
+                                                       , 'UTF-8', 'json');
+
+    LOCAL result = FILE();
+    EXTERNAL HTTP 'http://' + host() + ':8090/druid/indexer/v1/task' PARAMS resultFile() TO result;
+}
+
+CLASS BudgetType {
+    cap 'Cap',
+    planned 'Planned',
+    spent 'Spent'
+}
+
+name 'Name' (BudgetType t) = staticCaption(t) IF t IS BudgetType; 
+
+burndownCap (Period p, Budget b, CostItem i) =
+    totalCap(p, i) / budgetCount(p) * (GROUP SUM 1 IF selected(p, Budget ib) AND ib >= b); 
+
+burndownPlanned (Period p, Budget b, CostItem i) =
+    (totalCap(p, i) IF selected(p, b)) (-) (GROUP SUM planned(Budget ib, i, costCenter(p)) IF selected(p, ib) AND ib < b); 
+
+burndownSpent (Period p, Budget b, CostItem i) =
+    (totalCap(p, i) IF selected(p, b)) (-) (GROUP SUM spent(Budget ib, i, costCenter(p)) IF selected(p, ib) AND ib < b); 
+
+sum (BudgetType t, Budget b, CostItem i, Period p) = 
+    CASE WHEN t = BudgetType.cap THEN totalCap(p, b, i)
+                                   WHEN t = BudgetType.planned THEN planned(b, i, costCenter(p))
+                                   WHEN t = BudgetType.spent THEN spent(b, i, costCenter(p));
+
+burndownSum (BudgetType t, Budget b, CostItem i, Period p) = 
+    CASE WHEN t = BudgetType.cap THEN burndownCap(p, b, i)
+                                   WHEN t = BudgetType.planned THEN burndownPlanned(p, b, i)
+                                   WHEN t = BudgetType.spent THEN burndownSpent(p, b, i);
+                                   
+exportBudget 'Export budget' (DATE dFrom, DATE dTo)  { 
+
+    EXPORT CSV ',' HEADER FROM dateTime = [FORMULA VARSTRING[20] 'to_char(($1),\'MM/DD/YY\')'](fromDate(Budget b)),
+                        nameCostCenter = nameCostCenter(Period p),
+                        nameCostItem1 = nameCostItem2(CostItem i), nameCostItem2 = nameCostItem3(i), nameCostItem3 = nameCostItem4(i), nameCostItem4 = nameCostItem5(i),
+                        nameBudgetType = name(BudgetType t),
+                        sum = sum(t, b, i, p),
+                        burndownSum = burndownSum(t, b, i, p)
+           WHERE selected(p, b) AND i IS CostItem AND t IS BudgetType AND fromDate(b) >= dFrom AND toDate(b) <= dTo;
+
+    ingestBatch('budgetCapCenter');
+} CONFIRM;
+
+EXTEND FORM integrationData
+    PROPERTIES exportBudget(druidFrom, druidTo)
+;

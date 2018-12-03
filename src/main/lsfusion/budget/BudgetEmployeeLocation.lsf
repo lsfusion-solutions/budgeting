@@ -1,0 +1,29 @@
+MODULE BudgetEmployeeLocation;
+
+REQUIRE BudgetEmployee, BudgetLocation;
+
+NAMESPACE Budget;
+
+contractType 'Contract Type' = DATA ContractType (Employee);
+nameContractType 'Contract Type' (Employee e) = name(contractType(e));
+
+budgetTaxCoefficient = DATA NUMERIC[11,3] (Budget, Employee);
+taxCoefficient 'Tax coefficient' (Budget b, Employee e) = OVERRIDE budgetTaxCoefficient(b, e), taxCoefficient(b, contractType(e), location(e));  
+
+EXTEND FORM employee
+    PROPERTIES(e) nameContractType
+    
+    OBJECTS bu = Budget
+    PROPERTIES(bu) READONLY fromDate, toDate, name
+    PROPERTIES taxCoefficient(bu, e) BACKGROUND budgetTaxCoefficient(bu, e)
+;
+
+DESIGN employee {
+    tabbedPane {
+        NEW taxes {
+            caption = 'Taxes';
+            MOVE PROPERTY(nameContractType(e));
+            MOVE BOX(bu);            
+        }
+    }
+}

@@ -1,0 +1,131 @@
+MODULE BudgetRunway;
+
+REQUIRE Budget;
+
+NAMESPACE Budget;
+
+DESIGN budgets {
+    pane {
+        NEW runway {
+            caption = 'Runway';
+            type = TABBED;
+        }
+    }
+}
+    
+// CostItem
+budgetDetail (Budget b, CostItem c) = GROUP LAST BudgetDetail d IF NOT costCenter(d) BY budget(d), costItem(d);
+changePlanned (Budget b, CostItem c)  { 
+    INPUT q = NUMERIC[16,3] DO { 
+        IF budgetDetail(b, c) THEN {
+            IF q THEN 
+                planned(BudgetDetail d) <- q WHERE d == budgetDetail(b, c);
+            ELSE
+                DELETE BudgetDetail d WHERE d == budgetDetail(b, c);   
+        } ELSE
+            IF q THEN
+                NEW d = BudgetDetail { // создаем новую строку
+                    budget(d) <- b;
+                    costItem(d) <- c;
+                    planned(d) <- q;
+                }
+    }
+}
+changedPlanned (Budget b, CostItem c) = CHANGED(planned(b, c));
+
+EXTEND FORM budgets
+    OBJECTS bi = Budget
+
+    OBJECTS ip = CostItem PANEL
+    PROPERTIES(ip) canonicalName SELECTOR
+    
+    EVENTS ON INIT {
+        SEEK budgets.ip = [ GROUP LAST CostItem ii WHERE ii IS CostItem AND NOT parent(ii)]();
+    }
+
+    OBJECTS i = CostItem
+    PROPERTIES(i) READONLY canonicalName
+    PROPERTIES planned(bi, i) COLUMNS (bi) HEADER name(bi) ON CHANGE changePlanned(bi, i) ON CHANGEWYS changePlanned(bi, i) BACKGROUND changedPlanned(bi, i)
+    ORDER canonicalName(i)
+    FILTERS level(i, ip)
+
+    OBJECTS id = BudgetDetail
+    PROPERTIES(id) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
+    FILTERS level(costItem(id), i),
+    (hideSensitive(mainRole(currentUser())) AND NOT sensitive(id)) OR NOT hideSensitive(mainRole(currentUser())) 
+;
+
+DESIGN budgets {
+    runway {
+        NEW runwayItem {
+            caption = 'Monthly plan';
+            MOVE BOX(ip);
+            NEW runwayItemPane {
+                fill = 1;
+                type = SPLITV;
+                MOVE BOX(i) { fill = 3; }
+                MOVE BOX(id);
+            }
+        }
+    }
+}
+
+// Cost type / Center
+
+budgetDetail (Budget b, CostItem i, CostCenter c) = GROUP LAST BudgetDetail d BY budget(d), costItem(d), costCenter(d);
+changePlanned (Budget b, CostItem i, CostCenter c)  { 
+    INPUT q = NUMERIC[16,3] DO { 
+        IF budgetDetail(b, i, c) THEN {
+            IF q THEN 
+                planned(BudgetDetail d) <- q WHERE d == budgetDetail(b, i, c);
+            ELSE
+                DELETE BudgetDetail d WHERE d == budgetDetail(b, i, c);   
+        } ELSE
+            IF q THEN
+                NEW d = BudgetDetail { // создаем новую строку
+                    budget(d) <- b;
+                    costItem(d) <- i;
+                    costCenter(d) <- c;
+                    planned(d) <- q;
+                }
+    }
+}
+changedPlanned (Budget b, CostItem i, CostCenter c) = CHANGED(childPlanned(b, i, c));
+
+EXTEND FORM budgets
+    OBJECTS bic = Budget
+    
+    OBJECTS ic = CostItem PANEL
+    PROPERTIES(ic) canonicalName SELECTOR
+
+    EVENTS ON INIT {
+        SEEK budgets.ic = [ GROUP LAST CostItem ii WHERE ii IS CostItem AND NOT parent(ii)]();
+    }
+    
+    OBJECTS c = CostCenter
+    PROPERTIES(c) READONLY name
+    PROPERTIES childPlanned(bic, i, c) COLUMNS (bic) HEADER name(bic) ON CHANGE changePlanned(bic, i, c) ON CHANGEWYS changePlanned(bic, i, c) BACKGROUND changedPlanned(bic, i, c)
+
+    OBJECTS icd = BudgetDetail
+    PROPERTIES(icd) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
+    FILTERS level(costItem(icd), i),
+            costCenter(icd) == c,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(icd)) OR NOT hideSensitive(mainRole(currentUser())) 
+    
+;
+
+DESIGN budgets {
+    runway {
+        NEW runwayItemCenter {
+            caption = 'Monthly plan by cost centers';
+            MOVE BOX(ic);
+            NEW runwayItemCenterPane {
+                fill = 1;
+                type = SPLITV;
+                MOVE BOX(c) { fill = 3; }
+                MOVE BOX(icd);
+            }
+        }
+    }
+}
+

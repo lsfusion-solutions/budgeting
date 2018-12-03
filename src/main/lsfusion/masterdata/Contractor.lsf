@@ -1,0 +1,70 @@
+MODULE Contractor;
+
+REQUIRE MasterData, Currency, CostItem;
+
+CLASS Contractor 'Contractor';
+TABLE contractor(Contractor);
+
+name 'Name' = DATA VARISTRING[50](Contractor) IN id;
+
+// Type
+CLASS Type {
+    individual 'Individual',
+    individualCompany 'Individual working for the company',
+    company 'Company-contractor'
+}
+name 'Name' (Type t) = staticCaption(t) IF t IS Type CHARWIDTH 20;
+
+FORM types 'Contractor types'
+    OBJECTS t = Type
+    PROPERTIES(t) READONLY name
+    
+    LIST Type OBJECT t
+;
+type 'Type' = DATA Type(Contractor) NONULL;
+nameType 'Type' (Contractor c) = name(type(c));
+
+costItem 'Cost type' = DATA CostItem (Contractor) NONULL;
+nameCostItem 'Cost type' (Contractor c) = canonicalName(costItem(c));
+
+contractor 'For other contractors' = DATA BOOLEAN (CostItem);
+EXTEND FORM costItem
+    PROPERTIES(c) contractor
+;
+
+CONSTRAINT costItem(Contractor c) AND NOT contractor(costItem(c)) CHECKED BY costItem[Contractor] MESSAGE 'Cost type for the contractor is not valid';
+
+changeCostItem (Contractor o)  { 
+    DIALOG plainCostItems OBJECTS c = costItem(o) CHANGE;
+}
+
+currency 'Currency' = DATA Currency (Contractor);
+nameCurrency 'Currency' (Contractor c) = name(currency(c));
+
+rate 'Rate, per hour' = DATA NUMERIC[10,2] (Contractor);  
+// Формы
+
+FORM contractor 'Contractor'
+    OBJECTS c = Contractor PANEL
+    PROPERTIES(c) name, nameType, nameCostItem ON CHANGE changeCostItem(c), nameCurrency, rate
+
+    EDIT Contractor OBJECT c
+;
+
+FORM contractors 'Contractors'
+    OBJECTS c = Contractor
+    PROPERTIES(c) READONLY name, nameType, nameCostItem, nameCurrency, rate
+
+    PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE 
+;
+
+FORM dialogContractor 'Select contractor'
+    OBJECTS c = Contractor
+    PROPERTIES(c) READONLY name, nameType
+    
+    LIST Contractor OBJECT c
+;
+
+NAVIGATOR {
+    NEW contractors; 
+}

@@ -1,0 +1,50 @@
+MODULE BudgetContractPurchaseInvoice;
+
+REQUIRE PurchaseInvoice, Contractor, BudgetContract, BudgetPurchaseInvoiceExpense;
+
+NAMESPACE Budget;
+
+contractor = DATA Contractor(Invoice);
+nameContractor 'Contractor' (Invoice i) = name(contractor(i));
+
+contract = DATA Contract(Invoice);
+nameContract 'Contract' (Invoice i) = number(contract(i));
+
+CONSTRAINT contractor(contract(Invoice i)) != contractor(i) CHECKED BY contract[Invoice] MESSAGE 'Contract\'s contractor doesn\'t match invoice\'s contractor';
+CONSTRAINT contractor(Invoice i) AND NOT contractor(budgetDetail(i)) == contractor(i) CHECKED BY budgetDetail[Invoice] MESSAGE 'Budget Detail\'s contractor doesn\'t match invoice\'s contractor';
+
+WHEN LOCAL CHANGED (contract(Invoice i)) DO {
+    contractor(i) <- contractor(contract(i));    
+}
+WHEN LOCAL CHANGED (contractor(Invoice i)) DO {
+    nameSupplier(i) <- name(contractor(i));
+}
+
+EXTEND FORM invoice
+    PROPERTIES(i) nameContractor, nameContract
+;
+
+DESIGN invoice {
+    OBJECTS {
+        NEW contract FIRST {
+            caption = 'Contract';
+            type = CONTAINERH;
+            MOVE PROPERTY (nameContractor(i));
+            MOVE PROPERTY (nameContract(i));
+        }
+    }
+}
+
+EXTEND FORM invoices
+    PROPERTIES(i) READONLY nameContractor, nameContract
+;
+
+EXTEND FORM dialogInvoices
+    PROPERTIES(i) READONLY nameContractor, nameContract
+;
+
+invoiced 'Invoiced, USD' (Contract c) = GROUP SUM round2(amount(Invoice i) / defaultRateOn(currency(i), currentDate())) BY contract(i);
+invoiced 'Invoiced, USD' (Contractor c) = GROUP SUM round2(amount(Invoice i) / defaultRateOn(currency(i), currentDate())) BY contractor(i);
+
+spent 'Spent, USD' (Contract c) = GROUP SUM spentUSD(Invoice i) BY contract(i);
+spent 'Spent, USD' (Contractor c) = GROUP SUM spentUSD(Invoice i) BY contractor(i);

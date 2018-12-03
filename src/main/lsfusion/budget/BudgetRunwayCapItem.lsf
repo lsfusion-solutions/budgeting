@@ -1,0 +1,36 @@
+MODULE BudgetRunwayCapItem;
+
+REQUIRE BudgetRunway, BudgetCapItem;
+
+NAMESPACE Budget;
+
+backgroundCap (Budget b, CostItem i) = CASE WHEN CHANGED(cap(b, i)) THEN RGB(255,255,128)
+                                                     WHEN cap(b, i) THEN RGB(255,255,192);
+
+EXTEND FORM budgets
+    OBJECTS bci = Budget
+
+    OBJECTS cip = CostItem PANEL
+    PROPERTIES(cip) canonicalName SELECTOR
+    
+    EVENTS ON INIT {
+        SEEK budgets.cip = [ GROUP LAST CostItem ii WHERE ii IS CostItem AND NOT parent(ii)]();
+    }
+
+    OBJECTS ci = CostItem
+    PROPERTIES(ci) READONLY canonicalName
+    PROPERTIES overCap(bci, ci) COLUMNS (bci) HEADER name(bci) BACKGROUND backgroundCap(bci, ci)
+    ORDER canonicalName(ci)
+    FILTERS level(ci, cip)
+;
+
+DESIGN budgets {
+    runway {
+        NEW runwayCapItem FIRST {
+            caption = 'Cost type cap';
+            MOVE BOX(cip);
+            MOVE BOX(ci);
+        }    
+    }
+}
+

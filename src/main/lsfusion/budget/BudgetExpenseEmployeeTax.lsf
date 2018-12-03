@@ -1,0 +1,46 @@
+MODULE BudgetExpenseEmployeeTax;
+
+REQUIRE BudgetExpense, BudgetCapCenterEmployee;
+
+NAMESPACE Budget;
+
+CLASS EmployeeTaxExpense 'Employee tax expense' : Expense;
+
+skip (EmployeeTaxExpense e) += e IS EmployeeTaxExpense;
+
+TABLE employeeTaxExpenseLocation (EmployeeTaxExpense, Location);
+in 'In' = DATA BOOLEAN (EmployeeTaxExpense, Location);
+
+TABLE employeeTaxExpenseEmployee (EmployeeTaxExpense, Employee);
+dataIn 'In' = DATA BOOLEAN (EmployeeTaxExpense, Employee);
+
+in (EmployeeTaxExpense t, Employee e) = OVERRIDE dataIn(t, e), in(t, location(e)) MATERIALIZED;
+
+assigned 'Assigned, %' (EmployeeTaxExpense e, CostCenter c, Employee em) =
+    assigned(budget(e), c, em) IF in(e, em);
+
+salary 'Salary' = DATA BOOLEAN (EmployeeTaxExpense);
+
+amount 'Amount' (EmployeeTaxExpense e, CostCenter c, Employee em) =
+        PARTITION
+        UNGROUP amount PROPORTION STRICT ROUND(2)
+            NUMERIC[16,2](assigned(e, c, em) * (OVERRIDE (salary(em, budget(e), currency(e)) IF salary(e)), 1))
+            ORDER c, em
+            BY e;
+        
+amount 'Amount' (EmployeeTaxExpense e, CostCenter c, CostItem i) = GROUP SUM amount(e, c, Employee em) IF in(e, em) BY costItem(em);
+
+employees(EmployeeTaxExpense e, CostCenter c, CostItem i) = GROUP CONCAT name(Employee em) IF assigned(budget(e), c, em) AND in(e, em) AND costItem(em) == i, ',' ORDER em; 
+
+CLASS EmployeeTaxExpenseLedger 'Employee tax expense ledger' : ExpenseLedger;
+EmployeeTaxExpenseLedger = AGGR EmployeeTaxExpenseLedger WHERE amount(EmployeeTaxExpense employeeTaxExpense, CostCenter costCenter, CostItem costItem) MATERIALIZED INDEXED;
+
+date(EmployeeTaxExpenseLedger e) += date(employeeTaxExpense(e));
+costItem(EmployeeTaxExpenseLedger e) += costItem(e);
+costCenter(EmployeeTaxExpenseLedger e) += costCenter(e);
+currency(EmployeeTaxExpenseLedger e) += currency(employeeTaxExpense(e));
+amount(EmployeeTaxExpenseLedger e) += amount(employeeTaxExpense(e), costCenter(e), costItem(e));
+note(EmployeeTaxExpenseLedger e) += note(employeeTaxExpense(e));
+reference(EmployeeTaxExpenseLedger e) += reference(employeeTaxExpense(e));
+info(EmployeeTaxExpenseLedger e) += employees(employeeTaxExpense(e), costCenter(e), costItem(e));
+budget(EmployeeTaxExpenseLedger e) += budget(employeeTaxExpense(e));

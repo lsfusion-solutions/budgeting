@@ -1,0 +1,190 @@
+MODULE BudgetCapCenterApproval;
+
+REQUIRE BudgetCapCenter, Time;
+
+NAMESPACE Budget;
+
+// Period Submit
+submitted 'Submitted' = DATA BOOLEAN (Period);
+submit 'Submit' (Period p)  { 
+    submitted(p) <- TRUE;
+    APPLY;
+    IF canceled() THEN
+        submitted(p) <- NULL;
+} CONFIRM;
+
+EXTEND FORM costCenterBudget
+    PROPERTIES(p) submitted, submit SHOWIF NOT submitted(p) TOOLBAR
+;
+
+submittedBy 'Submitted by' = DATA Employee(Period);
+nameSubmittedBy 'Submitted by' (Period p) = name(submittedBy(p)) CHARWIDTH 10;
+submittedBy (Period p) <- currentUser() WHEN SET(submitted(p));
+
+dateTimeSubmitted 'Submitted at' = DATA DATETIME (Period);
+WHEN SET(submitted(Period p)) DO
+    dateTimeSubmitted(p) <- currentDateTime();
+
+readonly (Period p) += submitted(p);
+
+// Period Approve
+
+periodApproval 'Project approval' = DATA BOOLEAN (Employee);
+EXTEND FORM employee
+    PROPERTIES(e) periodApproval
+;
+DESIGN employee {
+    application {
+        MOVE PROPERTY(periodApproval(e));
+    }
+}
+
+EXTEND FORM employees
+    PROPERTIES(e) READONLY periodApproval
+;
+
+// Approved
+CLASS PeriodDecision 'Period Decision';
+TABLE periodDecision (PeriodDecision);
+
+approved 'Approved' = DATA BOOLEAN (PeriodDecision);
+
+period = DATA Period (PeriodDecision) NONULL DELETE;
+
+comment 'Comment' = DATA RICHTEXT (PeriodDecision);
+
+dateTime 'Time' = DATA DATETIME(PeriodDecision);
+dateTime(PeriodDecision d) <- currentDateTime() WHEN SET(d IS PeriodDecision);
+
+employee 'Employee' = DATA Employee (PeriodDecision) NONULL;
+nameEmployee 'Employee' (PeriodDecision d) = name(employee(d));
+employee(PeriodDecision d) <- currentUser() WHEN SET(d IS PeriodDecision);
+
+EXTEND FORM costCenterBudget
+    OBJECTS d = PeriodDecision
+    PROPERTIES(d) approved, dateTime, nameEmployee, comment PANEL
+    FILTERS period(d) == p
+;
+
+DESIGN costCenterBudget {
+    periodLeftTab {
+        MOVE BOX(d) {
+            caption = 'Approval';
+            MOVE PROPERTY(comment(d)) {
+                panelCaptionAbove = TRUE;
+                fill = 1;
+            }
+        }
+    }
+}
+
+approved 'Approved' (Period p, Employee e) = GROUP LAST approved(PeriodDecision d) ORDER dateTime(d), d 
+                                                                                              WHERE NOT dateTime(d) < dateTimeSubmitted(period(d)) 
+                                                                                              BY period(d), employee(d);
+CONSTRAINT employee(PeriodDecision d) AND NOT periodApproval(employee(d)) MESSAGE 'Period is approved by unauthorized person';
+
+approved 'Approved' (Period p) = (GROUP SUM 1 IF approved(p, Employee e)) == (GROUP SUM 1 IF periodApproval(Employee e)) MATERIALIZED;
+EXTEND FORM costCenterBudget
+    PROPERTIES(p) READONLY approved
+;
+
+approvePending (Period p, Employee e) = submitted(p) AND NOT approved(p, e);
+
+approve 'Approve' (Period p)  { 
+    NEWSESSION {
+        NEW d = PeriodDecision {
+            approved(d) <- TRUE;
+            period(d) <- p;
+        }
+        APPLY;
+    }
+} TOOLBAR CONFIRM;
+
+FORM rejectForm 'Reject'
+    OBJECTS d = PeriodDecision PANEL
+    PROPERTIES(d) comment
+;
+DESIGN rejectForm {
+    size = (600, 400);
+    OBJECTS {
+        MOVE PROPERTY(comment(d)) {
+            panelCaptionAbove = TRUE;
+            fill = 1;
+        }
+    }
+}
+reject 'Reject' (Period p)  { 
+    NEWSESSION {
+        submitted(p) <- NULL;
+        NEW d = PeriodDecision {
+            period(d) <- p;
+            SHOW rejectForm OBJECTS d = d;
+        }
+    }
+} TOOLBAR;
+
+showCostCenterBudget 'Show budget' (Period p)  { 
+    SHOW costCenterBudget OBJECTS c = costCenter(p), p = p DOCKED;
+} TOOLBAR;
+
+FORM periodApproval 'Project approval'
+    PROPERTIES() monthReadonlyDate
+    
+    OBJECTS p = Period
+    PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate, nameSubmittedBy, nameOwner, submitted, dateTimeSubmitted, approved
+    PROPERTIES readonlyDate 'Readonly date' = monthReadonlyDate(costCenter(p)) 
+        ON CHANGE {
+            INPUT date = DATE DO {
+                monthReadonlyDate(CostCenter c) <- date WHERE c = costCenter(p);
+            }
+        }
+        
+    PROPERTIES(p) showCostCenterBudget
+    PROPERTIES(p) SHOWIF periodApproval(currentUser()) approve, reject 
+    FILTERGROUP approvePending 
+        FILTER 'Approval pending' approvePending(p, currentUser()) DEFAULT
+        
+    OBJECTS d = PeriodDecision
+    PROPERTIES(d) approved, dateTime, nameEmployee, comment PANEL
+    FILTERS period(d) == p
+
+    TREE costItems ci = CostItem PARENT parent
+    PROPERTIES(ci) READONLY order, name
+    PROPERTIES(p, ci) READONLY totalChildCap BACKGROUND backgroundCap(p, ci)
+    PROPERTIES(p, ci) READONLY childPlanned
+    ORDER order(ci)
+;
+
+DESIGN periodApproval {
+    OBJECTS {
+        NEW pane {
+            fill = 1;
+            type = SPLITH;
+            NEW left {
+                fill = 1;
+                MOVE PROPERTY(monthReadonlyDate());
+                MOVE BOX(p) {
+                    fill = 2;
+                }
+                MOVE BOX(d) {
+                    caption = 'Approval';
+                    MOVE PROPERTY(comment(d)) {
+                        panelCaptionAbove = TRUE;
+                        fill = 1;
+                    }
+                }
+            }
+            NEW details {
+                fill = 1;
+                type = TABBED;
+                MOVE BOX(TREE costItems) {
+                    caption = 'Cost types';
+                }
+            }
+        }
+    }
+}
+ 
+NAVIGATOR {
+    NEW periodApproval;
+}

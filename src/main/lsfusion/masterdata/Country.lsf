@@ -1,0 +1,33 @@
+MODULE Country;
+
+REQUIRE MasterData;
+
+CLASS Country 'Country';
+TABLE country (Country);
+
+name 'Наименование' = DATA VARISTRING[100] (Country) CHARWIDTH 15;
+
+TABLE countryDate(Country, DATE);
+
+isDayOff 'Выходной' (country, date) = DATA BOOLEAN (Country, DATE) IN base; 
+
+FORM country 'Country'
+    OBJECTS o = Country PANEL
+    PROPERTIES(o) name
+    
+    EDIT Country OBJECT o
+;
+
+FORM countrys 'Country'
+    OBJECTS o = Country
+    PROPERTIES(o) READONLY name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+
+    LIST Country OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW countrys;
+    }
+}

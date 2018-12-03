@@ -1,0 +1,37 @@
+MODULE Expense;
+
+REQUIRE ExpenseLedger, Time;
+
+CLASS Expense 'Expense';
+TABLE expense(Expense);
+
+date 'Date' = DATA DATE (Expense) IN id NONULL;
+date(Expense e) <- currentDate() WHEN SET(e IS Expense); 
+
+costItem = DATA CostItem (Expense);
+nameCostItem 'Cost type' (Expense l) = canonicalName(costItem(l)) IN id;
+
+costCenter = DATA CostCenter (Expense);
+nameCostCenter 'Cost Center' (Expense l) = name(costCenter(l)) IN id;
+
+currency = DATA Currency (Expense) NONULL;
+nameCurrency 'Currency' (Expense e) = name(currency(e));
+
+amount 'Amount' = DATA NUMERIC[16,2] (Expense) IN id NONULL;
+amountUSD 'Amount, USD' (Expense e) = round2(amount(e) / defaultRateOn(currency(e), date(e)));
+
+note 'Note' =  DATA VARISTRING[1000] (Expense) CHARWIDTH 50;
+
+reference 'Reference' =  DATA VARISTRING[1000] (Expense) CHARWIDTH 50;
+
+// ----
+
+EXTEND CLASS Expense : ExpenseLedger;
+
+date(Expense e) += date(e);
+costItem(Expense e) += costItem(e);
+costCenter(Expense e) += costCenter(e);
+currency(Expense e) += currency(e);
+amount(Expense e) += amount(e);
+note(Expense e) += note(e);
+reference(Expense e) += reference(e);

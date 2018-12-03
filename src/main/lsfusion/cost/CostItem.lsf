@@ -1,0 +1,81 @@
+MODULE CostItem;
+
+NAMESPACE Cost;
+
+CLASS CostItem 'Cost type';
+TABLE costItem(CostItem);
+name 'Name' = DATA VARISTRING[50] (CostItem) IN id;
+
+order 'Order' = DATA INTEGER (CostItem) CHARWIDTH 2;
+
+parent = DATA CostItem (CostItem) AUTOSET;
+nameParent 'Parent' (CostItem c)= name(parent(c));
+
+TABLE costItemItem (CostItem, CostItem);
+level 'Level' (CostItem child, CostItem parent) = RECURSION 1l IF child IS CostItem AND parent == child
+                                                                 STEP 2l IF parent == parent($parent) MATERIALIZED;
+
+costItem(CostItem child, LONG level)  = GROUP
+                                            MAX CostItem parent IF level == level(child, parent);
+canonicalName 'Canonical name' (CostItem object) = VARISTRING[255](
+                       [ GROUP CONCAT name(CostItem parent), ' / ' ORDER DESC level(CostItem child, parent) BY child](object))
+                       CHARWIDTH 30 MATERIALIZED;
+
+levelRoot 'Уровень' (CostItem child, CostItem parent) = PARTITION SUM 1 IF level(child, parent)
+                                                                  ORDER DESC level(child, parent)
+                                                                  BY child MATERIALIZED;
+                                                                  
+costItemRoot (CostItem child, level) = GROUP NAGGR CostItem parent BY levelRoot(child, parent);  
+
+costItem1 (CostItem child) = costItemRoot(child, 1) MATERIALIZED;    
+costItem2 (CostItem child) = costItemRoot(child, 2) MATERIALIZED;    
+costItem3 (CostItem child) = costItemRoot(child, 3) MATERIALIZED;    
+costItem4 (CostItem child) = costItemRoot(child, 4) MATERIALIZED;    
+costItem5 (CostItem child) = costItemRoot(child, 5) MATERIALIZED;    
+costItem6 (CostItem child) = costItemRoot(child, 6) MATERIALIZED;    
+
+nameCostItem1 (CostItem child) = name(costItem1(child));
+nameCostItem2 (CostItem child) = name(costItem2(child));
+nameCostItem3 (CostItem child) = name(costItem3(child));
+nameCostItem4 (CostItem child) = name(costItem4(child));
+nameCostItem5 (CostItem child) = name(costItem5(child));
+nameCostItem6 (CostItem child) = name(costItem6(child));
+
+FORM costItem 'Cost type'
+    OBJECTS c = CostItem PANEL
+    PROPERTIES(c) nameParent, name, order
+    
+    EDIT CostItem OBJECT c
+;
+
+FORM costItems 'Cost types'
+    TREE costItems c = CostItem PARENT parent
+    PROPERTIES(c) READONLY order, name
+    PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE
+    ORDER order(c)
+;
+
+FORM listCostItems 'Select cost type'
+    TREE costItems c = CostItem PARENT parent
+    PROPERTIES(c) READONLY order, name
+    ORDER order(c)
+
+    LIST CostItem OBJECT c
+;
+
+DESIGN listCostItems {
+    size = (800, 600);
+}
+
+FORM plainCostItems 'Select cost type'
+    OBJECTS c = CostItem
+    PROPERTIES(c) READONLY canonicalName
+    ORDER canonicalName(c)
+;
+
+NAVIGATOR {
+    NEW costItems;
+}
+
+filterCostItem = DATA LOCAL NESTED CostItem();
+nameFilterCostItem 'Cost type' () = name(filterCostItem());

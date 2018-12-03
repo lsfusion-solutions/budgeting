@@ -1,0 +1,35 @@
+MODULE Location;
+
+REQUIRE MasterData;
+
+CLASS Location 'Location';
+TABLE location(Location);
+
+name 'Name' = DATA VARISTRING[50](Location) CHARWIDTH 15 IN id;
+
+// Формы
+
+FORM location 'Location'
+    OBJECTS c = Location PANEL
+    PROPERTIES(c) name
+
+    EDIT Location OBJECT c
+;
+
+FORM locations 'Locations'
+    OBJECTS c = Location
+    PROPERTIES(c) READONLY name
+
+    PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE 
+;
+
+FORM dialogLocation 'Select location'
+    OBJECTS c = Location
+    PROPERTIES(c) READONLY name
+    
+    LIST Location OBJECT c
+;
+
+NAVIGATOR {
+    NEW locations; 
+}

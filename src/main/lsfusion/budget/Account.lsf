@@ -1,0 +1,39 @@
+MODULE Account;
+
+REQUIRE Currency, CostCenter;
+
+NAMESPACE Budget;
+
+CLASS Account 'Account';
+TABLE account (Account);
+
+name 'Name' = DATA VARISTRING[100] (Account) CHARWIDTH 15;
+
+currency = DATA Currency(Account);
+nameCurrency 'Currency' (Account a) = name(currency(a));
+
+FORM account 'Account'
+    OBJECTS o = Account PANEL
+    PROPERTIES(o) name, nameCurrency
+    
+    EDIT Account OBJECT o
+;
+
+FORM accounts 'Accounts'
+    OBJECTS o = Account
+    PROPERTIES(o) READONLY name, nameCurrency
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM dialogAccounts 'Accounts'
+    OBJECTS o = Account
+    PROPERTIES(o) READONLY name, nameCurrency
+    
+    LIST Account OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW accounts;
+    }
+}

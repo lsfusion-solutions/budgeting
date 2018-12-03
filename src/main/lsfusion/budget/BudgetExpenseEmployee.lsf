@@ -1,0 +1,37 @@
+MODULE BudgetExpenseEmployee;
+
+REQUIRE BudgetExpense, BudgetCapCenterEmployee;
+
+NAMESPACE Budget;
+
+CLASS EmployeeExpense 'Employee expense' : Expense;
+
+skip (EmployeeExpense e) += e IS EmployeeExpense;
+
+employee 'Employee' = DATA Employee (EmployeeExpense) NONULL;
+nameEmployee 'Employee' (EmployeeExpense e) = name(employee(e));
+
+assigned 'Assigned, %' (EmployeeExpense e, CostCenter c) =
+    assigned(budget(e), c, employee(e));
+
+amount 'Amount' (EmployeeExpense e, CostCenter c) =
+    PARTITION UNGROUP amount PROPORTION STRICT ROUND(2)
+        NUMERIC[16,2](assigned(e, c))
+        ORDER c
+        BY e;
+        
+amount 'Amount' (EmployeeExpense e, CostCenter c, CostItem i) = GROUP SUM amount(e, c) BY costItem(e);
+
+CLASS EmployeeExpenseLedger 'Employee expense ledger' : ExpenseLedger;
+EmployeeExpenseLedger = AGGR EmployeeExpenseLedger WHERE amount(EmployeeExpense employeeExpense, CostCenter costCenter) MATERIALIZED INDEXED;
+
+sensitive(EmployeeExpenseLedger l) += TRUE IF l IS EmployeeExpenseLedger;
+date(EmployeeExpenseLedger e) += date(employeeExpense(e));
+costItem(EmployeeExpenseLedger e) += OVERRIDE costItem(employeeExpense(e)), costItem(employee(employeeExpense(e)));
+costCenter(EmployeeExpenseLedger e) += costCenter(e);
+currency(EmployeeExpenseLedger e) += currency(employeeExpense(e));
+amount(EmployeeExpenseLedger e) += amount(employeeExpense(e), costCenter(e));
+note(EmployeeExpenseLedger e) += note(employeeExpense(e));
+reference(EmployeeExpenseLedger e) += reference(employeeExpense(e));
+info(EmployeeExpenseLedger e) += name(employee(employeeExpense(e)));
+budget(EmployeeExpenseLedger e) += budget(employeeExpense(e));

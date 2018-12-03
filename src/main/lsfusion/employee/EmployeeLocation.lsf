@@ -1,0 +1,24 @@
+MODULE EmployeeLocation;
+
+REQUIRE Employee, Location;
+
+NAMESPACE Employee;
+
+access 'Access' = DATA BOOLEAN (Employee, Location);
+
+limitedAccess (Employee e) = GROUP SUM 1 IF access(e, Location l);
+
+EXTEND FORM employee
+    OBJECTS l = Location
+    PROPERTIES access(e, l), name(l) READONLY
+;
+
+DESIGN employee {
+    tabbedPane {
+        MOVE BOX(l);    
+    }
+}
+
+EXTEND FORM employees
+    FILTERS NOT limitedAccess(currentUser()) OR access(currentUser(), location(e))
+;

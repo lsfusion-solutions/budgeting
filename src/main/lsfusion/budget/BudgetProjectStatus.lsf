@@ -1,0 +1,193 @@
+MODULE BudgetProjectStatus;
+
+REQUIRE Employee, Budget, CostCenterEmployee, BudgetCapCenterEmployee, 
+        EmployeeAbsence, EmployeeVacation, EmployeeBusinessTrip, EmployeeCorporateHousing,
+        BudgetCapCenterContractor, BudgetContractPurchaseInvoice, BudgetPurchaseInvoiceExpense;
+
+NAMESPACE Budget;
+
+currentUserAssigned(Budget b, Employee e) = GROUP SUM 1 IF (assigned(Period pp, b, e) > 0 AND access(costCenter(pp), currentUser()) AND selected(pp, b));
+
+myTeam 'My team' (Employee e) = manager(e) == currentUser() OR e == currentUser();
+changeProjectStatus 'Change project status for all employees' = DATA BOOLEAN (UserRole);
+
+EXTEND FORM userRole PROPERTIES changeProjectStatus(ur);
+
+allowChangeProjectStatus (Employee e) = myTeam(e) OR changeProjectStatus(mainRole(currentUser()));
+
+input () = RGB(232,255,232); 
+
+addInvoice 'Add' (Contract c, Period p) {
+    NEWSESSION NEW i = Invoice {
+        contract(i) <- c;
+        contractor(i) <- contractor(contract(i));
+        costCenter(i) <- costCenter(p);
+        SHOW invoice OBJECTS i = i DOCKED;
+    }
+} IMAGE 'add.png';
+
+addInvoice 'Add' (Contractor c, Period p) {
+    NEWSESSION NEW i = Invoice {
+        contractor(i) <- c;
+        costCenter(i) <- costCenter(p);
+        SHOW invoice OBJECTS i = i DOCKED;
+    }
+} IMAGE 'add.png';
+
+approve 'Approve' (Invoice i) { 
+    NEWSESSION {
+        approved(i) <- TRUE;
+        dateTimeApproved(i) <- currentDateTime();
+        nameUserApproved(i) <- name(currentUser());
+        APPLY;
+    } 
+}
+
+FORM projectStatus 'Project status'
+
+    OBJECTS b = Budget PANEL
+    PROPERTIES(b) name SELECTOR
+    
+    OBJECTS p = Period
+    FILTERS access(costCenter(p), currentUser()),
+            selected(p, b)
+    
+    OBJECTS e = Employee
+    PROPERTIES(e) READONLY firstName, lastName, namePosition, nameLocation
+    PROPERTIES(b, e) READONLY assigned
+    PROPERTIES assigned(p, b, e) BACKGROUND input() COLUMNS (p) HEADER nameCostCenter(p)
+
+    FILTERGROUP team
+        FILTER 'My team' myTeam(e) DEFAULT   
+    FILTERGROUP filter
+        FILTER 'Assigned' currentUserAssigned(b, e)
+    
+    OBJECTS a = Absence
+    PROPERTIES(a) READONLYIF NOT allowChangeProjectStatus(e) fromDate, toDate, nameReason, note, NEW, DELETE
+    FILTERS employee(a) == e
+
+    OBJECTS v = Vacation
+    PROPERTIES(v) READONLYIF NOT allowChangeProjectStatus(e) fromDate, toDate, note, NEW, DELETE
+    FILTERS employee(v) == e
+
+    OBJECTS t = BusinessTrip
+    PROPERTIES(t) READONLYIF NOT allowChangeProjectStatus(e) fromDate, toDate, nameLocation, note, NEW, DELETE
+    FILTERS employee(t) == e
+    
+    OBJECTS h = CorporateHousing
+    PROPERTIES(h) READONLYIF NOT allowChangeProjectStatus(e) fromDate, toDate, nameHouse, note, NEW, DELETE
+    FILTERS employee(h) == e
+
+    EVENTS ON INIT {
+        SEEK projectStatus.b = GROUP MAX Budget bb IF toDate(bb) < currentDate();
+    }
+    
+    OBJECTS de = Employee
+    FILTERS myTeam(de)
+    
+    OBJECTS d = DATE 
+    PROPERTIES 'Date' = VALUE(d)
+    FILTERS iterate(d, fromDate(b), toDate(b))
+    PROPERTIES nameStatus(de, d) BACKGROUND backgroundStatus(de, d) COLUMNS (de) HEADER name(de)
+    
+    OBJECTS ve = Employee
+    PROPERTIES(ve) READONLY firstName, lastName, namePosition, nameLocation, vacationDays, vacationSpent, vacationLeft
+    FILTERGROUP teamV
+        FILTER 'My team' myTeam(ve) DEFAULT   
+    
+    OBJECTS pch = (ph = Period, ch = Contractor)
+    PROPERTIES READONLY fromDate(ph), toDate(ph), nameCostCenter(ph), name(ch), nameType(ch), hours(ph, ch), hoursSpent(ph, ch)
+    PROPERTIES hoursSpent(ph, b, ch) BACKGROUND input()
+    FILTERS selected(ph, b),
+            hours(ph, ch),
+            access(costCenter(ph), currentUser())
+    
+    OBJECTS pcf = (pf = Period, cf = Contractor)
+    PROPERTIES READONLY fromDate(pf), toDate(pf), nameCostCenter(pf), name(cf), nameType(cf), sum(pf, cf), contractors(pf, b, cf), contractAmount(pf, cf), invoiced(cf), spent(cf)  
+    FILTERS selected(pf, b),
+            sum(pf, cf),
+            access(costCenter(ph), currentUser())
+            
+    OBJECTS cfc = Contract
+    PROPERTIES(cfc) number, date, note, nameCurrency, amount
+    PROPERTIES(cfc) amountUSD, invoiced, spent READONLY, NEW, DELETE
+//    PROPERTIES(cfc, b) percentComplete BACKGROUND input(), prevMonthPercentComplete READONLY
+    FILTERS contractor(cfc) = cf,
+            period(cfc) = pf
+    
+    OBJECTS i = Invoice
+    PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, spent, spentUSD, approved, dateTimeApproved, nameUserApproved
+    FILTERS contract(i) == cfc OR (contractor(i) == cf AND NOT cfc)
+    
+    PROPERTIES DRAW i TOOLBAR approve(i) SHOWIF NOT approved(i), addInvoice(cf, pf) SHOWIF NOT cfc, addInvoice(cfc, pf)
+    PROPERTIES (i) NEWSESSION EDIT, DELETE
+;
+
+DESIGN projectStatus {
+    OBJECTS {
+        NEW pane {
+            fill = 1;
+            type = TABBED;
+            NEW employees {
+                caption = 'Employees';
+                fill = 1;
+                type = TABBED;
+                NEW employeesInfo {
+                    caption = 'Info';
+                    type = SPLITH;
+                    MOVE BOX(e);
+                    NEW details {
+                        fill = 1;
+                        type = TABBED;
+                        NEW home {
+                            caption = 'Home';
+                            MOVE BOX(a);
+                            MOVE BOX(v);
+                        }
+                        NEW away {
+                            caption = 'Away';
+                            MOVE BOX (h);
+                            MOVE BOX(t);
+                        }
+                    }
+                }
+                NEW calendar {
+                    caption = 'Calendar';
+                    MOVE BOX(d);
+                }
+                NEW vacation {
+                    caption = 'Vacations';
+                    MOVE BOX(ve);
+                }
+            }
+            NEW contractors {
+                caption = 'Contractors';
+                fill = 1;
+                type = TABBED;
+                NEW contractorSum {
+                    type = SPLITH;
+                    caption = 'Contracts';
+                    MOVE BOX(pcf);
+                    NEW right {
+                        MOVE BOX(cfc){
+                            PROPERTY (number(cfc)) { notNull = TRUE; }
+                            PROPERTY (date(cfc)) { notNull = TRUE; }
+                            PROPERTY (note(cfc)) { notNull = TRUE; }
+                            PROPERTY (nameCurrency(cfc)) { notNull = TRUE; }
+                            PROPERTY (amount(cfc)) { notNull = TRUE; }
+                        }
+                        MOVE BOX (i);
+                    }
+                }
+                NEW contractorHours {
+                    caption = 'Hours';
+                    MOVE BOX(pch);
+                }
+            } 
+        }
+    }
+}
+
+NAVIGATOR {
+    NEW projectStatus;
+}

@@ -1,0 +1,34 @@
+MODULE CostCenter;
+
+NAMESPACE Cost;
+
+CLASS CostCenter 'Cost Center';
+TABLE costCenter(CostCenter);
+name 'Name' = DATA VARISTRING[50] (CostCenter) IN id;
+
+FORM costCenter 'Cost Center'
+    OBJECTS c = CostCenter PANEL
+    PROPERTIES(c) name
+    
+    EDIT CostCenter OBJECT c
+;
+
+FORM costCenters 'Cost centers'
+    OBJECTS c = CostCenter
+    PROPERTIES(c) READONLY name
+    PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM listCostCenters 'Select cost center'
+    OBJECTS c = CostCenter
+    PROPERTIES(c) READONLY name
+    
+    LIST CostCenter OBJECT c
+;
+
+NAVIGATOR {
+    NEW costCenters;
+}
+
+filterCostCenter = DATA LOCAL NESTED CostCenter();
+nameFilterCostCenter 'Cost center' () = name(filterCostCenter());

@@ -1,0 +1,27 @@
+MODULE BudgetEmployee;
+
+REQUIRE Budget, Employee, Currency;
+
+NAMESPACE Budget;
+
+TABLE employeeBudgetCurrency (Employee, Budget, Currency);
+salary 'Salary' = DATA NUMERIC[16,3] (Employee, Budget, Currency);
+
+hasSalary (Employee e, Budget b) = GROUP SUM 1 IF salary(e, b, Currency c); 
+
+EXTEND FORM employee
+    OBJECTS c = Currency
+
+    OBJECTS b = Budget
+    PROPERTIES(b) READONLY fromDate, toDate, name
+    PROPERTIES (e, b, c) salary COLUMNS (c) HEADER name(c)
+;
+
+DESIGN employee {
+    tabbedPane {
+        NEW salary {
+            caption = 'Salary';
+            MOVE BOX(b);
+        }
+    }
+}

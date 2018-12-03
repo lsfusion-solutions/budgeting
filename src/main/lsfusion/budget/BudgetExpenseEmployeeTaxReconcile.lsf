@@ -1,0 +1,47 @@
+MODULE BudgetExpenseEmployeeTaxReconcile;
+
+REQUIRE BudgetExpenseEmployeeTax, BudgetExpenseReconcile;
+
+NAMESPACE Budget;
+
+markAsEmployeeTax 'Employee tax' (Expense e)  { 
+    CHANGECLASS e TO EmployeeTaxExpense;
+}
+
+EXTEND FORM expenses
+    PROPERTIES(ie) markAsEmployeeTax PANEL
+    
+    OBJECTS let = Location
+    PROPERTIES SHOWIF ie IS EmployeeTaxExpense in(ie, let), name(let) READONLY
+    
+    OBJECTS ete = Employee 
+    PROPERTIES SHOWIF ie IS EmployeeTaxExpense dataIn(ie, ete), firstName(ete) READONLY, lastName(ete), nameContractType(ete) READONLY, nameLocation(ete) READONLY
+    
+    OBJECTS cet = (cct = CostCenter, eet = Employee)
+    PROPERTIES SHOWIF ie IS EmployeeTaxExpense READONLY name(cct), firstName(eet), lastName(eet), canonicalNameCostItem(eet), assigned(ie, cct, eet), amount(ie, cct, eet)
+    FILTERS assigned(ie, cct, eet)
+    
+    PROPERTIES SHOWIF ie IS EmployeeTaxExpense salary(ie) PANEL
+;
+
+DESIGN expenses {
+    expenseParams {
+        expenseMark {
+            MOVE PROPERTY(markAsEmployeeTax(ie));
+            MOVE PROPERTY(salary(ie));
+        }
+        NEW employeeTaxParameters {
+            fill = 1;
+            type = CONTAINERH;
+            NEW employeeTaxDetail {
+                type = TABBED;
+                fill = 1;
+                MOVE BOX(let) { caption = 'Locations'; }
+                MOVE BOX(ete) { caption = 'Employees'; }
+            }
+            MOVE BOX(cet) {
+                fill = 2;
+            }       
+        }
+    }
+}

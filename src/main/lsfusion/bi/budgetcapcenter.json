@@ -1,0 +1,87 @@
+{
+  "type": "index",
+  "spec": {
+    "dataSchema": {
+      "dataSource": "budgetCapCenter",
+      "parser": {
+        "type": "string",
+        "parseSpec": {
+          "format": "csv",
+          "timestampSpec": {
+            "column": "dateTime",
+            "format": "M/d/YY"
+          },
+          "dimensionsSpec": {
+            "dimensions": [
+              "nameCostCenter",
+              "nameCostItem1",
+              "nameCostItem2",
+              "nameCostItem3",
+              "nameCostItem4",
+              "nameBudgetType"
+            ]
+          },
+          "hasHeaderRow": true
+        }
+      },
+      "metricsSpec": [
+        {
+          "type": "floatSum",
+          "name": "sum",
+          "fieldName": "sum",
+          "expression": null
+        },
+        {
+          "type": "floatSum",
+          "name": "burndownSum",
+          "fieldName": "burndownSum",
+          "expression": null
+        }
+      ],
+      "granularitySpec": {
+        "type": "uniform",
+        "segmentGranularity": "DAY",
+        "queryGranularity": {
+          "type": "none"
+        },
+        "rollup": false,
+        "intervals": null
+      },
+      "transformSpec": {
+        "filter": null,
+        "transforms": []
+      }
+    },
+    "ioConfig": {
+      "type": "index",
+      "firehose": {
+        "type" : "local",
+        "baseDir" : "<DIRECTORY>",
+        "filter" : "<FILE>"
+      },
+      "appendToExisting": false
+    },
+    "tuningConfig": {
+      "type": "index",
+      "targetPartitionSize": 20000000,
+      "maxRowsInMemory": 75000,
+      "maxTotalRows": 20000000,
+      "numShards": null,
+      "indexSpec": {
+        "bitmap": {
+          "type": "concise"
+        },
+        "dimensionCompression": "lz4",
+        "metricCompression": "lz4",
+        "longEncoding": "longs"
+      },
+      "maxPendingPersists": 0,
+      "buildV9Directly": true,
+      "forceExtendableShardSpecs": true,
+      "forceGuaranteedRollup": false,
+      "reportParseExceptions": false,
+      "pushTimeout": 0,
+      "segmentWriteOutMediumFactory": null
+    }
+  }
+}

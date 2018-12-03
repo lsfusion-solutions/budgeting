@@ -1,0 +1,32 @@
+MODULE EmployeeVacation;
+
+REQUIRE Employee, Time, EmployeeCalendar;
+
+NAMESPACE Employee;
+
+CLASS Vacation 'Vacation';
+TABLE vacation(Vacation);
+
+employee 'Employee' = DATA Employee (Vacation) NONULL DELETE;
+
+fromDate 'From' = DATA DATE (Vacation) NONULL;
+fromDate(Vacation v) <- currentDate() WHEN SET(v IS Vacation);
+
+toDate 'To' = DATA DATE (Vacation);
+
+note 'Note' = DATA VARSTRING[1000] (Vacation) CHARWIDTH 20;
+
+vacation (Employee e, DATE d) = GROUP LAST Vacation v ORDER fromDate(v), v WHERE employee(v) = e AND fromDate(v) <= d AND toDate(v) >= d;  
+
+EXTEND CLASS EmployeeStatus {
+    onVacation 'On vacation'
+}
+status (Employee e, DATE d) += WHEN vacation(e, d) THEN EmployeeStatus.onVacation; 
+
+daysFromHiring 'Days from hiring' (Employee e) = daysBetweenDates(currentDate(), hiringDate(e));
+
+vacationDays 'Vacation days' (Employee e) = NUMERIC[14,2](daysBetweenDates(currentDate(), hiringDate(e)) / 14) * 2.33;
+
+vacationSpent 'Vacation spent' (Employee e) = GROUP SUM daysBetweenDates(toDate(Vacation v), fromDate(v)) BY employee(v);
+
+vacationLeft 'Vacation left' (Employee e) = vacationDays(e) (-) vacationSpent(e); 

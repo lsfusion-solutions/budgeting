@@ -1,0 +1,31 @@
+MODULE BudgetRent;
+
+REQUIRE BudgetLocation, BudgetEmployee, CostItemEmployee, Utils;
+
+NAMESPACE Budget;
+
+rentCurrency 'Rent currency' = DATA Currency (Location); 
+nameRentCurrency 'Rent currency' (Location l) = name(rentCurrency(l));
+
+costItem 'Cost type' = DATA CostItem (Location);
+nameCostItem 'Cost type' (Location l) = canonicalName(costItem(l));
+
+rent 'Rent' = DATA NUMERIC[16,3] (Budget, Location);
+rentUSD 'Rent, USD' (Budget b, Location l) = round0(rent(b, l) / defaultRateOn(rentCurrency(l), fromDate(b)));
+
+countEmployees 'Count of employees' (Budget b, Location l) = GROUP SUM 1 IF hasSalary(Employee e, b) BY location(e);  
+rentPerEmployeeUSD 'Rent per employee, USD' (Budget b, Location l) = rentUSD(b, l) / countEmployees(l);
+
+EXTEND FORM location
+    PROPERTIES(c) nameRentCurrency, nameCostItem
+    PROPERTIES(b, c) rent, countEmployees, rentPerEmployeeUSD
+;
+
+rentCostItem 'Rent cost type' = DATA CostItem (CostItem);
+nameRentCostItem 'Rent cost type' (CostItem i) = canonicalName(rentCostItem(i));
+EXTEND FORM costItem
+    PROPERTIES(c) nameRentCostItem
+;
+
+rentCostItem 'Rent cost type' (Employee e) = rentCostItem(costItem(e));
+nameRentCostItem 'Rent cost type' (Employee e) = canonicalName(rentCostItem(e));

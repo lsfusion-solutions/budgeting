@@ -1,0 +1,3 @@
+MODULE BudgetPlan;
+
+REQUIRE Budget, Expense;

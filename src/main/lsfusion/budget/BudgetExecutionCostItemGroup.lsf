@@ -1,0 +1,116 @@
+MODULE BudgetExecutionCostItemGroup;
+
+REQUIRE BudgetExecution, CostItemGroup;
+
+NAMESPACE Budget;
+
+cap 'Cap, USD' (CostItemGroup g) = GROUP SUM cap(Budget b, CostItem i) IF selected(b) BY nearestCostItemGroup(i);
+
+spent 'Spent, USD' (CostItemGroup g, Budget b) = GROUP SUM spent(b, CostItem i) IF selected(b) BY nearestCostItemGroup(i);
+spent 'Spent, USD' (CostItemGroup g) = GROUP SUM spent(Budget b, CostItem i) IF selected(b) BY nearestCostItemGroup(i);
+
+EXTEND FORM budgetExecution
+    OBJECTS bcig = Budget
+    FILTERS selected(bcig)
+
+    OBJECTS cig = CostItemGroup
+    PROPERTIES(cig) READONLY order, name, cap, spent
+    PROPERTIES(cig, bcig) spent COLUMNS (bcig) HEADER name(bcig)
+    ORDER order(cig)
+    
+    OBJECTS gci = CostItem
+    PROPERTIES(gci) READONLY canonicalName, spent
+    FILTERS nearestCostItemGroup(gci) == cig,
+            spent(gci)
+    ORDER spent(gci) DESC
+
+    OBJECTS gcie = ExpenseLedger
+    PROPERTIES(gcie) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS selected(budget(gcie)),
+            NOT skip(gcie),
+            level(costItem(gcie), gci),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(gcie)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDER amountUSD(gcie) DESC
+;
+
+DESIGN budgetExecution {
+    costItemTabs {
+        NEW groups {
+            caption = 'Groups';
+            type = SPLITV;
+            MOVE BOX(cig);
+            NEW details {
+                fill = 1;
+                type = SPLITH;
+                MOVE BOX(gci);
+                MOVE BOX(gcie) {
+                    fill = 3;
+                }
+            }
+        }
+    }
+}
+
+spent 'Spent' = GROUP SUM amount(ExpenseLedger l) IF NOT skip(l) BY budget(l), costItem(l), currency(l) CHARWIDTH 8;
+spentUSD 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costItem(l), currency(l) CHARWIDTH 8;
+
+spentUSD 'Spent, USD' (CostItemGroup g, Currency c) = GROUP SUM spentUSD(Budget b, CostItem i, c) IF selected(b) BY nearestCostItemGroup(i);
+
+spent 'Spent' (CostItemGroup g, Budget b, Currency c) = GROUP SUM spent(b, CostItem i, c) IF selected(b) BY nearestCostItemGroup(i);
+spentUSD 'Spent, USD' (CostItemGroup g, Budget b, Currency c) = GROUP SUM spentUSD(b, CostItem i, c) IF selected(b) BY nearestCostItemGroup(i);
+
+spent 'Spent' (CostItemGroup g, Currency c) = GROUP SUM spent(Budget b, CostItem i, c) IF selected(b) BY nearestCostItemGroup(i);
+spent 'Spent' (CostItem i, Currency c) = GROUP SUM spent(Budget b, i, c) IF selected(b);
+ 
+EXTEND FORM budgetExecution
+    OBJECTS cur = Currency PANEL 
+    PROPERTIES name(cur) SELECTOR 
+    
+    OBJECTS bcigc = Budget
+    FILTERS selected(bcigc)
+
+    OBJECTS cigc = CostItemGroup
+    PROPERTIES(cigc) READONLY order, name
+    PROPERTIES(cigc, cur) READONLY spentUSD
+    PROPERTIES(cigc, bcigc, cur) spentUSD COLUMNS (bcigc) HEADER (name(bcigc) + ', USD')
+    PROPERTIES (cigc, cur) READONLY spent HEADER ('Spent, ' + name(cur)) SHOWIF NOT name(cur) == 'USD' BACKGROUND RGB (192,235,255)
+    PROPERTIES(cigc, bcigc, cur) spent COLUMNS (bcigc) HEADER (name(bcigc) + ', ' + name(cur)) SHOWIF NOT name(cur) == 'USD' BACKGROUND RGB (192,235,255)
+    ORDER order(cigc)
+    
+    OBJECTS gcic = CostItem
+    PROPERTIES(gcic) READONLY canonicalName, spent
+    PROPERTIES (gcic, cur) READONLY spent HEADER 'Spent, ' + name(cur) SHOWIF NOT name(cur) == 'USD' BACKGROUND RGB (192,235,255)
+    FILTERS nearestCostItemGroup(gcic) == cigc,
+            spent(gcic, cur)
+    ORDER spent(gcic, cur) DESC
+
+    OBJECTS gciec = ExpenseLedger
+    PROPERTIES(gciec) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS selected(budget(gciec)),
+            NOT skip(gciec),
+            level(costItem(gciec), gcic),
+            currency(gciec) == cur,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(gciec)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDER amountUSD(gciec) DESC
+;
+
+DESIGN budgetExecution {
+    costItemTabs {
+        NEW currency {
+            caption = 'Groups (currency)';
+            type = CONTAINERV;
+            MOVE PROPERTY (name(cur)){
+                caption = 'Currency';
+            }
+            MOVE BOX(cigc);
+            NEW curDetails {
+                fill = 1;
+                type = SPLITH;
+                MOVE BOX(gcic);
+                MOVE BOX(gciec) {
+                    fill = 3;
+                }
+            }
+        }
+    }
+}

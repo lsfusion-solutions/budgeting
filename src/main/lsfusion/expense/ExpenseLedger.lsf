@@ -1,0 +1,36 @@
+MODULE ExpenseLedger;
+
+REQUIRE CostItem, CostCenter, Currency, Utils, Security;
+
+NAMESPACE Expense;
+
+CLASS ABSTRACT ExpenseLedger 'Expense Ledger';
+TABLE expenseLedger (ExpenseLedger); 
+
+skip 'Skip' = ABSTRACT BOOLEAN (ExpenseLedger) MATERIALIZED;
+sensitive 'Sensitive' = ABSTRACT BOOLEAN (ExpenseLedger) MATERIALIZED;
+
+date 'Date' = ABSTRACT DATE (ExpenseLedger) MATERIALIZED;
+
+costItem = ABSTRACT CostItem (ExpenseLedger) MATERIALIZED INDEXED;
+nameCostItem 'Cost type' (ExpenseLedger l) = canonicalName(costItem(l));
+
+costCenter = ABSTRACT CostCenter (ExpenseLedger) MATERIALIZED INDEXED;
+nameCostCenter 'Cost Center' (ExpenseLedger l) = name(costCenter(l));
+
+currency = ABSTRACT Currency (ExpenseLedger) MATERIALIZED;
+nameCurrency 'Currency' (ExpenseLedger l) = name(currency(l));
+
+amount 'Amount' = ABSTRACT NUMERIC[16,2] (ExpenseLedger) MATERIALIZED;
+amountUSD 'Amount, USD' (ExpenseLedger l) = round2(amount(l) / defaultRateOn(currency(l), date(l)));
+
+note 'Note' = ABSTRACT VARISTRING[1000] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
+
+reference 'Reference' = ABSTRACT VARISTRING[1000] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
+
+info 'Info' = ABSTRACT VARISTRING[2010] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
+
+hideSensitive 'Hide sensitive' = DATA BOOLEAN (UserRole);
+
+EXTEND FORM userRoles PROPERTIES READONLY hideSensitive(ur);
+EXTEND FORM userRole PROPERTIES hideSensitive(ur);

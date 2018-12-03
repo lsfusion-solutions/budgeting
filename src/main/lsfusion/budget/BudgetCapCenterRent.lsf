@@ -1,0 +1,47 @@
+MODULE BudgetCapCenterRent;
+
+REQUIRE BudgetCapCenterEmployee, BudgetRent, Utils;
+
+NAMESPACE Budget;
+
+rent 'Rent, USD' (Period p, Employee e, Budget b) = 
+    NUMERIC[16,3](round0(assigned(p, b, e) * rentPerEmployeeUSD(b, location(e)) / 100)) IF selected(p, b);
+
+rent 'Rent, USD' (CostCenter c, Employee e, Budget b) = GROUP SUM rent(Period p, e, b) BY costCenter(p);
+
+rent 'Rent, USD' (CostCenter c, CostItem i, Budget b) = GROUP SUM rent(c, Employee e, b) BY rentCostItem(e); 
+
+rent 'Rent, USD' (Period p, Employee e) = GROUP SUM rent(p, e, Budget b);   
+
+rent 'Rent, USD' (Period p, CostItem i) = GROUP SUM rent(p, Employee e) IF i == rentCostItem(e) MATERIALIZED;
+
+EXTEND CLASS ExtraCap {
+    rent 'Rent'
+}
+cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.rent AND rent(p, i) THEN rent(p, i);
+
+EXTEND FORM periodApproval
+    PROPERTIES READONLY rent(p, e), rent(p, e, eb)
+;
+
+// create budget detail
+
+CLASS RentBudgetDetail 'Budget detail (Rent)' : BudgetDetail;
+TABLE rentBudgetDetail (RentBudgetDetail);
+
+rentBudgetDetail (CostCenter costCenter, CostItem costItem, Budget budget) = AGGR RentBudgetDetail WHERE rent(costCenter, costItem, budget) MATERIALIZED INDEXED;
+
+WHEN SETCHANGED(costCenter[RentBudgetDetail](RentBudgetDetail d)) DO
+    costCenter[BudgetDetail](d) <- costCenter[RentBudgetDetail](d);
+
+WHEN SETCHANGED(costItem[RentBudgetDetail](RentBudgetDetail d)) DO
+    costItem[BudgetDetail](d) <- costItem[RentBudgetDetail](d);
+
+WHEN SETCHANGED(budget[RentBudgetDetail](RentBudgetDetail d)) DO
+    budget[BudgetDetail](d) <- budget[RentBudgetDetail](d);
+
+WHEN SETCHANGED(RentBudgetDetail d IS RentBudgetDetail) DO
+    name[BudgetDetail](d) <- 'Rent';
+
+WHEN SETCHANGED(rent(costCenter(RentBudgetDetail d), costItem(d), budget(d))) DO
+    planned[BudgetDetail](d) <- rent(costCenter(d), costItem(d), budget(d));

@@ -1,0 +1,52 @@
+MODULE EmployeeAbsence;
+
+REQUIRE Employee, Time;
+
+NAMESPACE Employee;
+
+CLASS AbsenceReason 'Absence reason';
+TABLE absenceReason (AbsenceReason);
+
+name 'Наименование' = DATA VARISTRING[100] (AbsenceReason) CHARWIDTH 15;
+
+FORM absenceReason 'Absence reason'
+    OBJECTS o = AbsenceReason PANEL
+    PROPERTIES(o) name
+    
+    EDIT AbsenceReason OBJECT o
+;
+
+FORM absenceReasons 'Absence reason'
+    OBJECTS o = AbsenceReason
+    PROPERTIES(o) READONLY name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM dialogAbsenceReasons 'Absence reason'
+    OBJECTS o = AbsenceReason
+    PROPERTIES(o) READONLY name
+    
+    LIST AbsenceReason OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW absenceReasons;
+    }
+}
+
+
+CLASS Absence 'Absence';
+TABLE absence(Absence);
+
+fromDate 'From' = DATA DATE (Absence) NONULL;
+fromDate(Absence a) <- currentDate() WHEN SET(a IS Absence);
+
+toDate 'To' = DATA DATE (Absence);
+
+reason 'Reason' = DATA AbsenceReason (Absence);
+nameReason 'Reason' (Absence a) = name(reason(a));
+
+note 'Note' = DATA VARSTRING[1000] (Absence) CHARWIDTH 20;
+
+employee 'Employee' = DATA Employee (Absence) NONULL DELETE;

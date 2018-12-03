@@ -1,0 +1,55 @@
+MODULE CostItemGroup;
+
+REQUIRE CostItem, MasterData;
+
+NAMESPACE Cost;
+
+CLASS CostItemGroup 'Cost type group';
+TABLE costItemGroup (CostItemGroup);
+
+name 'Наименование' = DATA VARISTRING[100] (CostItemGroup) CHARWIDTH 15;
+order 'Порядок' = DATA INTEGER (CostItemGroup) CHARWIDTH 2;
+
+FORM costItemGroup 'Cost type group'
+    OBJECTS o = CostItemGroup PANEL
+    PROPERTIES(o) order, name
+    ORDER order(o)
+    
+    EDIT CostItemGroup OBJECT o
+;
+
+FORM costItemGroups 'Cost type group'
+    OBJECTS o = CostItemGroup
+    PROPERTIES(o) READONLY order, name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+    ORDER order(o)
+;
+
+FORM dialogCostItemGroups 'Cost type group'
+    OBJECTS o = CostItemGroup
+    PROPERTIES(o) READONLY order, name
+    ORDER order(o)
+    
+    LIST CostItemGroup OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW costItemGroups;
+    }
+}
+
+// ----------
+
+costItemGroup 'Cost item group' = DATA CostItemGroup (CostItem);
+nameCostItemGroup 'Cost item group' (CostItem i) = name(costItemGroup(i));
+
+levelParentGroup (CostItem ci) = GROUP
+                                            MIN level(ci, CostItem parent) IF costItemGroup(parent) MATERIALIZED;
+nearestParentGroup (CostItem ci) = costItem(ci, levelParentGroup (ci));
+
+nearestCostItemGroup (CostItem ci) = costItemGroup(nearestParentGroup(ci));
+
+EXTEND FORM costItem
+    PROPERTIES(c) nameCostItemGroup
+;

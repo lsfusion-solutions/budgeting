@@ -1,0 +1,61 @@
+MODULE BudgetAccount;
+
+REQUIRE Account, Budget, BudgetBI;
+
+NAMESPACE Budget;
+
+balance 'Balance' = DATA NUMERIC[16,2](Budget, Account);
+receipt 'Receipt' = DATA NUMERIC[16,2](Budget, Account);
+
+balanceUSD 'Balance (USD)' (Budget b, Account a) =  round2(balance(b, a) / defaultRateOn(currency(a), currentDate()));
+receiptUSD 'Receipt' (Budget b, Account a) =  round2(receipt(b, a) / defaultRateOn(currency(a), currentDate()));
+
+FORM cashFlow 'Cash Flow'
+    
+//    OBJECTS dates = (df = DATE, dt = DATE) PANEL 
+//    PROPERTIES VALUE (df), VALUE (dt)
+    
+    OBJECTS a = Account    
+    OBJECTS b = Budget
+    PROPERTIES (b) READONLY fromDate, toDate, name
+    PROPERTIES (b, a) balance COLUMNS (a) HEADER 'Balance ' + name(a) + ' (' + nameCurrency(a) + ')',
+                      balanceUSD COLUMNS (a) HEADER 'Balance ' + name(a) + ' (USD)' BACKGROUND RGB (192, 255, 192),// SHOWIF NOT nameCurrency(a) == 'USD',
+                      receipt COLUMNS (a) HEADER 'Receipt ' + name(a) + ' (' + nameCurrency(a) + ')',
+                      receiptUSD COLUMNS (a) HEADER 'Receipt ' + name(a) + ' (USD)' BACKGROUND RGB (192, 255, 192)// SHOWIF NOT nameCurrency(a) == 'USD'
+;
+
+balanceUSD 'Balance, USD' (Budget b) = GROUP SUM balanceUSD(b, Account a);
+receiptUSD 'Receipt, USD' (Budget b) = GROUP SUM receiptUSD(b, Account a);
+receiptUSD 'Receipt from, USD' (Budget bfrom, Budget bto) = GROUP SUM receiptUSD(Budget bb, Account a) IF toDate(bb) >= toDate(bfrom) AND toDate(bb) < toDate(bto);
+planned 'Planned from, USD' (Budget bfrom, Budget bto) = GROUP SUM planned(Budget bb) IF toDate(bb) >= toDate(bfrom) AND toDate(bb) < toDate(bto);
+
+estimated 'Estimated value, USD' (Budget bfrom, Budget b) = (balanceUSD(bfrom) IF fromDate(b) >= fromDate(bfrom)) (+) receiptUSD(bfrom, b) (-) planned(bfrom, b);
+
+EXTEND FORM cashFlow
+    OBJECTS bp = Budget PANEL 
+    PROPERTIES (bp) name SELECTOR 
+    
+    OBJECTS aa = Account 
+    OBJECTS bb = Budget
+    PROPERTIES (bb) READONLY fromDate, toDate, name, balanceUSD, receiptUSD, planned, spent
+    PROPERTIES (bp, bb) READONLY receiptUSD, planned, estimated
+;
+
+DESIGN cashFlow {
+    OBJECTS {
+    type = TABBED;
+    NEW flow {
+        caption = 'Cash flow';
+        MOVE BOX (b);
+    }
+    NEW flows {
+        caption = 'Flows';
+        MOVE BOX (bp);
+        MOVE BOX (bb);
+    }
+    }
+}
+
+NAVIGATOR {
+    NEW cashFlow;
+}

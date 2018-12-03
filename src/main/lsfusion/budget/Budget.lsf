@@ -1,0 +1,220 @@
+MODULE Budget;
+
+REQUIRE ExpenseLedger, Utils;
+
+NAMESPACE Budget;
+
+CLASS Budget 'Budget';
+TABLE budget(Budget);
+
+fromDate 'From' = DATA DATE (Budget) IN id;
+toDate 'To' = DATA DATE(Budget) IN id;
+
+name 'Name' = DATA VARSTRING[50] (Budget) CHARWIDTH 8;
+
+description 'Description' (Budget b) = CONCAT '', name(b), '(' + fromDate(b) + ' - ' + toDate(b) + ')'; 
+
+FORM dialogBudgets 'Budget'
+    OBJECTS o = Budget
+    PROPERTIES(o) READONLY name, fromDate, toDate
+    
+    LIST Budget OBJECT o
+;
+
+CLASS BudgetDetail 'Budget detail';
+TABLE budgetDetail(BudgetDetail);
+
+sensitive = ABSTRACT BOOLEAN (BudgetDetail) MATERIALIZED;
+
+budget = DATA Budget (BudgetDetail) NONULL DELETE;
+nameBudget 'Budget' (BudgetDetail d) = name(budget(d));
+
+costCenter = DATA CostCenter (BudgetDetail);
+nameCostCenter 'Cost Center' (BudgetDetail d) = name(costCenter(d));
+
+TABLE budgetCostCenter (Budget, CostCenter);
+selected 'Selected' = DATA BOOLEAN (Budget, CostCenter);  
+
+costItem = DATA CostItem (BudgetDetail);
+nameCostItem 'Cost type' (BudgetDetail d) = name(costItem(d));
+canonicalNameCostItem 'Cost type' (BudgetDetail d) = canonicalName(costItem(d));
+
+CONSTRAINT costItem(BudgetDetail d) AND NOT selected(budget(d), costCenter(d)) CHECKED BY costCenter[BudgetDetail]
+    MESSAGE 'Detail\'s cost center is not selected for budget'; 
+
+name 'Name' = DATA VARSTRING[100] (BudgetDetail) CHARWIDTH 30;
+description 'Description' = DATA RICHTEXT (BudgetDetail);
+
+mandatoryNameBudgetDetail 'Name required for budget detail' = DATA BOOLEAN (CostItem);
+EXTEND FORM costItem
+    PROPERTIES(c) mandatoryNameBudgetDetail
+;
+
+CONSTRAINT (SETCHANGED(costItem(BudgetDetail d)) OR CHANGED(name(d))) AND 
+            mandatoryNameBudgetDetail(costItem(d)) AND NOT name(d)
+            MESSAGE 'Budget detail\'s name is required for the selected cost type';
+
+completeName 'Name' (BudgetDetail d) = CONCAT ' - ', nameBudget(d), nameCostCenter(d), canonicalNameCostItem(d), name(d);  
+
+planned 'Planned, USD' = DATA NUMERIC[16,3] (BudgetDetail);
+
+CONSTRAINT (SETCHANGED(planned(BudgetDetail d)) OR CHANGED(name(d))) AND 
+            mandatoryNameBudgetDetail(costItem(d)) AND planned(d) >= 5000 AND NOT name(d)
+            MESSAGE 'Budget detail\'s name is required for spendings more then 5000';
+
+// Readonly
+
+monthReadonlyDate 'Monthly budget readonly date' = DATA DATE(); 
+monthReadonlyDate 'Monthly budget readonly date' = DATA DATE(CostCenter); 
+
+readonly (Budget b, CostCenter c) = monthReadonlyDate() > toDate(b) OR monthReadonlyDate(c) > toDate(b); 
+readonly (BudgetDetail d, CostCenter c) = monthReadonlyDate() > toDate(budget(d)) OR monthReadonlyDate(c) > toDate(budget(d)); 
+
+//
+
+budget = ABSTRACT Budget (ExpenseLedger) MATERIALIZED INDEXED;
+budgetDetail = ABSTRACT BudgetDetail (ExpenseLedger) MATERIALIZED INDEXED;
+spent 'Spent, USD' (BudgetDetail d) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budgetDetail(l);
+
+planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) BY budget(d), costItem(d), costCenter(d) CHARWIDTH 8; 
+childPlanned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
+childSpent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), CostItem p) AND NOT skip(l) BY budget(l), p, costCenter(l) CHARWIDTH 8;
+
+planned 'Planned, USD' (CostItem i, CostCenter c) = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), i) BY costCenter(d) CHARWIDTH 8;
+
+planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p CHARWIDTH 8; 
+spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costItem(l) CHARWIDTH 8; 
+childSpent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), CostItem p) AND NOT skip(l) BY budget(l), p CHARWIDTH 8; 
+
+planned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) BY budget(d), costCenter(d); 
+insensitivePlanned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT sensitive(d) BY budget(d), costCenter(d); 
+spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costCenter(l); 
+
+planned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) BY budget(d); 
+spent 'Spent, USD' (Budget b) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l); 
+
+FORM budget 'Budget'
+    OBJECTS b = Budget PANEL
+    PROPERTIES(b) fromDate, toDate, name
+    
+    OBJECTS cp = CostCenter
+    PROPERTIES(cp) READONLY name
+    PROPERTIES READONLY planned(b, cp), spent(b, cp)
+    FILTERS selected(b, cp)
+
+    TREE costItems ci = CostItem PARENT parent
+    PROPERTIES(ci) READONLY order, name
+    PROPERTIES READONLY planned(b, ci), childSpent(b, ci)
+    ORDER order(ci) 
+    
+    OBJECTS d = BudgetDetail
+    PROPERTIES(d) nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
+    PROPERTIES(d) NEW, DELETE
+    FILTERS budget(d) == b,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+    
+    FILTERGROUP costCenter
+        FILTER 'By cost center' costCenter(d) == cp
+    FILTERGROUP costItem
+        FILTER 'By cost type' level(costItem(d), ci) DEFAULT
+    
+    OBJECTS e = ExpenseLedger
+    PROPERTIES(e) READONLY date, amountUSD, note, info, reference, nameCurrency, amount
+    FILTERS budgetDetail(e) == d, NOT skip(e),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser())) 
+    
+    EDIT Budget OBJECT b;
+;
+
+DESIGN budget {
+    OBJECTS {
+        NEW pane {
+            fill = 1;
+            type = SPLITV;
+            NEW header {
+                fill = 1;
+                type = SPLITH;
+                NEW leftPane {
+                    fill = 1;
+                    MOVE BOX(b) {
+                        GROUP(, b) {
+                            type = CONTAINERV;
+                            NEW dates {
+                                type = CONTAINERH;
+                                MOVE PROPERTY(fromDate(b));
+                                MOVE PROPERTY(toDate(b));
+                            }
+                        }
+                    }
+                    MOVE BOX(cp);
+                }
+                NEW costItems {
+                    fill = 1.5;
+                    type = SPLITV;
+                    MOVE BOX(TREE costItems) {
+                        fill = 3;
+                    }
+                    MOVE BOX(e);
+                }
+            }
+            NEW detail {
+                fill = 3;
+                type = SPLITH;
+                MOVE BOX(d);
+                NEW detailTabs {
+                    fill = 0.5;
+                    type = TABBED;
+                    NEW description {
+                        caption = 'Description';
+                        MOVE PROPERTY(description(d)) { panelCaptionAbove = TRUE; fill = 1;}
+                    }
+                    MOVE BOX(e);
+                }
+            }
+        }
+    }
+}
+
+FORM budgets 'Budgets'
+    OBJECTS b = Budget
+    PROPERTIES(b) READONLY name, fromDate, toDate, planned, spent
+    PROPERTIES(b) NEWSESSION NEW, EDIT, DELETE
+;
+
+DESIGN budgets {
+    OBJECTS {
+        NEW pane {
+            fill = 1;
+            type = TABBED;
+            MOVE BOX(b) {
+                caption = 'Budgets';
+            }
+        }
+    }
+}
+
+FORM budgetDetails 'Budget details'
+    PROPERTIES() nameFilterCostCenter, nameFilterCostItem
+    
+    OBJECTS d = BudgetDetail
+    PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
+    FILTERS costCenter(d) == filterCostCenter() OR NOT filterCostCenter(),
+            costItem(d) == filterCostItem() OR NOT filterCostItem(),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+        
+    LIST BudgetDetail OBJECT d
+;
+
+DESIGN budgetDetails {
+    OBJECTS {
+        NEW filters FIRST {
+            type = CONTAINERH;
+            MOVE PROPERTY(nameFilterCostCenter());
+            MOVE PROPERTY(nameFilterCostItem());
+        }
+    }
+}
+
+NAVIGATOR {
+    NEW budgets;
+}

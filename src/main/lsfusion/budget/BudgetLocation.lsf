@@ -1,0 +1,31 @@
+MODULE BudgetLocation;
+
+REQUIRE Budget, Location;
+
+NAMESPACE Budget;
+
+CLASS ContractType 'Contract Type' {
+    fullTime 'Full-time',
+    contract 'Contract'
+}
+TABLE contractType(ContractType);
+name 'Name' (ContractType t) = staticCaption(t) IF t IS ContractType CHARWIDTH 7 IN id;
+
+FORM dialogContractType
+    OBJECTS t = ContractType
+    PROPERTIES(t) READONLY name
+    
+    LIST ContractType OBJECT t
+; 
+
+TABLE budgetLocation (Budget, Location);
+taxCoefficient 'Salary tax coefficient' = DATA NUMERIC[11,3] (Budget, ContractType, Location);
+
+EXTEND FORM location
+    OBJECTS t = ContractType
+    
+    OBJECTS b 'Tax Coefficient' = Budget
+    PROPERTIES(b) READONLY fromDate, toDate, name
+    PROPERTIES(b, t, c) taxCoefficient COLUMNS (t) HEADER 'Tax coefficient for' + name(t) 
+;
+
