@@ -16,12 +16,13 @@ META addFile(id, cap)
     id cap = DATA FILE (Employee);
     open###id 'Open' (Employee e) { open(id(e)); }
     load###id 'Load' (Employee e) { INPUT =id(e) CHANGE; }
+    drop###id 'Drop' (Employee e) { id(e) <- NULL; }
     
     EXTEND FORM employee
-        PROPERTIES open###id(e) SHOWIF TRUE IF id(e), load###id(e) 
+        PROPERTIES open###id(e) SHOWIF TRUE IF id(e), load###id(e), drop###id(e) SHOWIF TRUE IF id(e) 
     ;
     
-    DESIGN employee { hiring { NEW id { caption = cap; MOVE PROPERTY(open###id(e)) { width = 100; }; MOVE PROPERTY(load###id(e)) { width = 100; }; } } }
+    DESIGN employee { hiring { NEW id { caption = cap; MOVE PROPERTY(open###id(e)) { width = 100; }; MOVE PROPERTY(load###id(e)) { width = 100; }; MOVE PROPERTY(drop###id(e)) { width = 100; }; } } }
 
 END
 
