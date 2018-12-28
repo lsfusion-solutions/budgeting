@@ -9,9 +9,7 @@ NAMESPACE Budget;
 currentUserAssigned(Budget b, Employee e) = GROUP SUM 1 IF (assigned(Period pp, b, e) > 0 AND access(costCenter(pp), currentUser()) AND selected(pp, b));
 
 myTeam 'My team' (Employee e) = manager(e) == currentUser() OR e == currentUser();
-changeProjectStatus 'Change project status for all employees' = DATA BOOLEAN (UserRole);
-
-EXTEND FORM userRole PROPERTIES changeProjectStatus(ur);
+@addRoleApplicationSetting(changeProjectStatus, 'Change project status for all employees', BOOLEAN);
 
 allowChangeProjectStatus (Employee e) = myTeam(e) OR changeProjectStatus(mainRole(currentUser()));
 
