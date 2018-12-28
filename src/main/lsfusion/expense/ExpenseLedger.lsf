@@ -30,7 +30,4 @@ reference 'Reference' = ABSTRACT VARISTRING[1000] (ExpenseLedger) CHARWIDTH 20 M
 
 info 'Info' = ABSTRACT VARISTRING[2010] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
 
-hideSensitive 'Hide sensitive' = DATA BOOLEAN (UserRole);
-
-EXTEND FORM userRoles PROPERTIES READONLY hideSensitive(ur);
-EXTEND FORM userRole PROPERTIES hideSensitive(ur);
+@addRoleApplicationSetting(hideSensitive, 'Hide sensitive', BOOLEAN);
