@@ -51,7 +51,7 @@ runImportTask(VARSTRING[100] id)  {
 
 ingestBatch (VARSTRING[100] id)  { 
     printToLog('' + currentDateTime() + ' Started WRITE ');
-    WRITE exportDirectory() + id FROM exportFile();
+    WRITE exportFile() TO exportDirectory() + id;
     printToLog('' + currentDateTime() + 'Ended WRITE ');
 
     runImportTask(id);
@@ -71,7 +71,7 @@ loadLookup (VARSTRING[100] id, TEXT json)  {
         printToLog('' + currentDateTime() + ' Started Load lookup ' + id);    
         stringToFile('\{ "version": "' + lpad(TEXT([ FORMULA LONG 'SELECT EXTRACT (epoch FROM ($1))'](currentDateTime())), 12, '0') + '", "lookupExtractorFactory": \{ "type": "map", "injective" : true, "map": \{' + json + ' \} \} \}', 'UTF-8', 'json');
         LOCAL result = FILE();
-//        WRITE 'file://d:/temp/test.json' FROM resultFile(); 
+//        WRITE resultFile() TO 'file://d:/temp/test.json'; 
         EXTERNAL HTTP 'http://' + host() + ':8081/druid/coordinator/v1/lookups/config/__default/' + id PARAMS resultFile() TO result; 
         printToLog('' + currentDateTime() + 'Ended Load lookup ' + id);
     }
