@@ -51,8 +51,7 @@ budgetDetail (CostCenter c, Budget b, Contractor cc) = GROUP LAST BudgetDetail d
 contractors 'Total amount, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM planned(BudgetDetail d) BY costCenter(d), budget(d), contractor(d);
 contractors 'Total amount (for month), USD' (Period p, Budget b, Contractor cc) = contractors(costCenter(p), b, cc); 
 
-monthlyContractors 'Total amount monthly, USD' (CostCenter c, Contractor cc) = GROUP SUM contractors(c, Budget b, cc);
-monthlyContractors 'Total amount monthly, USD' (Period p, Contractor cc) = monthlyContractors(costCenter(p), cc);
+monthlyContractors 'Total amount monthly, USD' (Period p, Contractor cc) = GROUP SUM contractors(costCenter(p), Budget b, cc) IF selected(p, b);
 
 changeContractors (CostCenter c, Budget b, Contractor cc)  { 
     INPUT q = NUMERIC[16,3] DO { // запрашиваем число
