@@ -27,7 +27,7 @@ EmployeeExpenseLedger = AGGR EmployeeExpenseLedger WHERE amount(EmployeeExpense 
 
 sensitive(EmployeeExpenseLedger l) += TRUE IF l IS EmployeeExpenseLedger;
 date(EmployeeExpenseLedger e) += date(employeeExpense(e));
-costItem(EmployeeExpenseLedger e) += OVERRIDE costItem(employeeExpense(e)), costItem(employee(employeeExpense(e)));
+costItem(EmployeeExpenseLedger e) += OVERRIDE costItem(employeeExpense(e)), costItem(employee(employeeExpense(e)), budget(e));
 costCenter(EmployeeExpenseLedger e) += costCenter(e);
 currency(EmployeeExpenseLedger e) += currency(employeeExpense(e));
 amount(EmployeeExpenseLedger e) += amount(employeeExpense(e), costCenter(e));

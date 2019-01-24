@@ -8,12 +8,14 @@ markAsRent 'Rent' (Expense e)  {
     CHANGECLASS e TO RentExpense;
 }
 
+nameRentCostItem 'Rent cost type' (Employee e, Expense x) = canonicalName(rentCostItem(e, budget(x)));
+
 EXTEND FORM expenses
     PROPERTIES(ie) markAsRent PANEL
     
     PROPERTIES(ie) SHOWIF ie IS RentExpense PANEL nameLocation
     OBJECTS ce = (cc = CostCenter, ee = Employee)
-    PROPERTIES SHOWIF ie IS RentExpense READONLY name(cc), name(ee), canonicalNameCostItem(ee), nameRentCostItem(ee), assigned(ie, cc, ee), amount(ie, cc, ee)
+    PROPERTIES SHOWIF ie IS RentExpense READONLY name(cc), name(ee), canonicalNameCostItem(ee), nameRentCostItem(ee, ie), assigned(ie, cc, ee), amount(ie, cc, ee)
     FILTERS assigned(ie, cc, ee)
 ;
 

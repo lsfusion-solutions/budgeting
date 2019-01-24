@@ -1,6 +1,6 @@
 MODULE BudgetEmployee;
 
-REQUIRE Budget, Employee, Currency;
+REQUIRE Budget, CostItemEmployee, EmployeeLocation, Currency;
 
 NAMESPACE Budget;
 
@@ -22,6 +22,62 @@ DESIGN employee {
         NEW salary {
             caption = 'Salary';
             MOVE BOX(b);
+        }
+    }
+}
+
+dataLocation = DATA Location(Employee, Budget);
+location (Employee e, Budget b) = OVERRIDE dataLocation(e, b), (location(e) IF b IS Budget) MATERIALIZED;
+nameLocation 'Location' (Employee e, Budget b) = name(location(e, b));
+//
+//currentBudget() = GROUP MAX Budget b IF fromDate(b) <= currentDate() AND toDate(b) >= currentDate();
+//currentLocation (Employee e) = location(e, currentBudget());
+
+WHEN LOCAL CHANGED (location(Employee e)) DO {
+    FOR fromDate(Budget b) <= currentDate() AND NOT dataLocation(e, b) DO {
+        dataLocation(e, b) <- PREV (location(e));
+    }
+}
+
+dataCostItem = DATA CostItem(Employee, Budget);
+costItem (Employee e, Budget b) = OVERRIDE dataCostItem(e, b), (costItem(e) IF b IS Budget) MATERIALIZED;
+canonicalNameCostItem 'Cost type' (Employee e, Budget b) = canonicalName(costItem(e, b));
+
+WHEN LOCAL CHANGED (costItem(Employee e)) DO {
+    FOR fromDate(Budget b) <= currentDate() AND NOT dataCostItem(e, b) DO {
+        dataCostItem(e, b) <- PREV (costItem(e));
+    }
+}
+
+backgroundLocation (Employee e, Budget b) = RGB (255, 255, 200) IF dataLocation(e, b);
+backgroundCostItem (Employee e, Budget b) = RGB (255, 255, 200) IF dataCostItem(e, b);
+
+EXTEND FORM employee
+    OBJECTS bl = Budget
+    PROPERTIES (bl) READONLY fromDate, toDate, name
+    PROPERTIES (e, bl) nameLocation BACKGROUND backgroundLocation(e, bl)
+    
+    OBJECTS bc = Budget
+    PROPERTIES (bc) READONLY fromDate, toDate, name
+    PROPERTIES (e, bc) canonicalNameCostItem BACKGROUND backgroundCostItem(e, bl)
+;
+
+DESIGN employee {
+    tabbedPane {
+        NEW locations {
+            caption = 'Location';
+            type = CONTAINERH;
+            NEW loc {
+                fill = 1;
+                MOVE PROPERTY (nameLocation(e));
+                MOVE BOX (l);
+            }
+            MOVE BOX (bl) { fill = 4; }
+        }
+        NEW budgetLocation {
+            caption = 'Budget';
+            MOVE PROPERTY (canonicalNameCostItem(e));
+            MOVE BOX (bc);
         }
     }
 }

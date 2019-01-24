@@ -8,7 +8,7 @@ contractType 'Contract Type' = DATA ContractType (Employee);
 nameContractType 'Contract Type' (Employee e) = name(contractType(e));
 
 budgetTaxCoefficient = DATA NUMERIC[11,3] (Budget, Employee);
-taxCoefficient 'Tax coefficient' (Budget b, Employee e) = OVERRIDE budgetTaxCoefficient(b, e), taxCoefficient(b, contractType(e), location(e));  
+taxCoefficient 'Tax coefficient' (Budget b, Employee e) = OVERRIDE budgetTaxCoefficient(b, e), taxCoefficient(b, contractType(e), location(e, b));  
 
 EXTEND FORM employee
     PROPERTIES(e) nameContractType

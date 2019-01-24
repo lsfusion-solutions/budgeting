@@ -14,7 +14,7 @@ in 'In' = DATA BOOLEAN (EmployeeTaxExpense, Location);
 TABLE employeeTaxExpenseEmployee (EmployeeTaxExpense, Employee);
 dataIn 'In' = DATA BOOLEAN (EmployeeTaxExpense, Employee);
 
-in (EmployeeTaxExpense t, Employee e) = OVERRIDE dataIn(t, e), in(t, location(e)) MATERIALIZED;
+in (EmployeeTaxExpense t, Employee e) = OVERRIDE dataIn(t, e), in(t, location(e, budget(t))) MATERIALIZED;
 
 assigned 'Assigned, %' (EmployeeTaxExpense e, CostCenter c, Employee em) =
     assigned(budget(e), c, em) IF in(e, em);
@@ -28,9 +28,9 @@ amount 'Amount' (EmployeeTaxExpense e, CostCenter c, Employee em) =
             ORDER c, em
             BY e;
         
-amount 'Amount' (EmployeeTaxExpense e, CostCenter c, CostItem i) = GROUP SUM amount(e, c, Employee em) IF in(e, em) BY costItem(em);
+amount 'Amount' (EmployeeTaxExpense e, CostCenter c, CostItem i) = GROUP SUM amount(e, c, Employee em) IF in(e, em) BY costItem(em, budget(e));
 
-employees(EmployeeTaxExpense e, CostCenter c, CostItem i) = GROUP CONCAT name(Employee em) IF assigned(budget(e), c, em) AND in(e, em) AND costItem(em) == i, ',' ORDER em; 
+employees(EmployeeTaxExpense e, CostCenter c, CostItem i) = GROUP CONCAT name(Employee em) IF assigned(budget(e), c, em) AND in(e, em) AND costItem(em, budget(e)) == i, ',' ORDER em; 
 
 CLASS EmployeeTaxExpenseLedger 'Employee tax expense ledger' : ExpenseLedger;
 EmployeeTaxExpenseLedger = AGGR EmployeeTaxExpenseLedger WHERE amount(EmployeeTaxExpense employeeTaxExpense, CostCenter costCenter, CostItem costItem) MATERIALIZED INDEXED;

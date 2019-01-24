@@ -5,15 +5,15 @@ REQUIRE BudgetCapCenterEmployee, BudgetRent, Utils;
 NAMESPACE Budget;
 
 rent 'Rent, USD' (Period p, Employee e, Budget b) = 
-    NUMERIC[16,3](round0(assigned(p, b, e) * rentPerEmployeeUSD(b, location(e)) / 100)) IF selected(p, b);
+    NUMERIC[16,3](round0(assigned(p, b, e) * rentPerEmployeeUSD(b, location(e, b)) / 100)) IF selected(p, b);
 
 rent 'Rent, USD' (CostCenter c, Employee e, Budget b) = GROUP SUM rent(Period p, e, b) BY costCenter(p);
 
-rent 'Rent, USD' (CostCenter c, CostItem i, Budget b) = GROUP SUM rent(c, Employee e, b) BY rentCostItem(e); 
+rent 'Rent, USD' (CostCenter c, CostItem i, Budget b) = GROUP SUM rent(c, Employee e, b) BY rentCostItem(e, b); 
 
 rent 'Rent, USD' (Period p, Employee e) = GROUP SUM rent(p, e, Budget b);   
 
-rent 'Rent, USD' (Period p, CostItem i) = GROUP SUM rent(p, Employee e) IF i == rentCostItem(e) MATERIALIZED;
+rent 'Rent, USD' (Period p, CostItem i) = GROUP SUM rent(p, Employee e, Budget b) IF i == rentCostItem(e, b) MATERIALIZED;
 
 EXTEND CLASS ExtraCap {
     rent 'Rent'

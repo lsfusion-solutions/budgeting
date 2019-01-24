@@ -19,7 +19,7 @@ assignedTrip 'Assigned, %' (Budget b, Employee e, Location l) =
     NUMERIC[5,2] (daysInclBetweenDates(fromDate(b), toDate(b))) MATERIALIZED;
 
 assigned 'Assigned, %' (RentExpense e, CostCenter c, Employee em) =
-    assigned(budget(e), c, em) * ((1 IF location(em) == location(e)) (+) assignedTrip(budget(e), em, location(e))) MATERIALIZED;
+    assigned(budget(e), c, em) * ((1 IF location(em, budget(e)) == location(e)) (+) assignedTrip(budget(e), em, location(e))) MATERIALIZED;
 
 amount 'Amount' (RentExpense e, CostCenter c, Employee em) =
     PARTITION UNGROUP amount PROPORTION STRICT ROUND(2)
@@ -27,12 +27,12 @@ amount 'Amount' (RentExpense e, CostCenter c, Employee em) =
         ORDER c, em
         BY e;
         
-amount 'Amount' (RentExpense e, CostCenter c, CostItem i) = GROUP SUM amount(e, c, Employee em) IF location(em) = location(e) BY rentCostItem(em) MATERIALIZED;
+amount 'Amount' (RentExpense e, CostCenter c, CostItem i) = GROUP SUM amount(e, c, Employee em) IF location(em, budget(e)) = location(e) BY rentCostItem(em, budget(e)) MATERIALIZED;
 
-CONSTRAINT amount(RentExpense e, CostCenter c, Employee em) AND NOT rentCostItem(em) MESSAGE 'Rent cost type for employee should be specified';
-CONSTRAINT amount(RentExpense e, CostCenter c, Employee em) AND NOT location(em) MESSAGE 'Location for employee should be specified';
+CONSTRAINT amount(RentExpense e, CostCenter c, Employee em) AND NOT rentCostItem(em, budget(e)) MESSAGE 'Rent cost type for employee should be specified';
+CONSTRAINT amount(RentExpense e, CostCenter c, Employee em) AND NOT location(em, budget(e)) MESSAGE 'Location for employee should be specified';
 
-employees(RentExpense e, CostCenter c, CostItem i) = GROUP CONCAT name(Employee em) IF assigned(budget(e), c, em) AND location(em) = location(e) AND rentCostItem(em) == i, ',' ORDER em; 
+employees(RentExpense e, CostCenter c, CostItem i) = GROUP CONCAT name(Employee em) IF assigned(budget(e), c, em) AND location(em, budget(e)) = location(e) AND rentCostItem(em, budget(e)) == i, ',' ORDER em; 
 
 CLASS RentExpenseLedger 'Rent expense ledger' : ExpenseLedger;
 RentExpenseLedger = AGGR RentExpenseLedger WHERE amount(RentExpense rentExpense, CostCenter costCenter, CostItem costItem) MATERIALIZED INDEXED;

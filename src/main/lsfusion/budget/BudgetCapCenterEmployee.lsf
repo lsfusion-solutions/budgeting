@@ -35,13 +35,13 @@ salary 'Salary, USD' (CostCenter c, Employee e, Budget b) =
     GROUP SUM salary(Period p, e, b) IF selected(p, b) BY costCenter(p);
 
 salary 'Salary, USD' (CostCenter c, CostItem i, Budget b) = 
-    GROUP SUM salary(c, Employee e, b) BY costItem(e);
+    GROUP SUM salary(c, Employee e, b) BY costItem(e, b);
 
 salary 'Salary, USD' (Period p, Employee e) = 
     GROUP SUM salary(p, e, Budget b) IF selected(p, b);
 
 salary 'Salary, USD' (Period p, CostItem i) = 
-    GROUP SUM salary(p, Employee e) BY costItem(e) MATERIALIZED;
+    GROUP SUM salary(p, Employee e, Budget b) IF selected(p, b) BY costItem(e, b) MATERIALIZED;
 
 EXTEND CLASS ExtraCap {
     salary 'Salary'
