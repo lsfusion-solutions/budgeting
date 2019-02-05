@@ -156,7 +156,8 @@ EXTEND FORM expenses
     PROPERTIES(c) name SELECTOR 
     
     OBJECTS ie = Expense
-    PROPERTIES(ie) expenseType READONLY, date, nameGLAccount READONLY, note, reference, nameCurrency READONLY, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie), descriptionPurchaseInvoice, split TOOLBAR, NEW, DELETE
+    PROPERTIES(ie) expenseType READONLY, date, nameGLAccount READONLY, note, reference, nameCurrency READONLY, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie), descriptionPurchaseInvoice, split TOOLBAR 
+    PROPERTIES(ie) DELETE
     FILTERS date(ie) >= dFrom AND date(ie) <= dTo,
             currency(ie) == c,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(ie)) OR NOT hideSensitive(mainRole(currentUser())) 
@@ -165,6 +166,19 @@ EXTEND FORM expenses
     FILTERGROUP toReconcile
         FILTER 'To reconcile' CHANGED(toReconcile(ie)) OR toReconcile(ie)
 ;
+
+newExpense 'New expense' (DATE dFrom, DATE dTo, Currency c) {
+    NEW e = Expense {
+        date(e) <- IF currentDate() >= dFrom AND currentDate() <= dTo THEN currentDate() ELSE dFrom;
+        currency(e) <- c;
+        
+        SEEK expenses.ie = e;
+    }
+}
+
+EXTEND FORM expenses 
+    PROPERTIES newExpense(dFrom, dTo, c) DRAW ie TOOLBAR
+; 
 
 reconcilePurchaseInvoice 'Purchase Invoice' = DATA BOOLEAN (GLAccount);
 
