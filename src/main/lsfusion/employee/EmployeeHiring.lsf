@@ -139,8 +139,9 @@ laptop 'Laptop' = DATA BOOLEAN (Employee);
 pc 'PC' = DATA BOOLEAN (Employee);
 
 // product owner
-scrum 'SCUM on-boarding' = DATA BOOLEAN (Employee);
+scrum 'SCRUM on-boarding' = DATA BOOLEAN (Employee);
 brexCard 'Brex card' = DATA BOOLEAN (Employee); 
+ielts 'IELTS' = DATA VARISTRING[50](Employee) CHARWIDTH 15;
 
 EXTEND FORM employees
     PROPERTIES(e) READONLY slackAccount, trelloEstablished, 
@@ -155,7 +156,7 @@ EXTEND FORM employee
     PROPERTIES(e) slackAccount, trelloEstablished, 
                   citizenships ON CHANGE changeCitizenships(e), nameLanguageLevel
                   
-    PROPERTIES(e) laptop, pc
+    PROPERTIES(e) laptop, pc, ielts
                   
     OBJECTS v = Visa
     PROPERTIES(v) nameCountry, from, to, nameVisaStatus, NEW, DELETE
@@ -186,6 +187,7 @@ DESIGN employee {
             caption = 'Personal info';
             MOVE PROPERTY(citizenships(e));
             MOVE PROPERTY(nameLanguageLevel(e));
+            MOVE PROPERTY(ielts(e));
             MOVE PROPERTY(laptop(e));
             MOVE PROPERTY(pc(e));
         }
@@ -196,4 +198,115 @@ DESIGN employee {
             MOVE PROPERTY(brexCard(e));
         }
     }
+}
+
+CLASS Equipment 'Equipment';
+TABLE equipment (Equipment);
+
+name '{master.data.name}' = DATA VARISTRING[100] (Equipment) CHARWIDTH 15;
+
+FORM equipment 'Equipment'
+    OBJECTS o = Equipment PANEL
+    PROPERTIES(o) name
+    
+    EDIT Equipment OBJECT o
+;
+
+FORM equipments 'Equipment'
+    OBJECTS o = Equipment
+    PROPERTIES(o) READONLY name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM dialogEquipments 'Equipment'
+    OBJECTS o = Equipment
+    PROPERTIES(o) READONLY name
+    
+    LIST Equipment OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW equipments;
+    }
+}
+
+in 'In' = DATA BOOLEAN (Employee, Equipment);
+
+EXTEND FORM employee
+    OBJECTS q = Equipment
+    PROPERTIES in(e, q), name(q) READONLY 
+;
+
+CLASS Document 'Document';
+TABLE document (Document);
+
+name '{master.data.name}' = DATA VARISTRING[100] (Document) CHARWIDTH 15;
+
+CLASS DocumentType 'Document type';
+TABLE documentType (DocumentType);
+
+name '{master.data.name}' = DATA VARISTRING[100] (DocumentType) CHARWIDTH 15;
+
+FORM documentType 'Document type'
+    OBJECTS o = DocumentType PANEL
+    PROPERTIES(o) name
+    
+    EDIT DocumentType OBJECT o
+;
+
+type = DATA DocumentType(Document);
+nameType 'Document type' (Document d) = name(type(d));
+
+employee = DATA Employee(Document) NONULL DELETE;
+nameEmployee 'Employee' (Document d) = name(employee(d));
+
+file = DATA FILE (Document);
+
+openFile 'Open' (Document a)  { open(file(a)); }
+loadFile 'Load' (Document a)  { INPUT =file(a) CHANGE; }
+deleteFile 'Delete' (Document a)  { NEWSESSION DELETE FILE f WHERE f = file(a); } CONFIRM;
+
+FORM documentTypes 'Document type'
+    OBJECTS o = DocumentType
+    PROPERTIES(o) READONLY name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM dialogDocumentTypes 'Document type'
+    OBJECTS o = DocumentType
+    PROPERTIES(o) READONLY name
+    
+    LIST DocumentType OBJECT o
+;
+
+NAVIGATOR {
+    masterData {
+        NEW documentTypes;
+    }
+}
+
+FORM document 'Document'
+    OBJECTS o = Document PANEL
+    PROPERTIES(o) name, nameType, nameEmployee, openFile SHOWIF TRUE IF file(o), loadFile, deleteFile
+    
+    EDIT Document OBJECT o
+;
+
+EXTEND FORM employee
+    OBJECTS d = Document
+    PROPERTIES (d) name, nameType, openFile GRID, loadFile GRID, deleteFile GRID, NEW, DELETE
+    FILTERS employee(d) == e
+;
+
+DESIGN employee {
+    hiring {
+        NEW tables AFTER personalInfo {
+            type = CONTAINERH;
+            fill = 1;
+            MOVE BOX (v);
+            MOVE BOX (q);
+            MOVE BOX (d);
+        }
+    }   
 }
