@@ -32,6 +32,8 @@ probationDate 'Probation date' (Employee e) = sumMonth(hiringDate(e), probationP
  
 passedProbation 'Passed probation' = DATA BOOLEAN (Employee);
 
+birthday 'Birthday' = DATA DATE (Employee);
+
 //RDOpenSpace 'R&D Open Space' = DATA NUMERIC[3,1] (Employee);
 
 FORM employee 'Employee'
@@ -39,7 +41,7 @@ FORM employee 'Employee'
     PROPERTIES(e) firstName, lastName, referenceName, namePosition, nameLocation, 
                   nameManager, responsibilities, inactive, //RDOpenSpace,
                   hiringDate, probationPeriod, passedProbation,
-                  login, sha256Password ON CHANGE changeSHA256Password(e), email, nameMainRole
+                  login, sha256Password ON CHANGE changeSHA256Password(e), email, nameMainRole, birthday
     
     EDIT Employee OBJECT e 
 ;
@@ -55,7 +57,8 @@ DESIGN employee {
                 MOVE PROPERTY(referenceName(e));
                 MOVE PROPERTY(email(e));
                 MOVE PROPERTY(namePosition(e));
-                MOVE PROPERTY(nameLocation(e));                
+                MOVE PROPERTY(nameLocation(e));    
+                MOVE PROPERTY(birthday(e));                 
             }
             NEW column2 {
                 NEW additional {
@@ -93,9 +96,9 @@ background (Employee e) = CASE WHEN probationDate(e) < currentDate() AND NOT pas
 FORM employees 'Employees'
     OBJECTS e = Employee
     PROPERTIES(e) READONLYIF isReadonly() BACKGROUND background(e)
-                                          firstName, lastName, namePosition, nameLocation, 
+                                          firstName, lastName, namePosition, nameLocation,
                                           nameManager, responsibilities,// RDOpenSpace,
-                                          login, email, nameMainRole
+                                          login, email, nameMainRole, birthday
     PROPERTIES(e) NEWSESSION NEW, EDIT, DELETE
     
     FILTERGROUP inactive FILTER 'Active' NOT inactive(e) DEFAULT 
