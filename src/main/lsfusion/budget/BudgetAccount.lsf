@@ -31,14 +31,21 @@ planned 'Planned from, USD' (Budget bfrom, Budget bto) = GROUP SUM planned(Budge
 
 estimated 'Estimated value, USD' (Budget bfrom, Budget b) = (balanceUSD(bfrom) IF fromDate(b) >= fromDate(bfrom)) (+) receiptUSD(bfrom, b) (-) planned(bfrom, b);
 
+capMonth (Period p) = round2((GROUP SUM overTotalChildCap(p, CostItem i) IF NOT parent(i)) / budgetCount(p));
+capAverage 'Average cap, USD' (Budget b) = GROUP SUM capMonth(Period p) IF selected(p, b);
+plannedAverage 'Average planned from, USD' (Budget bfrom, Budget bto) = GROUP SUM capAverage(Budget bb) IF toDate(bb) >= toDate(bfrom) AND toDate(bb) < toDate(bto);
+estimatedAverage 'Average estimated value, USD' (Budget bfrom, Budget b) = (balanceUSD(bfrom) IF fromDate(b) >= fromDate(bfrom)) (+) receiptUSD(bfrom, b) (-) plannedAverage(bfrom, b);
+
 EXTEND FORM cashFlow
     OBJECTS bp = Budget PANEL 
     PROPERTIES (bp) name SELECTOR 
     
     OBJECTS aa = Account 
     OBJECTS bb = Budget
-    PROPERTIES (bb) READONLY fromDate, toDate, name, balanceUSD, receiptUSD, planned, spent
-    PROPERTIES (bp, bb) READONLY receiptUSD, planned, estimated
+    PROPERTIES (bb) READONLY fromDate, toDate, name, balanceUSD, receiptUSD, spent
+    PROPERTIES receiptUSD(bp, bb)
+    PROPERTIES BACKGROUND RGB (255,255,222) planned(bb), planned(bp, bb), estimated(bp, bb)
+    PROPERTIES READONLY capAverage(bb), plannedAverage(bp, bb), estimatedAverage(bp, bb)
 ;
 
 DESIGN cashFlow {
