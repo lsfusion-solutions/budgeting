@@ -126,3 +126,25 @@ TABLE periodBudgetContractor (Period, Budget, Contractor);
 hoursSpent 'Hours, spent' = DATA NUMERIC[8,2] (Period, Budget, Contractor);
 
 hoursSpent 'Total hours, spent' (Period p, Contractor c) = GROUP SUM hoursSpent(p, Budget b, c);
+
+FORM dialogCopyFromBudget 'Budgets'
+    OBJECTS c = CostCenter PANEL 
+    OBJECTS b = Budget
+    PROPERTIES(b) READONLY name, fromDate, toDate
+    FILTERS selected(b, c)
+;
+
+copyFrom 'Copy from' (Budget bb, CostCenter c) {
+    DIALOG dialogCopyFromBudget OBJECTS c = c, b INPUT DO {
+        FOR budget(BudgetDetail d) == b AND costCenter(d) == c DO NEW bd = BudgetDetail {
+            budget(bd) <- bb;
+            costCenter(bd) <- c;
+            costItem(bd) <- costItem(d);
+            name(bd) <- name(d);
+            planned(bd) <- planned(d);
+            contractor(bd) <- contractor(d);
+        }
+    }
+}
+
+EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) copyFrom(bm, c) DRAW bmd TOOLBAR;
