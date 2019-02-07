@@ -48,3 +48,8 @@ invoiced 'Invoiced, USD' (Contractor c) = GROUP SUM round2(amount(Invoice i) / d
 
 spent 'Spent, USD' (Contract c) = GROUP SUM spentUSD(Invoice i) BY contract(i);
 spent 'Spent, USD' (Contractor c) = GROUP SUM spentUSD(Invoice i) BY contractor(i);
+
+overCopy(Invoice ni, Invoice i) + {
+    contract(ni) <- contract(i);
+    contractor(ni) <- contractor(i);
+}

@@ -34,3 +34,8 @@ invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM round0(amount(Invoice i) /
 EXTEND FORM budgetDetails
     PROPERTIES(d) READONLY invoiced
 ;
+
+overCopy(Invoice ni, Invoice i) + {
+    costCenter(ni) <- costCenter(i);
+    budgetDetail(ni) <- budgetDetail(i);
+}

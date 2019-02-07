@@ -15,6 +15,10 @@ EXTEND FORM invoices
     PROPERTIES(i) READONLY spent
 ;
 
+DESIGN invoices {
+    PROPERTY (spent(i)) { pattern = '#,##0.00'; }
+}
+
 WHEN LOCAL SETCHANGED(budgetDetail(purchaseInvoice(Expense e))) AND NOT CHANGED(budgetDetail(e)) DO
     budgetDetail(e) <- budgetDetail(purchaseInvoice(e));
 

@@ -20,7 +20,7 @@ nameCurrency 'Currency' (Invoice i) = name(currency(i));
 
 amount 'Sum' = DATA NUMERIC[14,2] (Invoice);
 
-note 'Note' = DATA VARSTRING[1000] (Invoice) CHARWIDTH 80;
+note 'Note' = DATA VARSTRING[1000] (Invoice) CHARWIDTH 20;
 
 approved 'Approved' = DATA BOOLEAN (Invoice);
 dateTimeApproved 'Date/time of approve' = DATA DATETIME (Invoice);
@@ -51,7 +51,7 @@ DESIGN invoice {
         }
         NEW note {
             caption = 'Note';
-            MOVE PROPERTY(note(i));
+            MOVE PROPERTY(note(i)) { charWidth = 80; }
         }
         NEW sum {
             caption = 'Sum';
@@ -71,13 +71,34 @@ DESIGN invoice {
     }
 }
 
+overCopy ABSTRACT LIST (Invoice, Invoice);
+
+copy 'Copy' (Invoice i) {
+    NEWSESSION NEW ni = Invoice {
+        date(ni) <- date(i);
+        number(ni) <- number(i);
+        nameSupplier(ni) <- nameSupplier(i);
+        note(ni) <- note(i);
+        currency(ni) <- currency(i);
+        amount(ni) <- amount(i);
+        file(ni) <- file(i);
+        text(ni) <- text(i);
+        overCopy(ni, i);
+        SHOW invoice OBJECTS i = ni DOCKED;
+    }
+}
 
 FORM invoices 'Purchase invoices'
     OBJECTS i = Invoice
-    PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved
-    PROPERTIES(i) open SHOWIF hasFile(i) TOOLBAR
+    PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved, note
+    PROPERTIES(i) TOOLBAR copy, open SHOWIF hasFile(i)
     PROPERTIES(i) NEWSESSION NEW, EDIT, DELETE
+    ORDER date(i) DESC 
 ;
+
+DESIGN invoices {
+    PROPERTY (amount(i)) { pattern = '#,##0.00'; }
+}
 
 FORM dialogInvoices 'Select purchase invoice'
     OBJECTS i = Invoice
