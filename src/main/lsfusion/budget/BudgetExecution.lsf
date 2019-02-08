@@ -1,6 +1,6 @@
 MODULE BudgetExecution;
 
-REQUIRE Budget, BudgetCapItem, BudgetCapCenterExpense, BudgetCapCenterApproval;
+REQUIRE Budget, BudgetCapItem, BudgetCapCenterExpense, BudgetCapCenterApproval, BudgetAccount;
 
 NAMESPACE Budget;
 
@@ -90,6 +90,14 @@ FORM budgetExecution 'Budget execution'
             budget(em) == bm,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(em)) OR NOT hideSensitive(mainRole(currentUser())) 
     ORDER amountUSD(em) DESC
+    
+    OBJECTS dates = (bf = Budget, bt = Budget) PANEL
+    PROPERTIES 'Budget from' = name(bf) SELECTOR, 'Budget to' = name(bt) SELECTOR
+    OBJECTS bc = Budget
+    OBJECTS cc = CostItem
+    PROPERTIES orderLevel(cc), orderName(cc), capAverage(cc, bc) COLUMNS (bc) HEADER name(bc)
+    ORDER orderLevel(cc)
+    FILTERS fromDate(bc) >= fromDate(bf) AND toDate(bc) <= toDate(bt)
 ;
 
 DESIGN budgetExecution {
@@ -160,6 +168,12 @@ DESIGN budgetExecution {
                         }
                     }
                 }
+            }
+            NEW capAverage {
+                caption = 'Cap average';
+                MOVE BOX (dates);
+                MOVE BOX (bc);
+                MOVE BOX (cc);
             }
         }
     }
