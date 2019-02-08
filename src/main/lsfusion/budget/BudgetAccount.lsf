@@ -7,8 +7,8 @@ NAMESPACE Budget;
 balance 'Balance' = DATA NUMERIC[16,2](Budget, Account);
 receipt 'Receipt' = DATA NUMERIC[16,2](Budget, Account);
 
-balanceUSD 'Balance (USD)' (Budget b, Account a) =  round2(balance(b, a) / defaultRateOn(currency(a), currentDate()));
-receiptUSD 'Receipt' (Budget b, Account a) =  round2(receipt(b, a) / defaultRateOn(currency(a), currentDate()));
+balanceUSD 'Balance (USD)' (Budget b, Account a) =  round2(balance(b, a) / defaultRateOn(currency(a), fromDate(b)));
+receiptUSD 'Receipt' (Budget b, Account a) =  round2(receipt(b, a) / defaultRateOn(currency(a), fromDate(b)));
 
 FORM cashFlow 'Cash Flow'
     

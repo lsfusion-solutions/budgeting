@@ -9,7 +9,7 @@ purchaseInvoice 'Purchase Invoice' = DATA Invoice (Expense);
 descriptionPurchaseInvoice 'Purchase Invoice' (Expense e) = description(purchaseInvoice(e));
 
 spent 'Spent' (Invoice i) = GROUP SUM amount(Expense e) BY purchaseInvoice(e);
-spentUSD 'Spent, USD' (Invoice i) = GROUP SUM round2(amount(Expense e) / defaultRateOn(currency(e), currentDate())) BY purchaseInvoice(e);
+spentUSD 'Spent, USD' (Invoice i) = GROUP SUM round2(amount(Expense e) / defaultRateOn(currency(e), date(e))) BY purchaseInvoice(e);
 
 EXTEND FORM invoices
     PROPERTIES(i) READONLY spent
