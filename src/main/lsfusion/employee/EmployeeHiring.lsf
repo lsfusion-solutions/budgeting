@@ -203,50 +203,49 @@ DESIGN employee {
 CLASS Equipment 'Equipment';
 TABLE equipment (Equipment);
 
-name '{master.data.name}' = DATA VARISTRING[100] (Equipment) CHARWIDTH 15;
+number 'Serial number' = DATA VARISTRING[100] (Equipment) CHARWIDTH 15;
+model 'Model' = DATA VARISTRING[100](Equipment) CHARWIDTH 15;
 
-FORM equipment 'Equipment'
-    OBJECTS o = Equipment PANEL
-    PROPERTIES(o) name
+employee = DATA Employee(Equipment) NONULL DELETE;
+
+CLASS EquipmentType 'Equipment type';
+TABLE equipmentType(EquipmentType);
+
+name 'Name' = DATA VARISTRING[100](EquipmentType);
+
+FORM equipmentType 'Equipment type'
+    OBJECTS t = EquipmentType PANEL 
+    PROPERTIES (t) name
     
-    EDIT Equipment OBJECT o
+    EDIT EquipmentType OBJECT t
 ;
 
-FORM equipments 'Equipment'
-    OBJECTS o = Equipment
-    PROPERTIES(o) READONLY name
-    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
-;
-
-FORM dialogEquipments 'Equipment'
-    OBJECTS o = Equipment
-    PROPERTIES(o) READONLY name
+FORM equipmentTypes 'Equipment types'
+    OBJECTS t = EquipmentType
+    PROPERTIES (t) READONLY name
+    PROPERTIES (t) NEWSESSION NEW, DELETE 
     
-    LIST Equipment OBJECT o
+    LIST EquipmentType OBJECT t
 ;
 
-NAVIGATOR {
-    masterData {
-        NEW equipments;
-    }
-}
-
-in 'In' = DATA BOOLEAN (Employee, Equipment);
+type = DATA EquipmentType(Equipment);
+nameType 'Type' (Equipment e) = name(type(e));
 
 EXTEND FORM employee
     OBJECTS q = Equipment
-    PROPERTIES in(e, q), name(q) READONLY 
+    PROPERTIES (q) number, model, nameType, NEW, DELETE 
+    FILTERS employee(q) == e
 ;
 
 CLASS Document 'Document';
 TABLE document (Document);
 
-name '{master.data.name}' = DATA VARISTRING[100] (Document) CHARWIDTH 15;
+name 'Name' = DATA VARISTRING[100] (Document) CHARWIDTH 15;
 
 CLASS DocumentType 'Document type';
 TABLE documentType (DocumentType);
 
-name '{master.data.name}' = DATA VARISTRING[100] (DocumentType) CHARWIDTH 15;
+name 'Name' = DATA VARISTRING[100] (DocumentType) CHARWIDTH 15;
 
 FORM documentType 'Document type'
     OBJECTS o = DocumentType PANEL
@@ -271,11 +270,6 @@ FORM documentTypes 'Document type'
     OBJECTS o = DocumentType
     PROPERTIES(o) READONLY name
     PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
-;
-
-FORM dialogDocumentTypes 'Document type'
-    OBJECTS o = DocumentType
-    PROPERTIES(o) READONLY name
     
     LIST DocumentType OBJECT o
 ;
@@ -300,13 +294,24 @@ EXTEND FORM employee
 ;
 
 DESIGN employee {
-    hiring {
-        NEW tables AFTER personalInfo {
-            type = CONTAINERH;
+    tabbedPane {
+        hiring {
+            MOVE BOX (v) AFTER personalInfo;
+        }
+        NEW equipment {
+            caption = 'Equipment';
             fill = 1;
-            MOVE BOX (v);
+            NEW pc {
+                type = CONTAINERH;
+                MOVE PROPERTY (laptop(e));
+                MOVE PROPERTY (pc(e));
+            }
             MOVE BOX (q);
-            MOVE BOX (d);
+        }
+        NEW docs {
+            caption = 'Documents';
+            MOVE documents;
+            MOVE BOX (d); 
         }
     }   
 }
