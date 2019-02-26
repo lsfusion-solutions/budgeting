@@ -106,14 +106,14 @@ FORM costCenterBudget 'Project budget'
     OBJECTS pbd = BudgetDetail
     PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
     FILTERS selected(p, budget(pbd)),
-            NOT sensitive(pbd),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pbd)) OR NOT hideSensitive(mainRole(currentUser())),
             level(costItem(pbd), ci),
             costCenter(pbd) = costCenter(p)  
 
     OBJECTS pe = ExpenseLedger
     PROPERTIES(pe) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
     FILTERS selected(p, budget(pe)),
-            NOT sensitive(pe),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pe)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT skip(pe),
             level(costItem(pe), ci),
             costCenter(pe) = costCenter(p)  

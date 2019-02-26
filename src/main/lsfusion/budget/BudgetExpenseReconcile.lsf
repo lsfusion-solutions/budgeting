@@ -21,7 +21,7 @@ nameCostItem 'Cost type' (GLAccount a) = canonicalName(costItem(a));
 skip 'Skip' = DATA BOOLEAN (GLAccount);
 
 setCostItemAuto 'Set cost type auto' ()  { 
-    costItem(GLAccount a) <- (GROUP LAST CostItem i ORDER charLength(canonicalName(i)), i WHERE isSubstring(replace(name(a), ' ', ''), replace(canonicalName(i), ' ', '')) == 1) WHERE NOT costItem(a);
+    costItem(GLAccount a) <- (GROUP LAST CostItem i ORDER length(canonicalName(i)), i WHERE isSubstring(replace(name(a), ' ', ''), replace(canonicalName(i), ' ', '')) == 1) WHERE NOT costItem(a);
 }
 
 EXTEND FORM expenses
