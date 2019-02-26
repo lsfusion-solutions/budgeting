@@ -177,11 +177,12 @@ EXTEND FORM costCenterBudget
     PROPERTIES(bmd) READONLYIF readonly(bmd, c) canonicalNameCostItem, name, planned, spent, description PANEL, sensitive, NEW, DELETE
     FILTERS costCenter(bmd) == c,
             budget(bmd) == bm,
-            NOT sensitive(bmd)
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))
+
             
     OBJECTS pem = ExpenseLedger
     PROPERTIES(pem) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
-    FILTERS NOT sensitive(pem),
+    FILTERS (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pem)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT skip(pem),
             costCenter(pem) = c,
             budget(pem) == bm  
