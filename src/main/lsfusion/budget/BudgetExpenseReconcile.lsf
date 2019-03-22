@@ -54,10 +54,13 @@ importXero 'Import from Xero' ()  {
         LOCAL credit = NUMERIC[16,2] (INTEGER);
 
         LOCAL GLAccount = GLAccount ();
+        LOCAL expense = Expense(INTEGER);
         
         IMPORT XLS NOHEADER FROM f TO dateRow = A, type = B, note = C, reference = D, debit = E, credit = F;
 
         IMPORT XLS NOHEADER FROM f TO date = A;
+        
+        expense(INTEGER i) <- [GROUP MAX Expense e BY date(e), amount(e), note(e)](date(i), (debit(i) (-) credit(i)), note(i));
         
         FOR imported(INTEGER i) AND i > 4 ORDER i DO {
             IF NOT debit(i) AND NOT credit(i) AND NOT note(i) AND NOT reference(i) THEN {
@@ -66,7 +69,7 @@ importXero 'Import from Xero' ()  {
                 }
                 GLAccount() <- GLAccount(dateRow(i));                
             }
-            IF date(i) AND type(i) != '' AND (debit(i) OR credit(i)) AND GLAccount() THEN NEW e = Expense {
+            IF date(i) AND type(i) != '' AND (debit(i) OR credit(i)) AND GLAccount() AND NOT expense(i) THEN NEW e = Expense {
                 date(e) <- date(i);
                 
                 GLAccount(e) <- GLAccount();
