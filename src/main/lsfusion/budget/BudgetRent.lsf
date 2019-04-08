@@ -18,7 +18,9 @@ rentPerEmployeeUSD 'Rent per employee, USD' (Budget b, Location l) = rentUSD(b, 
 
 EXTEND FORM location
     PROPERTIES(c) nameRentCurrency, nameCostItem
-    PROPERTIES(b, c) rent, countEmployees, rentPerEmployeeUSD
+    PROPERTIES(b, c) rent, countEmployees
+    PROPERTIES(c, b) employeesCount  
+    PROPERTIES(b, c) rentPerEmployeeUSD
 ;
 
 rentCostItem 'Rent cost type' = DATA CostItem (CostItem);
