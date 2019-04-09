@@ -13,8 +13,9 @@ nameCostItem 'Cost type' (Location l) = canonicalName(costItem(l));
 rent 'Rent' = DATA NUMERIC[16,3] (Budget, Location);
 rentUSD 'Rent, USD' (Budget b, Location l) = round0(rent(b, l) / defaultRateOn(rentCurrency(l), fromDate(b)));
 
-countEmployees 'Count of employees' (Budget b, Location l) = GROUP SUM 1 IF hasSalary(Employee e, b) BY location(e, b);  
-rentPerEmployeeUSD 'Rent per employee, USD' (Budget b, Location l) = rentUSD(b, l) / countEmployees(b, l);
+countEmployees 'Count of employees (with salary)' (Budget b, Location l) = GROUP SUM 1 IF hasSalary(Employee e, b) BY location(e, b);  
+employeesCount 'Employees count (total)' (Location l, Budget b) = GROUP SUM 1 BY location(Employee e, b); 
+rentPerEmployeeUSD 'Rent per employee, USD' (Budget b, Location l) = rentUSD(b, l) / employeesCount(l, b);
 
 EXTEND FORM location
     PROPERTIES(c) nameRentCurrency, nameCostItem
