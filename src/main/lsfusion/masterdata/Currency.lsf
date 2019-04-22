@@ -5,7 +5,7 @@ REQUIRE System, MasterData, Time;
 CLASS Currency 'Currency';
 TABLE currency(Currency);
 
-name 'Name' = DATA VARISTRING[50](Currency) IN id CHARWIDTH 5;
+name 'Name' = DATA ISTRING[50](Currency) IN id CHARWIDTH 5;
 currencyName = GROUP AGGR Currency currency BY name(currency);
 
 // Формы
@@ -37,7 +37,7 @@ CLASS TypeExchange 'Exchange rate';
 TABLE typeExchange(TypeExchange);
 TABLE rateExchange (TypeExchange, Currency, DATE);
 
-name 'Name' = DATA VARISTRING[50](TypeExchange) IN id;
+name 'Name' = DATA ISTRING[50](TypeExchange) IN id;
 
 currency 'Currency' = DATA Currency (TypeExchange);
 nameCurrency 'Currency' (TypeExchange typeExchange) = name(currency(typeExchange)) IN base;

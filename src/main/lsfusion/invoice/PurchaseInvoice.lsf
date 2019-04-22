@@ -9,9 +9,9 @@ TABLE invoice(Invoice);
 
 date 'Date' = DATA DATE (Invoice);
 
-number 'Number' = DATA VARSTRING[50] (Invoice) CHARWIDTH 15;
+number 'Number' = DATA STRING[50] (Invoice) CHARWIDTH 15;
 
-nameSupplier 'Supplier' = DATA VARSTRING[50] (Invoice);
+nameSupplier 'Supplier' = DATA STRING[50] (Invoice);
 
 description 'Description' (Invoice i) = CONCAT ' / ', number(i), date(i), nameSupplier(i); 
 
@@ -20,11 +20,11 @@ nameCurrency 'Currency' (Invoice i) = name(currency(i));
 
 amount 'Sum' = DATA NUMERIC[14,2] (Invoice);
 
-note 'Note' = DATA VARSTRING[1000] (Invoice) CHARWIDTH 20;
+note 'Note' = DATA STRING[1000] (Invoice) CHARWIDTH 20;
 
 approved 'Approved' = DATA BOOLEAN (Invoice);
 dateTimeApproved 'Date/time of approve' = DATA DATETIME (Invoice);
-nameUserApproved 'Approved by' = DATA VARSTRING[200](Invoice) CHARWIDTH 20;
+nameUserApproved 'Approved by' = DATA STRING[200](Invoice) CHARWIDTH 20;
 
 file = DATA FILE (Invoice);
 hasFile (Invoice i) = TRUE IF file(i); 

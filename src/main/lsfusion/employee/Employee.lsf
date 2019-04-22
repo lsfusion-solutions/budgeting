@@ -8,13 +8,13 @@ TABLE employee (Employee);
 CLASS Position 'Position';
 TABLE position(Position);
 
-name 'Name' = DATA VARSTRING[50] (Position) IN id;
+name 'Name' = DATA STRING[50] (Position) IN id;
 
 position 'Position' = DATA Position (Employee);
 namePosition 'Position' (Employee e) = name(position(e));
 
 inactive 'Inactive' = DATA BOOLEAN (Employee);
-referenceName 'Name (reference)' = DATA VARSTRING[50] (Employee) CHARWIDTH 20;
+referenceName 'Name (reference)' = DATA STRING[50] (Employee) CHARWIDTH 20;
 
 location 'Location' = DATA Location (Employee);
 nameLocation 'Location' (Employee e) = name(location(e));
@@ -23,7 +23,7 @@ countEmployees 'Employees count' (Location l) = GROUP SUM 1 BY location(Employee
 manager 'Manager' = DATA Employee (Employee);
 nameManager 'Manager' (Employee e) = name(manager(e));
 
-responsibilities 'Responsibilities' = DATA VARSTRING[1000] (Employee) CHARWIDTH 40;
+responsibilities 'Responsibilities' = DATA STRING[1000] (Employee) CHARWIDTH 40;
 
 hiringDate 'Hiring date' = DATA DATE(Employee);
 

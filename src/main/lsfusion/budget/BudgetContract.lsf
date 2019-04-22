@@ -10,10 +10,10 @@ TABLE contract (Contract);
 contractor 'Contractor' = DATA Contractor (Contract) NONULL DELETE;
 period 'Period' = DATA Period (Contract) NONULL;
 
-number 'Number' = DATA VARSTRING[30] (Contract) CHARWIDTH 10;
+number 'Number' = DATA STRING[30] (Contract) CHARWIDTH 10;
 date 'Date' = DATA DATE (Contract);
 
-note 'Note' = DATA VARSTRING[500] (Contract) CHARWIDTH 30;
+note 'Note' = DATA STRING[500] (Contract) CHARWIDTH 30;
 
 currency 'Currency' = DATA Currency (Contract);
 nameCurrency 'Currency' (Contract c) = name(currency(c));

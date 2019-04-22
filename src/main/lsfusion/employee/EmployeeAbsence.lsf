@@ -7,7 +7,7 @@ NAMESPACE Employee;
 CLASS AbsenceReason 'Absence reason';
 TABLE absenceReason (AbsenceReason);
 
-name 'Наименование' = DATA VARISTRING[100] (AbsenceReason) CHARWIDTH 15;
+name 'Наименование' = DATA ISTRING[100] (AbsenceReason) CHARWIDTH 15;
 
 FORM absenceReason 'Absence reason'
     OBJECTS o = AbsenceReason PANEL
@@ -47,6 +47,6 @@ toDate 'To' = DATA DATE (Absence);
 reason 'Reason' = DATA AbsenceReason (Absence);
 nameReason 'Reason' (Absence a) = name(reason(a));
 
-note 'Note' = DATA VARSTRING[1000] (Absence) CHARWIDTH 20;
+note 'Note' = DATA STRING[1000] (Absence) CHARWIDTH 20;
 
 employee 'Employee' = DATA Employee (Absence) NONULL DELETE;

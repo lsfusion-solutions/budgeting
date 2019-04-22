@@ -3,15 +3,15 @@ MODULE BudgetBI;
 REQUIRE Utils, Time, Authentication,
         BudgetCapCenterExpense;
 
-host 'Хост для подключения' = DATA VARSTRING[100] ();
+host 'Хост для подключения' = DATA STRING[100] ();
 maxRowCount 'Максимальное количество записей' = DATA INTEGER ();
 // ----------------- Загрузка данных ------------------- //
 
-exportDirectory 'Путь для экспорта файлов' = DATA VARSTRING[500] ();
+exportDirectory 'Путь для экспорта файлов' = DATA STRING[500] ();
 // file:///mnt/backup/csv/
 // ftp://ftpuser:f7y45cnb@195.201.124.251:21/csv/
 
-importDirectory 'Путь для импорта файлов' = DATA VARSTRING[500] ();
+importDirectory 'Путь для импорта файлов' = DATA STRING[500] ();
 // /mnt/backup/csv/
 
 
@@ -36,7 +36,7 @@ DESIGN integrationData {
     }
 } 
 
-runImportTask(VARSTRING[100] id)  { 
+runImportTask(STRING[100] id)  { 
     LOCAL template = FILE();
     READ 'file://bi/' + id + '.json' TO template;
     fileToString(template(), 'UTF-8');
@@ -49,7 +49,7 @@ runImportTask(VARSTRING[100] id)  {
     EXTERNAL HTTP 'http://' + host() + ':8090/druid/indexer/v1/task' PARAMS resultFile() TO result;
 }
 
-ingestBatch (VARSTRING[100] id)  { 
+ingestBatch (STRING[100] id)  { 
     printToLog('' + currentDateTime() + ' Started WRITE ');
     WRITE exportFile() TO exportDirectory() + id;
     printToLog('' + currentDateTime() + 'Ended WRITE ');
@@ -66,7 +66,7 @@ loadLookups () + {
 
 escapeJSONValue (TEXT t) = replace(replace(replace(replace(t, '\\', '\\\\'), '"', '\\"'), '\n', ''), '\r', '');
 
-loadLookup (VARSTRING[100] id, TEXT json)  { 
+loadLookup (STRING[100] id, TEXT json)  { 
     IF json != '' THEN {
         printToLog('' + currentDateTime() + ' Started Load lookup ' + id);    
         stringToFile('\{ "version": "' + lpad(TEXT([ FORMULA LONG 'SELECT EXTRACT (epoch FROM ($1))'](currentDateTime())), 12, '0') + '", "lookupExtractorFactory": \{ "type": "map", "injective" : true, "map": \{' + json + ' \} \} \}', 'UTF-8', 'json');
@@ -87,7 +87,7 @@ DESIGN integrationData {
     }
 }
 
-runKillTask(VARSTRING[100] id, DATE dFrom, DATE dTo)  { 
+runKillTask(STRING[100] id, DATE dFrom, DATE dTo)  { 
     stringToFile('\{ "type":"kill", "dataSource" : "' + id + '", "interval" : "' + dFrom + '/' + sum(dTo, 1) + '" \}' 
                                                        , 'UTF-8', 'json');
 
@@ -124,7 +124,7 @@ burndownSum (BudgetType t, Budget b, CostItem i, Period p) =
                                    
 exportBudget 'Export budget' (DATE dFrom, DATE dTo)  { 
 
-    EXPORT CSV ',' HEADER FROM dateTime = [FORMULA VARSTRING[20] 'to_char(($1),\'MM/DD/YY\')'](fromDate(Budget b)),
+    EXPORT CSV ',' HEADER FROM dateTime = [FORMULA STRING[20] 'to_char(($1),\'MM/DD/YY\')'](fromDate(Budget b)),
                         nameCostCenter = nameCostCenter(Period p),
                         nameCostItem1 = nameCostItem2(CostItem i), nameCostItem2 = nameCostItem3(i), nameCostItem3 = nameCostItem4(i), nameCostItem4 = nameCostItem5(i),
                         nameBudgetType = name(BudgetType t),

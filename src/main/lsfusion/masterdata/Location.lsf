@@ -5,7 +5,7 @@ REQUIRE MasterData;
 CLASS Location 'Location';
 TABLE location(Location);
 
-name 'Name' = DATA VARISTRING[50](Location) CHARWIDTH 15 IN id;
+name 'Name' = DATA ISTRING[50](Location) CHARWIDTH 15 IN id;
 
 // Формы
 

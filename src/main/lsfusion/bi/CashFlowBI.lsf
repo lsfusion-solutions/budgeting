@@ -7,7 +7,7 @@ NAMESPACE BudgetBI;
 exportFlowCSV 'Export cash flow' (DATE dFrom, DATE dTo) {
 
     FOR fromDate(Budget bfrom) == dFrom DO {
-        EXPORT CSV ',' HEADER FROM dateTime = [FORMULA VARSTRING[20] 'to_char(($1),\'MM/DD/YY\')'](fromDate(Budget b)),
+        EXPORT CSV ',' HEADER FROM dateTime = [FORMULA STRING[20] 'to_char(($1),\'MM/DD/YY\')'](fromDate(Budget b)),
                         balanceUSD = balanceUSD(b), receiptUSD = receiptUSD(b), planned = planned(b), estimated = estimated(bfrom, b) 
                         WHERE estimated(bfrom, b) AND fromDate(b) >= dFrom  AND toDate(b) <= dTo;
     }

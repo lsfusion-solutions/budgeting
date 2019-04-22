@@ -64,7 +64,7 @@ changeCitizenships (Employee e) {
 CLASS LanguageLevel 'Language level';
 TABLE languageLevel (LanguageLevel);
 
-name 'Наименование' = DATA VARISTRING[100] (LanguageLevel) CHARWIDTH 15;
+name 'Наименование' = DATA ISTRING[100] (LanguageLevel) CHARWIDTH 15;
 
 FORM languageLevel 'Language level'
     OBJECTS o = LanguageLevel PANEL
@@ -94,7 +94,7 @@ nameLanguageLevel 'Language level' (Employee e) = name(languageLevel(e));
 CLASS VisaStatus 'Visa status';
 TABLE visaStatus (VisaStatus);
 
-name 'Наименование' = DATA VARISTRING[100] (VisaStatus) CHARWIDTH 15;
+name 'Наименование' = DATA ISTRING[100] (VisaStatus) CHARWIDTH 15;
 
 FORM visaStatus 'Visa status'
     OBJECTS o = VisaStatus PANEL
@@ -141,7 +141,7 @@ pc 'PC' = DATA BOOLEAN (Employee);
 // product owner
 scrum 'SCRUM on-boarding' = DATA BOOLEAN (Employee);
 brexCard 'Brex card' = DATA BOOLEAN (Employee); 
-ielts 'IELTS' = DATA VARISTRING[50](Employee) CHARWIDTH 15;
+ielts 'IELTS' = DATA ISTRING[50](Employee) CHARWIDTH 15;
 
 EXTEND FORM employees
     PROPERTIES(e) READONLY slackAccount, trelloEstablished, 
@@ -203,15 +203,15 @@ DESIGN employee {
 CLASS Equipment 'Equipment';
 TABLE equipment (Equipment);
 
-number 'Serial number' = DATA VARISTRING[100] (Equipment) CHARWIDTH 15;
-model 'Model' = DATA VARISTRING[100](Equipment) CHARWIDTH 15;
+number 'Serial number' = DATA ISTRING[100] (Equipment) CHARWIDTH 15;
+model 'Model' = DATA ISTRING[100](Equipment) CHARWIDTH 15;
 
 employee = DATA Employee(Equipment) NONULL DELETE;
 
 CLASS EquipmentType 'Equipment type';
 TABLE equipmentType(EquipmentType);
 
-name 'Name' = DATA VARISTRING[100](EquipmentType);
+name 'Name' = DATA ISTRING[100](EquipmentType);
 
 FORM equipmentType 'Equipment type'
     OBJECTS t = EquipmentType PANEL 
@@ -240,12 +240,12 @@ EXTEND FORM employee
 CLASS Document 'Document';
 TABLE document (Document);
 
-name 'Name' = DATA VARISTRING[100] (Document) CHARWIDTH 15;
+name 'Name' = DATA ISTRING[100] (Document) CHARWIDTH 15;
 
 CLASS DocumentType 'Document type';
 TABLE documentType (DocumentType);
 
-name 'Name' = DATA VARISTRING[100] (DocumentType) CHARWIDTH 15;
+name 'Name' = DATA ISTRING[100] (DocumentType) CHARWIDTH 15;
 
 FORM documentType 'Document type'
     OBJECTS o = DocumentType PANEL

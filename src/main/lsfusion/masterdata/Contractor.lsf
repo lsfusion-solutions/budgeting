@@ -5,7 +5,7 @@ REQUIRE MasterData, Currency, CostItem;
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
 
-name 'Name' = DATA VARISTRING[50](Contractor) IN id;
+name 'Name' = DATA ISTRING[50](Contractor) IN id;
 
 // Type
 CLASS Type {

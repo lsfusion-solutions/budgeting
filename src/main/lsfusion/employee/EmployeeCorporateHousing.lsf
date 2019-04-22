@@ -8,7 +8,7 @@ NAMESPACE Employee;
 CLASS CorporateHouse 'Corporate house';
 TABLE corporateHouse (CorporateHouse);
 
-name 'Наименование' = DATA VARISTRING[100] (CorporateHouse) CHARWIDTH 15;
+name 'Наименование' = DATA ISTRING[100] (CorporateHouse) CHARWIDTH 15;
 
 FORM corporateHouse 'Corporate house'
     OBJECTS o = CorporateHouse PANEL
@@ -46,7 +46,7 @@ fromDate(CorporateHousing t) <- currentDate() WHEN SET(t IS CorporateHousing);
 
 toDate 'To' = DATA DATE (CorporateHousing);
 
-note 'Note' = DATA VARSTRING[1000] (CorporateHousing) CHARWIDTH 20;
+note 'Note' = DATA STRING[1000] (CorporateHousing) CHARWIDTH 20;
 
 house 'House' = DATA CorporateHouse (CorporateHousing);
 nameHouse 'House' (CorporateHousing t) = name(house(t)) NONULL;

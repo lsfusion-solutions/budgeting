@@ -24,10 +24,10 @@ nameCurrency 'Currency' (ExpenseLedger l) = name(currency(l));
 amount 'Amount' = ABSTRACT NUMERIC[16,2] (ExpenseLedger) MATERIALIZED;
 amountUSD 'Amount, USD' (ExpenseLedger l) = round2(amount(l) / defaultRateOn(currency(l), date(l)));
 
-note 'Note' = ABSTRACT VARISTRING[1000] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
+note 'Note' = ABSTRACT ISTRING[1000] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
 
-reference 'Reference' = ABSTRACT VARISTRING[1000] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
+reference 'Reference' = ABSTRACT ISTRING[1000] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
 
-info 'Info' = ABSTRACT VARISTRING[2010] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
+info 'Info' = ABSTRACT ISTRING[2010] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
 
 @addRoleApplicationSetting(hideSensitive, 'Hide sensitive', BOOLEAN);

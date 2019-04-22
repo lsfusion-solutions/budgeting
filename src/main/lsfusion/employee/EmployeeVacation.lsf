@@ -14,7 +14,7 @@ fromDate(Vacation v) <- currentDate() WHEN SET(v IS Vacation);
 
 toDate 'To' = DATA DATE (Vacation);
 
-note 'Note' = DATA VARSTRING[1000] (Vacation) CHARWIDTH 20;
+note 'Note' = DATA STRING[1000] (Vacation) CHARWIDTH 20;
 
 vacation (Employee e, DATE d) = GROUP LAST Vacation v ORDER fromDate(v), v WHERE employee(v) = e AND fromDate(v) <= d AND toDate(v) >= d;  
 

@@ -10,7 +10,7 @@ TABLE budget(Budget);
 fromDate 'From' = DATA DATE (Budget) IN id;
 toDate 'To' = DATA DATE(Budget) IN id;
 
-name 'Name' = DATA VARSTRING[50] (Budget) CHARWIDTH 8;
+name 'Name' = DATA STRING[50] (Budget) CHARWIDTH 8;
 
 description 'Description' (Budget b) = CONCAT '', name(b), '(' + fromDate(b) + ' - ' + toDate(b) + ')'; 
 
@@ -42,7 +42,7 @@ canonicalNameCostItem 'Cost type' (BudgetDetail d) = canonicalName(costItem(d));
 CONSTRAINT costItem(BudgetDetail d) AND NOT selected(budget(d), costCenter(d)) CHECKED BY costCenter[BudgetDetail]
     MESSAGE 'Detail\'s cost center is not selected for budget'; 
 
-name 'Name' = DATA VARSTRING[100] (BudgetDetail) CHARWIDTH 30;
+name 'Name' = DATA STRING[100] (BudgetDetail) CHARWIDTH 30;
 description 'Description' = DATA RICHTEXT (BudgetDetail);
 
 mandatoryNameBudgetDetail 'Name required for budget detail' = DATA BOOLEAN (CostItem);

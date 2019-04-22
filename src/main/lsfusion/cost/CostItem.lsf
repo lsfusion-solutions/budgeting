@@ -6,7 +6,7 @@ NAMESPACE Cost;
 
 CLASS CostItem 'Cost type';
 TABLE costItem(CostItem);
-name 'Name' = DATA VARISTRING[50] (CostItem) IN id;
+name 'Name' = DATA ISTRING[50] (CostItem) IN id;
 
 order 'Order' = DATA INTEGER (CostItem) CHARWIDTH 2;
 
@@ -19,7 +19,7 @@ level 'Level' (CostItem child, CostItem parent) = RECURSION 1l IF child IS CostI
 
 costItem(CostItem child, LONG level)  = GROUP
                                             MAX CostItem parent IF level == level(child, parent);
-canonicalName 'Canonical name' (CostItem object) = VARISTRING[255](
+canonicalName 'Canonical name' (CostItem object) = ISTRING[255](
                        [ GROUP CONCAT name(CostItem parent), ' / ' ORDER DESC level(CostItem child, parent) BY child](object))
                        CHARWIDTH 30 MATERIALIZED;
 
@@ -47,7 +47,7 @@ orderName 'Cost type' (CostItem c) = CONCAT '', (GROUP CONCAT '    ' IF level(c,
 
 nameOrder (CostItem c) = PARTITION SUM 1 IF NOT order(c) ORDER c BY parent(c);
 overOrder (CostItem c) = OVERRIDE order(c), nameOrder(c);
-orderLevel 'Order level' (CostItem c) = VARISTRING[20] (GROUP CONCAT lpad(TEXT (overOrder(CostItem i)), 2, '0'), '.' ORDER DESC level(c, i)) CHARWIDTH 10;
+orderLevel 'Order level' (CostItem c) = ISTRING[20] (GROUP CONCAT lpad(TEXT (overOrder(CostItem i)), 2, '0'), '.' ORDER DESC level(c, i)) CHARWIDTH 10;
 
 FORM costItem 'Cost type'
     OBJECTS c = CostItem PANEL

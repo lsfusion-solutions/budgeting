@@ -20,9 +20,9 @@ nameCurrency 'Currency' (Expense e) = name(currency(e));
 amount 'Amount' = DATA NUMERIC[16,2] (Expense) IN id NONULL;
 amountUSD 'Amount, USD' (Expense e) = round2(amount(e) / defaultRateOn(currency(e), date(e)));
 
-note 'Note' =  DATA VARISTRING[1000] (Expense) CHARWIDTH 50;
+note 'Note' =  DATA ISTRING[1000] (Expense) CHARWIDTH 50;
 
-reference 'Reference' =  DATA VARISTRING[1000] (Expense) CHARWIDTH 50;
+reference 'Reference' =  DATA ISTRING[1000] (Expense) CHARWIDTH 50;
 
 // ----
 

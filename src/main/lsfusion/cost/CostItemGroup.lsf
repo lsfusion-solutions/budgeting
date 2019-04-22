@@ -7,7 +7,7 @@ NAMESPACE Cost;
 CLASS CostItemGroup 'Cost type group';
 TABLE costItemGroup (CostItemGroup);
 
-name 'Наименование' = DATA VARISTRING[100] (CostItemGroup) CHARWIDTH 15;
+name 'Наименование' = DATA ISTRING[100] (CostItemGroup) CHARWIDTH 15;
 order 'Порядок' = DATA INTEGER (CostItemGroup) CHARWIDTH 2;
 
 FORM costItemGroup 'Cost type group'

@@ -17,4 +17,4 @@ toDate 'To' = DATA DATE (BusinessTrip);
 location 'Location' = DATA Location (BusinessTrip);
 nameLocation 'Location' (BusinessTrip t) = name(location(t)) NONULL;
 
-note 'Note' = DATA VARSTRING[1000] (BusinessTrip) CHARWIDTH 20;
+note 'Note' = DATA STRING[1000] (BusinessTrip) CHARWIDTH 20;

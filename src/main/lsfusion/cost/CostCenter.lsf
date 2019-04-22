@@ -4,7 +4,7 @@ NAMESPACE Cost;
 
 CLASS CostCenter 'Cost Center';
 TABLE costCenter(CostCenter);
-name 'Name' = DATA VARISTRING[50] (CostCenter) IN id;
+name 'Name' = DATA ISTRING[50] (CostCenter) IN id;
 
 FORM costCenter 'Cost Center'
     OBJECTS c = CostCenter PANEL

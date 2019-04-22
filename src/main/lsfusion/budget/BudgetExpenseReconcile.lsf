@@ -9,7 +9,7 @@ NAMESPACE Budget;
 CLASS GLAccount 'General ledger account';
 TABLE GLAccount (GLAccount);
 
-name 'Name' = DATA VARSTRING[200] (GLAccount) CHARWIDTH 30;
+name 'Name' = DATA STRING[200] (GLAccount) CHARWIDTH 30;
 GLAccount = GROUP AGGR GLAccount a BY name(a);  
 
 GLAccount 'General ledger account' = DATA GLAccount (Expense);
@@ -45,11 +45,11 @@ DESIGN expenses {
 importXero 'Import from Xero' ()  { 
     INPUT f = EXCELFILE DO {
             
-        LOCAL dateRow = VARSTRING[200] (INTEGER);
+        LOCAL dateRow = STRING[200] (INTEGER);
         LOCAL date = DATE (INTEGER);
-        LOCAL type = VARSTRING[100] (INTEGER);
-        LOCAL note = VARSTRING[1000] (INTEGER);
-        LOCAL reference = VARSTRING[1000] (INTEGER);
+        LOCAL type = STRING[100] (INTEGER);
+        LOCAL note = STRING[1000] (INTEGER);
+        LOCAL reference = STRING[1000] (INTEGER);
         LOCAL debit = NUMERIC[16,2] (INTEGER);
         LOCAL credit = NUMERIC[16,2] (INTEGER);
 
@@ -86,12 +86,12 @@ importXero 'Import from Xero' ()  {
 import1C 'Import from 1C' ()  { 
     INPUT f = EXCELFILE DO {
             
-        LOCAL dateRow = VARSTRING[200] (INTEGER);
+        LOCAL dateRow = STRING[200] (INTEGER);
         LOCAL date = DATE (INTEGER);
-        LOCAL note = VARSTRING[1000] (INTEGER);
-        LOCAL reference = VARSTRING[1000] (INTEGER);
-        LOCAL debetAccount = VARSTRING[1000] (INTEGER);
-        LOCAL creditAccount = VARSTRING[1000] (INTEGER);
+        LOCAL note = STRING[1000] (INTEGER);
+        LOCAL reference = STRING[1000] (INTEGER);
+        LOCAL debetAccount = STRING[1000] (INTEGER);
+        LOCAL creditAccount = STRING[1000] (INTEGER);
         LOCAL amount = NUMERIC[16,2] (INTEGER);
 
         IMPORT XLS NOHEADER FROM f TO dateRow = A, note = B, reference = D, debetAccount = F, creditAccount = I, amount = J;
@@ -106,7 +106,7 @@ import1C 'Import from 1C' ()  {
                 reference(e) <- reference(i);
                 amount(e) <- amount(i);
                 IF NOT GLAccount(debetAccount(i)) THEN NEW g = GLAccount {
-                    name(g) <- VARSTRING[200](debetAccount(i));
+                    name(g) <- STRING[200](debetAccount(i));
                 }
                 GLAccount(e) <- GLAccount(debetAccount(i));
             } 
