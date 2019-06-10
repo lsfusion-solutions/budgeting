@@ -21,7 +21,7 @@ nameCostItem 'Cost type' (GLAccount a) = canonicalName(costItem(a));
 skip 'Skip' = DATA BOOLEAN (GLAccount);
 
 setCostItemAuto 'Set cost type auto' ()  { 
-    costItem(GLAccount a) <- (GROUP LAST CostItem i ORDER length(canonicalName(i)), i WHERE isSubstring(replace(name(a), ' ', ''), replace(canonicalName(i), ' ', '')) == 1) WHERE NOT costItem(a);
+    costItem(GLAccount a) <- (GROUP LAST CostItem i ORDER length(canonicalName(i)), i WHERE isSubstring(replace(name(a), ' ', ''), replace(canonicalName(i), ' ', ''))) WHERE NOT costItem(a);
 }
 
 EXTEND FORM expenses
@@ -194,7 +194,7 @@ reconcileAuto 'Reconcile auto'  ABSTRACT LIST ( );
 reconcileAuto () + { 
     costItem(Expense e) <- costItem(GLAccount(e)) WHERE toReconcile(e) AND [ FILTER expenses.ie](e);
 
-    purchaseInvoice(Expense e) <- (GROUP LAST Invoice i IF isSubstring(note(e), toDateDDMMYYYY(date(i))) == 1 AND isSubstring(note(e), number(i)) == 1 ORDER i) 
+    purchaseInvoice(Expense e) <- (GROUP LAST Invoice i IF isSubstring(note(e), toDateDDMMYYYY(date(i))) AND isSubstring(note(e), number(i)) ORDER i) 
                                   WHERE toReconcile(e) AND [ FILTER expenses.ie](e) AND reconcilePurchaseInvoice(GLAccount(e));
 
     DELETE Expense e WHERE toReconcile(e) AND [ FILTER expenses.ie](e) AND skip(GLAccount(e));

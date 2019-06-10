@@ -41,7 +41,7 @@ reconcileAuto() + {
     locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e) AND reconcileEmployeeReference(GLAccount(e));
     
     LOCAL locEmp = Employee (Expense);
-    locEmp (Expense e) <- (GROUP LAST Employee em IF isSubstring(reference(e), referenceName(em)) == 1 ORDER em) WHERE locRec(e);
+    locEmp (Expense e) <- (GROUP LAST Employee em IF isSubstring(reference(e), referenceName(em)) ORDER em) WHERE locRec(e);
     
     CHANGECLASS Expense e TO EmployeeExpense WHERE locEmp(e);  
     employee(EmployeeExpense e) <- locEmp(e) WHERE locEmp(e);
