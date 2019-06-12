@@ -11,7 +11,7 @@ importInvoiceFromMail 'Import invoice from mail' ()  {
     FOR Email e IS Email AND NOT importedInvoice(e) DO {
         FOR email(AttachmentEmail ae) = e NEW i = Invoice DO {
             date(i) <- dateSent(e);
-            number(i) <- STRING[50](name(ae)); 
+            number(i) <- STRING[50](filename(ae)); 
             note(i) <- CONCAT ' : ', fromAddress(e), subject(e);
             file(i) <- file(ae);
             text(i) <- message(e);
