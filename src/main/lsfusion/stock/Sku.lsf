@@ -25,7 +25,8 @@ FORM sku 'Товар'
 FORM skus 'Товары'
     OBJECTS o = Sku
     PROPERTIES(o) READONLYIF isReadonly() id SHOWIF showIDs(), name, canonicalNameSkuGroup
-    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+    PROPERTIES(o) SHOWIF isEditable() new = NEW, delete = DELETE
+    PROPERTIES(o) SHOWIF isReadonly() NEWSESSION NEW, EDIT, DELETE
 ;
 
 @extendFormEditable(skus);
