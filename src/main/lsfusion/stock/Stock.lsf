@@ -1,0 +1,41 @@
+MODULE Stock;
+
+REQUIRE MasterData, Integration;
+
+NAMESPACE Stock;
+
+CLASS Stock 'Склад';
+TABLE stock (Stock);
+
+name '{master.data.name}' = DATA ISTRING[100] (Stock) CHARWIDTH 15;
+address 'Адрес' = DATA ISTRING[250] (Stock) CHARWIDTH 15;
+
+@defineExternalizable(stock, STRING[100]);
+
+FORM stock 'Склад'
+    OBJECTS o = Stock PANEL
+    PROPERTIES(o) id SHOWIF showIDs(), name, address
+    
+    EDIT Stock OBJECT o
+;
+
+FORM stocks 'Склады'
+    OBJECTS o = Stock
+    PROPERTIES(o) READONLY id SHOWIF showIDs(), name, address
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+;
+
+FORM dialogStocks 'Склады'
+    OBJECTS o = Stock
+    PROPERTIES(o) READONLY id SHOWIF showIDs(), name, address
+    
+    LIST Stock OBJECT o
+;
+
+NAVIGATOR {
+    NEW FOLDER stock 'Склад' WINDOW toolbar {
+        NEW FOLDER stockMasterData 'Справочники' {
+            NEW stocks;
+        }
+    }
+}

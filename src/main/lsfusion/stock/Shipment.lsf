@@ -1,0 +1,126 @@
+MODULE Shipment;
+
+REQUIRE SkuLedger, LegalEntity;
+
+NAMESPACE Stock;
+
+CLASS Shipment 'Отгрузка';
+TABLE shipment (Shipment);
+
+customer = DATA LegalEntity(Shipment);
+nameCustomer 'Покупатель' (Shipment r) = name(customer(r));
+
+stock = DATA Stock(Shipment);
+nameStock 'Склад' (Shipment r) = name(stock(r));
+
+date 'Дата' = DATA DATE (Shipment);
+date (Shipment s) <- currentDate() WHEN SET (s IS Shipment);
+
+note 'Примечание' = DATA ISTRING[100] (Shipment) CHARWIDTH 15;
+
+CLASS ShipmentDetail 'Строка приемки' : SkuLedger;
+TABLE shipmentDetail(ShipmentDetail);
+
+shipment = DATA Shipment(ShipmentDetail) NONULL DELETE INDEXED;
+
+sku = DATA Sku (ShipmentDetail);
+nameSku 'Товар' (ShipmentDetail g) = name(sku(g));
+canonicalNameSkuGroup 'Группа товара' (ShipmentDetail g) = canonicalName(skuGroup(sku(g)));
+
+quantity 'Кол-во' = DATA NUMERIC[16,5](ShipmentDetail);
+price 'Цена' = DATA NUMERIC[18,4](ShipmentDetail);
+sum 'Сумма' = DATA NUMERIC[18,4](ShipmentDetail);
+
+WHEN LOCAL (CHANGED (quantity(ShipmentDetail d)) OR CHANGED (price(d))) AND NOT CHANGED (sum(d)) DO {
+    sum(d) <- quantity(d) * price(d);
+}
+
+WHEN LOCAL (CHANGED (sku(ShipmentDetail d)) OR CHANGED (stock(shipment(d)))) AND NOT CHANGED (price(d)) DO {
+    price(d) <- currentPrice(sku(d), stock(shipment(d)));
+}
+
+sku(ShipmentDetail d) += sku(d);
+quantity(ShipmentDetail d) += -quantity(d);
+price(ShipmentDetail d) += price(d);
+sum(ShipmentDetail d) += -sum(d);
+stock(ShipmentDetail d) += stock(shipment(d));
+date(ShipmentDetail d) += date(shipment(d));
+description(ShipmentDetail d) += CONCAT ' ', 'Отгрузка',  'покупателю ' + nameCustomer(shipment(d));
+note(ShipmentDetail d) += note(shipment(d));
+
+quantity 'Кол-во' = GROUP SUM quantity(ShipmentDetail d) BY sku(d), shipment(d);
+shipmentDetail = GROUP AGGR ShipmentDetail d BY sku(d), shipment(d);
+
+changeQuantityValue (Sku sku, Shipment r, NUMERIC[14,3] n)  { 
+    IF shipmentDetail(sku, r) THEN {
+        quantity(ShipmentDetail d) <- n WHERE d == shipmentDetail(sku, r);
+    } ELSE NEW d = ShipmentDetail {
+        shipment(d) <- r;
+        sku(d) <- sku;
+        quantity(d) <- n;
+    }
+    IF NOT n THEN DELETE ShipmentDetail d WHERE d == shipmentDetail(sku, r);
+}
+
+changeQuantity (Sku sku, Shipment r)  { 
+    INPUT n = NUMERIC[16,5] DO
+        changeQuantityValue(sku, r, n);
+}
+
+FORM shipment 'Отгрузка'
+    OBJECTS o = Shipment PANEL
+    PROPERTIES(o) date, nameCustomer, nameStock, note
+    
+    OBJECTS d = ShipmentDetail
+    PROPERTIES (d) nameSku, canonicalNameSkuGroup, quantity, price, sum, NEW, DELETE 
+    FILTERS shipment(d) == o
+        
+    TREE treeGroups g = SkuGroup PARENT parent
+    PROPERTIES READONLY order(g), id(g) SHOWIF showIDs(), name(g)
+    ORDER order(g), name(g)
+    
+    OBJECTS sk = Sku
+    PROPERTIES (sk) READONLY id SHOWIF showIDs(), name, canonicalNameSkuGroup
+    PROPERTIES quantity(sk, o) ON CHANGE changeQuantity(sk, o)
+    FILTERS isParent(skuGroup(sk), g)
+    
+    EDIT Shipment OBJECT o
+;
+
+DESIGN shipment {
+    OBJECTS {
+        NEW tab AFTER BOX (o) {
+            type = TABBED;
+            fill = 1;
+            MOVE BOX (d) { caption = 'Спецификация'; }
+            NEW select {
+                caption = 'Подбор'; 
+                type = SPLITH;
+                MOVE BOX (TREE treeGroups) { caption = 'Группы товаров'; }
+                MOVE BOX (sk) { fill = 2; }
+            }
+        }
+    }
+}
+
+FORM shipments 'Отгрузка'
+    OBJECTS o = Shipment
+    PROPERTIES(o) READONLY date, nameCustomer, nameStock, note
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+    
+    OBJECTS d = ShipmentDetail
+    PROPERTIES (d) READONLY nameSku, canonicalNameSkuGroup, quantity, price, sum
+    FILTERS shipment(d) == o
+;
+
+FORM dialogShipments 'Отгрузка'
+    OBJECTS o = Shipment
+    PROPERTIES(o) READONLY date, nameCustomer, nameStock, note
+    LIST Shipment OBJECT o
+;
+
+NAVIGATOR {
+    stockDocuments {
+        NEW shipments;
+    }
+}

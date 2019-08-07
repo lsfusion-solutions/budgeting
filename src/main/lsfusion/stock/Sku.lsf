@@ -1,0 +1,44 @@
+MODULE Sku;
+
+REQUIRE SkuGroup;
+
+NAMESPACE Stock;
+
+CLASS Sku 'Товар';
+TABLE sku (Sku);
+
+name '{master.data.name}' = DATA ISTRING[100] (Sku) CHARWIDTH 15;
+
+skuGroup = DATA SkuGroup(Sku);
+nameSkuGroup 'Группа' (Sku s) = name(skuGroup(s));
+canonicalNameSkuGroup 'Полное имя группы' (Sku s) = canonicalName(skuGroup(s));
+
+@defineExternalizable(sku, STRING[100]);
+
+FORM sku 'Товар'
+    OBJECTS o = Sku PANEL
+    PROPERTIES(o) id SHOWIF showIDs(), name, canonicalNameSkuGroup
+    
+    EDIT Sku OBJECT o
+;
+
+FORM skus 'Товары'
+    OBJECTS o = Sku
+    PROPERTIES(o) READONLYIF isReadonly() id SHOWIF showIDs(), name, canonicalNameSkuGroup
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
+;
+
+@extendFormEditable(skus);
+
+FORM dialogSkus 'Товары'
+    OBJECTS o = Sku
+    PROPERTIES(o) READONLY  id SHOWIF showIDs(), name, canonicalNameSkuGroup
+    
+    LIST Sku OBJECT o
+;
+
+NAVIGATOR {
+    stockMasterData {
+        NEW skus;
+    }
+}
