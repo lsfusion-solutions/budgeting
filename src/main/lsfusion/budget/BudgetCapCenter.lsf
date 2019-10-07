@@ -167,6 +167,8 @@ DESIGN costCenterBudget {
 
 // Monthly
 
+spentLevel 'Spent, USD' (Budget b, CostItem i, CostCenter c) = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), i) AND NOT skip(l) BY budget(l), costCenter(l);
+
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
     PROPERTIES(bm) READONLY fromDate, toDate, name
@@ -179,13 +181,19 @@ EXTEND FORM costCenterBudget
             budget(bmd) == bm,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))
 
-            
+    TREE costItemsM cim = CostItem PARENT parent
+    PROPERTIES(cim) READONLY order, name
+    PROPERTIES(bm, cim, c) READONLY spentLevel
+//    FILTERS NOT hideProjectBudet(cim)
+    ORDER order(cim)
+    
     OBJECTS pem = ExpenseLedger
     PROPERTIES(pem) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
     FILTERS (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pem)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT skip(pem),
             costCenter(pem) = c,
-            budget(pem) == bm  
+            budget(pem) == bm,
+            level(costItem(pem), cim)
     ORDER amountUSD(pem) DESC
 ;
 
@@ -202,7 +210,12 @@ DESIGN costCenterBudget {
                     type = TABBED;
                     fill = 3;
                     MOVE BOX(bmd);
-                    MOVE BOX (pem);
+                    NEW monthlyExpense {
+                        type = SPLITH;
+                        caption = 'Expense Ledger';
+                        MOVE BOX (TREE costItemsM);
+                        MOVE BOX (pem) { fill = 3; }
+                    }
                 }
                 MOVE PROPERTY(description(bmd)) {
                     panelCaptionAbove = TRUE;
