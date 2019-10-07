@@ -20,6 +20,9 @@ dataAssigned 'Assigned, %' = DATA NUMERIC[8,2] (Period, Budget, Employee);
 
 assigned 'Assigned, %' (Period p, Budget b, Employee e) = (OVERRIDE dataAssigned(p, b, e), (assigned(p, e) IF selected(p, b))) 
     IF NOT fromDate(b) < fromDate(monthFrom(e)) AND NOT fromDate(b) > fromDate(monthTo(e)) MATERIALIZED; 
+
+CONSTRAINT dataAssigned(Period p, Budget b, Employee e) AND NOT selected(p, b)
+    MESSAGE 'Employee is assigned to a month, that is not in selected period';
     
 assigned 'Assigned (total), %' (Budget b, Employee e) = GROUP SUM assigned(Period p, b, e);
 
