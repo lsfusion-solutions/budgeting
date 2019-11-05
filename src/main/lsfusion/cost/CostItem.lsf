@@ -57,14 +57,14 @@ FORM costItem 'Cost type'
 ;
 
 FORM costItems 'Cost types'
-    TREE costItems c = CostItem PARENT parent
+    TREE costItems c = CostItem PARENT parent(c)
     PROPERTIES(c) READONLY order, name
     PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE
     ORDER order(c)
 ;
 
 FORM listCostItems 'Select cost type'
-    TREE costItems c = CostItem PARENT parent
+    TREE costItems c = CostItem PARENT parent(c)
     PROPERTIES(c) READONLY order, name
     ORDER order(c)
 

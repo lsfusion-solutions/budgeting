@@ -20,7 +20,7 @@ FORM budgetExecution 'Budget execution'
     PROPERTIES(b) selected
     PROPERTIES(b) READONLY fromDate, toDate, name
     
-    TREE costItems c = CostItem PARENT parent
+    TREE costItems c = CostItem PARENT parent(c)
     PROPERTIES(c) READONLY order, name, cap, costCenterCap, planned, childSpent
     ORDER order(c)
     
@@ -41,7 +41,7 @@ FORM budgetExecution 'Budget execution'
     OBJECTS p = Period
     PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate, nameOwner, submitted, approved, totalChildCap, planned, spentPercent, spent, spentCap BACKGROUND backgroundSpentCap(p)
     
-    TREE periodCostItems pc = CostItem PARENT parent
+    TREE periodCostItems pc = CostItem PARENT parent(pc)
     PROPERTIES(pc) READONLY order, name
     PROPERTIES(p, pc) READONLY totalChildCap, childPlanned, childSpentPercent, childSpent, spentCap BACKGROUND backgroundSpentCap(p, pc)
     ORDER order(pc)
@@ -70,7 +70,7 @@ FORM budgetExecution 'Budget execution'
     PROPERTIES (bm, cm) READONLY averageCap, planned, spent BACKGROUND backgroundSpent(bm, cm)
     FILTERS planned(bm, cm) OR spent(bm, cm)
     
-    TREE periodCostItemsM pcm = CostItem PARENT parent
+    TREE periodCostItemsM pcm = CostItem PARENT parent(pcm)
     PROPERTIES(pcm) READONLY order, name
     PROPERTIES(bm, pcm, cm) READONLY averageCap, childPlanned, childSpent BACKGROUND backgroundSpent(bm, pcm, cm)
     ORDER order(pcm)

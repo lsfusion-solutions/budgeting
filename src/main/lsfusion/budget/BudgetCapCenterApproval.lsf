@@ -148,7 +148,7 @@ FORM periodApproval 'Project approval'
     PROPERTIES(d) approved, dateTime, nameEmployee, comment PANEL
     FILTERS period(d) == p
 
-    TREE costItems ci = CostItem PARENT parent
+    TREE costItems ci = CostItem PARENT parent(ci)
     PROPERTIES(ci) READONLY order, name
     PROPERTIES(p, ci) READONLY totalChildCap BACKGROUND backgroundCap(p, ci)
     PROPERTIES(p, ci) READONLY childPlanned

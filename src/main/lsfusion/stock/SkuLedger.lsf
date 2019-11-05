@@ -53,7 +53,7 @@ nameFilterStock 'Склад' () = name(filterStock());
 FORM stockBalance 'Остаток по складам'
     PROPERTIES nameFilterStock()
     
-    TREE treeGroups g = SkuGroup PARENT parent
+    TREE treeGroups g = SkuGroup PARENT parent(g)
     PROPERTIES READONLY order(g), id(g) SHOWIF showIDs(), name(g)
     ORDER order(g), name(g)
 

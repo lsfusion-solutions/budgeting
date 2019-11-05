@@ -96,7 +96,7 @@ FORM costCenterBudget 'Project budget'
     PROPERTIES(b) READONLY fromDate, toDate, name
     FILTERS period(c, b) == p OR NOT period(c, b) 
     
-    TREE costItems ci = CostItem PARENT parent
+    TREE costItems ci = CostItem PARENT parent(ci)
     PROPERTIES(ci) READONLY order, name
     PROPERTIES(p, ci) overTotalChildCap READONLYIF readonly(p, ci) BACKGROUND backgroundCap(p, ci)
     PROPERTIES(p, ci) READONLY childPlanned, spent
@@ -181,7 +181,7 @@ EXTEND FORM costCenterBudget
             budget(bmd) == bm,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))
 
-    TREE costItemsM cim = CostItem PARENT parent
+    TREE costItemsM cim = CostItem PARENT parent(cim)
     PROPERTIES(cim) READONLY order, name
     PROPERTIES(bm, cim, c) READONLY spentLevel
 //    FILTERS NOT hideProjectBudet(cim)
