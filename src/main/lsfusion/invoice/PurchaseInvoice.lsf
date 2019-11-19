@@ -65,8 +65,15 @@ DESIGN invoice {
             MOVE PROPERTY(open(i));
             MOVE PROPERTY(load(i));
         }
-        MOVE PROPERTY(text(i)) {
+        NEW pane {
             fill = 1;
+            type = TABBED;
+            NEW text {
+                caption = 'Text';
+                fill = 1;
+                alignment = STRETCH;
+                MOVE PROPERTY (text(i));
+            }
         }
     }
 }

@@ -1,0 +1,165 @@
+MODULE PurchaseInvoiceEmployee;
+
+REQUIRE PurchaseInvoice, Employee;
+
+NAMESPACE Purchase;
+
+CLASS InvoiceEmployeeType 'Type';
+
+name 'Type' = DATA ISTRING[50] (InvoiceEmployeeType);
+
+CLASS InvoiceEmployeeLine 'Employee expenses';
+
+invoice 'Invoice' = DATA Invoice (InvoiceEmployeeLine) NONULL DELETE ;
+
+date 'Date' (InvoiceEmployeeLine l) = date(invoice(l));
+number 'Number' (InvoiceEmployeeLine l) = number(invoice(l));
+supplier 'Supplier' (InvoiceEmployeeLine l) = nameSupplier(invoice(l));
+
+employee 'Employee' = DATA Employee (InvoiceEmployeeLine) NONULL DELETE;
+firstName 'First name' (InvoiceEmployeeLine l) = firstName(employee(l));
+lastName 'Last Name' (InvoiceEmployeeLine l) = lastName(employee(l));
+position 'position' (InvoiceEmployeeLine l) = namePosition(employee(l));
+location 'Location' (InvoiceEmployeeLine l) = nameLocation(employee(l));
+
+type 'Type' = DATA InvoiceEmployeeType (InvoiceEmployeeLine) NONULL;
+nameType 'Type' (InvoiceEmployeeLine l) = name(type(l));
+
+
+currency 'Currency' (InvoiceEmployeeLine l) = currency(invoice(l));
+nameCurrency 'Currency' (InvoiceEmployeeLine l) = name(currency(l));
+ratio 'Ratio' = DATA INTEGER (InvoiceEmployeeLine);
+amount 'Amount'  = DATA NUMERIC[10,2] (InvoiceEmployeeLine) NONULL; 
+
+calcAmount (InvoiceEmployeeLine l) = 
+    PARTITION UNGROUP amount
+            PROPORTION STRICT ROUND(2) OVERRIDE ratio(l), 1
+            BY invoice(l);                                                     
+
+notes 'Notes' = DATA ISTRING[100] (InvoiceEmployeeLine);
+
+totalExpenses 'Total expenses' (Employee e, Currency c) = GROUP SUM amount(InvoiceEmployeeLine l) 
+                                                        IF (employee(l) = e AND currency(l) = c);
+totalExpenses 'Total expenses' (InvoiceEmployeeType t, Currency c) = GROUP SUM amount(InvoiceEmployeeLine l) 
+                                                        IF (type(l) = t AND currency(l) = c);
+
+totalExpenses 'Total expenses' (InvoiceEmployeeType t) = GROUP SUM amount(InvoiceEmployeeLine l) 
+                                                        IF type(l) = t;                                                       
+totalExpenses 'Total expenses' (Employee e) = GROUP SUM totalExpenses(e, Currency c);
+
+added 'Add' = DATA BOOLEAN (Invoice, Employee);
+add 'Add'= DATA LOCAL BOOLEAN (Employee);
+
+FORM employeeList
+    OBJECTS e = Employee
+    PROPERTIES add(e)
+    PROPERTIES(e) READONLY firstName, lastName, namePosition, nameLocation
+;
+                                                       
+FORM invoiceEpmloyeeType 'Employee expenses type'
+    OBJECTS t = InvoiceEmployeeType PANEL 
+    PROPERTIES(t)  name
+    
+    EDIT InvoiceEmployeeType OBJECT t
+;
+
+FORM invoiceEpmloyeeTypes 'Employee expenses types'
+    OBJECTS t = InvoiceEmployeeType
+    PROPERTIES(t) READONLY name
+    PROPERTIES (t) NEW, EDIT, DELETE 
+    
+    LIST InvoiceEmployeeType OBJECT t
+;
+
+NAVIGATOR {
+    masterData {
+        NEW invoiceEpmloyeeTypes;
+    }
+}
+
+calculateAmount 'Calculate amount' (Invoice i) {
+    FOR invoice(InvoiceEmployeeLine l) = i DO {
+        amount(l) <- calcAmount(l);
+    } 
+}
+
+addEmployees 'Add employees' (Invoice i) {
+    FOR add(Employee e) DO {
+        add(e) <- NULL;
+    }
+    
+    DIALOG employeeList DO {
+        added(i,Employee e) <- add(e);
+    }
+    
+    FOR added(i, Employee e) DO {
+        NEW l = InvoiceEmployeeLine {
+            invoice(l) <- i;
+            employee(l) <- e;
+        }
+    }
+}
+
+EXTEND FORM invoice
+    OBJECTS iel = InvoiceEmployeeLine
+    PROPERTIES(iel) firstName, lastName, position, location, nameType, ratio, amount, nameCurrency, notes
+    PROPERTIES (iel) DELETE
+    FILTERS invoice(iel) = i
+    
+    PROPERTIES calculateAmount(i) DRAW iel TOOLBAR 
+    PROPERTIES addEmployees(i) DRAW iel TOOLBAR 
+
+;
+
+DESIGN invoice {
+    OBJECTS {
+        pane {
+            NEW expenses {
+                caption = 'Expenses';
+                fill = 1;
+                MOVE BOX (iel);
+                PROPERTY (nameType(iel)){notNull = TRUE;}
+                PROPERTY (amount(iel)){notNull = TRUE;}
+            }
+        }
+    }
+}
+
+EXTEND FORM employees
+    OBJECTS cur = Currency
+
+    OBJECTS emp = Employee
+    PROPERTIES (emp) READONLY firstName, lastName, namePosition, nameLocation
+    PROPERTIES totalExpenses(emp, cur) COLUMNS (cur) HEADER name(cur)
+    FILTERS totalExpenses(emp)
+    
+    OBJECTS t = InvoiceEmployeeType
+    PROPERTIES(t) READONLY name
+    PROPERTIES totalExpenses(t, cur) COLUMNS (cur) HEADER name(cur)
+    FILTERS totalExpenses(t)
+    
+    OBJECTS iel = InvoiceEmployeeLine
+    PROPERTIES(iel) READONLY date, number, supplier
+    PROPERTIES(iel) READONLY firstName, lastName, position, location, nameType, amount, nameCurrency, ratio, notes
+    FILTERGROUP employee
+        FILTER 'Employee' employee(iel) = emp 'F10'
+    FILTERGROUP type
+        FILTER 'Type' type(iel) = t 'F9'
+;
+
+DESIGN employees {
+    pane {
+        NEW expenses {
+            caption = 'Expenses';
+            type = CONTAINERV;
+            fill = 1;
+            NEW totals {
+                fill = 1;
+                type = SPLITH;
+                MOVE BOX (emp);
+                MOVE BOX (t);
+            } 
+            MOVE BOX (iel);
+        }
+    }
+}
