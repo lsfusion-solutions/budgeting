@@ -31,7 +31,7 @@ hasFile (Invoice i) = TRUE IF file(i);
 open 'Open' (Invoice i)  { open(file(i)); }
 load 'Load' (Invoice i)  { INPUT =file(i) CHANGE; }
 
-text 'Text' = DATA RICHTEXT (Invoice);
+text '' = DATA RICHTEXT (Invoice);
 
 FORM invoice 'Purchase invoice'
     OBJECTS i = Invoice PANEL
@@ -42,37 +42,45 @@ FORM invoice 'Purchase invoice'
 ;
 DESIGN invoice {
     OBJECTS {
-        NEW parameters {
-            caption = 'Parameters';
-            type = CONTAINERH;
-            MOVE PROPERTY(date(i));
-            MOVE PROPERTY(number(i));
-            MOVE PROPERTY(nameSupplier(i));
-        }
-        NEW note {
-            caption = 'Note';
-            MOVE PROPERTY(note(i)) { charWidth = 80; }
-        }
-        NEW sum {
-            caption = 'Sum';
-            type = CONTAINERH;
-            MOVE PROPERTY(nameCurrency(i));
-            MOVE PROPERTY(amount(i));
-        }
-        NEW file {
-            caption = 'File';
-            type = CONTAINERH;
-            MOVE PROPERTY(open(i));
-            MOVE PROPERTY(load(i));
+        type = CONTAINERH;
+        fill = 1;
+        NEW invoice {           
+            NEW parameters {
+                alignment = STRETCH;
+                caption = 'Parameters';
+                type = CONTAINERH;
+                MOVE PROPERTY(date(i)) { notNull = TRUE; }
+                MOVE PROPERTY(number(i)) { notNull = TRUE; }
+                MOVE PROPERTY(nameSupplier(i)) { notNull = TRUE; }
+            }
+            NEW sum {
+                alignment = STRETCH;
+                caption = 'Sum';
+                type = CONTAINERH;
+                MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; }
+                MOVE PROPERTY(amount(i)) { notNull = TRUE; }
+            }
+            NEW file {
+                alignment = STRETCH;
+                caption = 'File';
+                type = CONTAINERH;
+                MOVE PROPERTY(open(i)) { fill = 1; height = 40; }
+                MOVE PROPERTY(load(i)) { fill = 1; height = 40; }
+            }
+            NEW note {
+                alignment = STRETCH;
+                caption = 'Note';
+                MOVE PROPERTY(note(i)) { charWidth = 80; }
+            }
         }
         NEW pane {
-            fill = 1;
+            fill = 2;
             type = TABBED;
             NEW text {
                 caption = 'Text';
                 fill = 1;
                 alignment = STRETCH;
-                MOVE PROPERTY (text(i));
+                MOVE PROPERTY (text(i)) { fill = 1; }
             }
         }
     }
@@ -118,3 +126,18 @@ FORM dialogInvoices 'Select purchase invoice'
 NAVIGATOR {
     NEW invoices;
 }
+
+approve 'Approve' (Invoice i) {
+    NEWSESSION {
+        approved(i) <- TRUE;
+        APPLY;
+    }
+}
+
+EXTEND FORM invoices 
+    PROPERTIES(i) approve TOOLBAR 
+    
+    FILTERGROUP approved
+        FILTER 'Approved' approved(i) 'F10'
+        FILTER 'Not approved' NOT approved(i) 'F9'       
+;

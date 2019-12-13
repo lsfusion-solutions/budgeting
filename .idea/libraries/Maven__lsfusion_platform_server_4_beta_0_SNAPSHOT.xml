@@ -1,0 +1,13 @@
+<component name="libraryTable">
+  <library name="Maven: lsfusion.platform:server:4.beta.0-SNAPSHOT">
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/lsfusion/platform/server/4.beta.0-SNAPSHOT/server-4.beta.0-20191212.123033-41.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/lsfusion/platform/server/4.beta.0-SNAPSHOT/server-4.beta.0-20191212.123033-41-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/lsfusion/platform/server/4.beta.0-SNAPSHOT/server-4.beta.0-20191212.123033-41-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

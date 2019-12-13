@@ -26,11 +26,14 @@ EXTEND FORM invoice
 
 DESIGN invoice {
     OBJECTS {
-        NEW contract FIRST {
-            caption = 'Contract';
-            type = CONTAINERH;
-            MOVE PROPERTY (nameContractor(i));
-            MOVE PROPERTY (nameContract(i));
+        invoice {
+            NEW contract {
+                alignment = STRETCH;
+                caption = 'Contract';
+                type = CONTAINERH;
+                MOVE PROPERTY (nameContractor(i));
+                MOVE PROPERTY (nameContract(i));
+            }
         }
     }
 }

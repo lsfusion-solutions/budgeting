@@ -1,6 +1,6 @@
 MODULE BudgetCapCenter;
 
-REQUIRE CostCenter, Budget, CostCenterEmployee;
+REQUIRE CostCenter, Budget, CostCenterEmployee, BudgetPurchaseInvoice;
 
 NAMESPACE Budget;
 
@@ -217,9 +217,17 @@ DESIGN costCenterBudget {
                         MOVE BOX (pem) { fill = 3; }
                     }
                 }
-                MOVE PROPERTY(description(bmd)) {
-                    panelCaptionAbove = TRUE;
+                NEW details {
                     fill = 1;
+                    type = TABBED;
+                    NEW description {
+                        caption = 'Description';
+                        MOVE PROPERTY(description(bmd)) {
+                            //panelCaptionAbove = TRUE;
+                            caption = '';
+                            fill = 1;
+                        }
+                    }
                 }
             }
         }
@@ -276,3 +284,60 @@ moveBudgetDetail 'Move' (BudgetDetail d) {
 }
 
 EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) moveBudgetDetail(bmd) DRAW bmd TOOLBAR;
+
+addInvoice 'Add invoice' (BudgetDetail d) {
+    NEWSESSION {
+        NEW i = Invoice {
+            budgetDetail(i) <- d;
+            costCenter(i) <- costCenter(d);
+            SHOW invoice OBJECTS i = i;
+        }
+    }
+} IMAGE 'add.png';
+
+WHEN CHANGED(amount(Invoice i)) OR CHANGED(currency(i)) DO {
+    approved(i) <- invoiced(budgetDetail(i)) <= planned(budgetDetail(i)); 
+}
+
+invoiceApprovalEmailTo 'To' = DATA STRING[400] () CHARWIDTH 20;
+
+WHEN SET(Invoice i IS Invoice) AND NOT approved(i) OR DROPPED(approved(i)) DO {
+    EMAIL 
+    SUBJECT 'Invoice needs approval'
+    TO invoiceApprovalEmailTo()
+    BODY 'Invoice #' + number(i) + ' needs approval'
+    ATTACH file(i) IF hasFile(i);    
+}
+
+left 'Left' (BudgetDetail d) = planned(d) (-) invoiced(d);
+
+EXTEND FORM costCenterBudget
+    PROPERTIES(bmd) addInvoice GRID, invoiced, left
+    
+    OBJECTS i = Invoice
+    PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved, note
+    PROPERTIES(i) NEWSESSION EDIT, DELETE 
+    FILTERS budgetDetail(i) = bmd
+;
+
+DESIGN costCenterBudget {
+    details {
+        NEW invoices FIRST {
+            caption = 'Invoices';
+            MOVE BOX(i) { caption = ''; }
+        }
+    }
+}
+
+EXTEND FORM options
+    PROPERTIES invoiceApprovalEmailTo()
+;
+
+DESIGN options {
+    commons {
+        NEW emails {
+            caption = 'Invoice approval E-mails';
+            MOVE PROPERTY(invoiceApprovalEmailTo());
+        }
+    }
+}

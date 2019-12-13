@@ -18,10 +18,13 @@ EXTEND FORM invoice
 ;
 DESIGN invoice {
     OBJECTS {
-        NEW budget AFTER file {
-            caption = 'Budget';
-            MOVE PROPERTY(nameCostCenter(i));
-            MOVE PROPERTY(completeNameBudgetDetail(i));
+        invoice {
+            NEW budget AFTER file {
+                alignment = STRETCH;
+                caption = 'Budget';
+                MOVE PROPERTY(nameCostCenter(i));
+                MOVE PROPERTY(completeNameBudgetDetail(i));
+            }
         }
     }
 }
