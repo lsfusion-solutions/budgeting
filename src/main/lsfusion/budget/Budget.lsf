@@ -39,7 +39,7 @@ costItem = DATA CostItem (BudgetDetail);
 nameCostItem 'Cost type' (BudgetDetail d) = name(costItem(d));
 canonicalNameCostItem 'Cost type' (BudgetDetail d) = canonicalName(costItem(d));
 
-CONSTRAINT costItem(BudgetDetail d) AND NOT selected(budget(d), costCenter(d)) CHECKED BY costCenter[BudgetDetail]
+CONSTRAINT costCenter(BudgetDetail d) AND NOT selected(budget(d), costCenter(d)) CHECKED BY costCenter[BudgetDetail]
     MESSAGE 'Detail\'s cost center is not selected for budget'; 
 
 name 'Name' = DATA STRING[100] (BudgetDetail) CHARWIDTH 30;
