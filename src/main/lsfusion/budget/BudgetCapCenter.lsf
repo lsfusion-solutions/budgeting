@@ -172,7 +172,7 @@ spentLevel 'Spent, USD' (Budget b, CostItem i, CostCenter c) = GROUP SUM amountU
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
     PROPERTIES(bm) READONLY fromDate, toDate, name
-    PROPERTIES READONLY planned(bm, c)
+    PROPERTIES READONLY planned(bm, c), optimizedPlanned(bm, c), optimized(bm, c)
     FILTERS selected(bm, c)
     
     OBJECTS bmd = BudgetDetail
