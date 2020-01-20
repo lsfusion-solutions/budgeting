@@ -57,6 +57,8 @@ CONSTRAINT (SETCHANGED(costItem(BudgetDetail d)) OR CHANGED(name(d))) AND
 completeName 'Name' (BudgetDetail d) = CONCAT ' - ', nameBudget(d), nameCostCenter(d), canonicalNameCostItem(d), name(d);  
 
 planned 'Planned, USD' = DATA NUMERIC[16,3] (BudgetDetail);
+optimizedPlanned 'Optimized, USD' = DATA NUMERIC[16,3] (BudgetDetail);
+optimized 'Optimized, %' (BudgetDetail d) = NUMERIC[16,2](optimizedPlanned(d) / planned(d) * 100);
 
 CONSTRAINT (SETCHANGED(planned(BudgetDetail d)) OR CHANGED(name(d))) AND 
             mandatoryNameBudgetDetail(costItem(d)) AND planned(d) >= 5000 AND NOT name(d)

@@ -177,6 +177,8 @@ EXTEND FORM costCenterBudget
     
     OBJECTS bmd = BudgetDetail
     PROPERTIES(bmd) READONLYIF readonly(bmd, c) canonicalNameCostItem, name, planned, spent, description PANEL, sensitive, NEW, DELETE
+    PROPERTIES(bmd) optimizedPlanned AFTER planned(bmd)
+    PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
     FILTERS costCenter(bmd) == c,
             budget(bmd) == bm,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))
