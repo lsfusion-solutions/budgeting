@@ -67,16 +67,16 @@ FORM budgetExecution 'Budget execution'
     
     OBJECTS bm = Budget
     PROPERTIES (bm) READONLY fromDate, toDate, name
-    PROPERTIES (bm, cm) READONLY averageCap, planned, spent BACKGROUND backgroundSpent(bm, cm)
+    PROPERTIES (bm, cm) READONLY averageCap, planned, optimizedPlanned, optimized, spent BACKGROUND backgroundSpent(bm, cm)
     FILTERS planned(bm, cm) OR spent(bm, cm)
     
     TREE periodCostItemsM pcm = CostItem PARENT parent(pcm)
     PROPERTIES(pcm) READONLY order, name
-    PROPERTIES(bm, pcm, cm) READONLY averageCap, childPlanned, childSpent BACKGROUND backgroundSpent(bm, pcm, cm)
+    PROPERTIES(bm, pcm, cm) READONLY averageCap, childPlanned, childOptimizedPlanned, childOptimized, childSpent BACKGROUND backgroundSpent(bm, pcm, cm)
     ORDER order(pcm)
 
     OBJECTS bdm = BudgetDetail
-    PROPERTIES(bdm) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    PROPERTIES(bdm) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, optimizedPlanned, optimized
     FILTERS level(costItem(bdm), pcm),
             costCenter(bdm) = cm,  
             budget(bdm) == bm,

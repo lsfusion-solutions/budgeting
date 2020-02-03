@@ -80,6 +80,8 @@ spent 'Spent, USD' (BudgetDetail d) = GROUP SUM amountUSD(ExpenseLedger l) IF NO
 
 planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) BY budget(d), costItem(d), costCenter(d) CHARWIDTH 8; 
 childPlanned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
+childOptimizedPlanned 'Optimized, USD' = GROUP SUM optimizedPlanned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
+childOptimized 'Optimized, %' (Budget b, CostItem i, CostCenter c)= NUMERIC[16,2](100.0 - (childOptimizedPlanned(b, i, c) * 100.0 / childPlanned(b, i, c)));
 childSpent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), CostItem p) AND NOT skip(l) BY budget(l), p, costCenter(l) CHARWIDTH 8;
 
 planned 'Planned, USD' (CostItem i, CostCenter c) = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), i) BY costCenter(d) CHARWIDTH 8;
