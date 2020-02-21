@@ -24,8 +24,8 @@ FORM budgetExecution 'Budget execution'
     PROPERTIES(c) READONLY order, name, cap, costCenterCap, planned, childSpent
     ORDER order(c)
     
-    OBJECTS bd = BudgetDetail
-    PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    OBJECTS bd = BudgetDetail // By Cost type -> Detials
+    PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
     FILTERS selected(budget(bd)),
             level(costItem(bd), c),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bd)) OR NOT hideSensitive(mainRole(currentUser()))
@@ -46,8 +46,8 @@ FORM budgetExecution 'Budget execution'
     PROPERTIES(p, pc) READONLY totalChildCap, childPlanned, childSpentPercent, childSpent, spentCap BACKGROUND backgroundSpentCap(p, pc)
     ORDER order(pc)
 
-    OBJECTS pbd = BudgetDetail
-    PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    OBJECTS pbd = BudgetDetail // By period -> Period
+    PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
     FILTERS selected(p, budget(pbd)),
             level(costItem(pbd), pc),
             costCenter(pbd) = costCenter(p),
@@ -67,7 +67,7 @@ FORM budgetExecution 'Budget execution'
     
     OBJECTS bm = Budget
     PROPERTIES (bm) READONLY fromDate, toDate, name
-    PROPERTIES (bm, cm) READONLY averageCap, planned, spent BACKGROUND backgroundSpent(bm, cm)
+    PROPERTIES (bm, cm) READONLY averageCap, planned,optimizedPlanned,optimized, spent BACKGROUND backgroundSpent(bm, cm)
     FILTERS planned(bm, cm) OR spent(bm, cm)
     
     TREE periodCostItemsM pcm = CostItem PARENT parent(pcm)
@@ -75,8 +75,8 @@ FORM budgetExecution 'Budget execution'
     PROPERTIES(bm, pcm, cm) READONLY averageCap, childPlanned, childSpent BACKGROUND backgroundSpent(bm, pcm, cm)
     ORDER order(pcm)
 
-    OBJECTS bdm = BudgetDetail
-    PROPERTIES(bdm) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    OBJECTS bdm = BudgetDetail // By period -> Monthly
+    PROPERTIES(bdm) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
     FILTERS level(costItem(bdm), pcm),
             costCenter(bdm) = cm,  
             budget(bdm) == bm,
