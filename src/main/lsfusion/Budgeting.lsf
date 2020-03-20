@@ -20,4 +20,5 @@ REQUIRE Time, Utils, I18n, EvalScript, Security, Service, Scheduler, SQLUtils, C
         Employee, EmployeeLocation, EmployeeHiring,
         Account, BudgetAccount,
         LegalEntity, Stock, SkuGroup, Sku, SkuLedger, Receipt, Shipment,
-        PurchaseInvoiceEmployee;
+        PurchaseInvoiceEmployee,
+        Cycle, Step, BudgetCycle, POCycle, PaymentCycle;

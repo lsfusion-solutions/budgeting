@@ -1,0 +1,211 @@
+MODULE BudgetCycle;
+
+REQUIRE Cycle, Step, Budget, CostCenterEmployee;
+
+NAMESPACE Budget;
+
+EXTEND CLASS Stage 
+{
+    budgeting 'Budgeting cycle'
+}
+onStarted() + { 
+    color(Stage s) <- RGB(240, 225, 255) WHERE s == Stage.budgeting; 
+}
+GROUP roleBudgeting 'Budgeting';
+
+//--- Objects --
+
+CLASS BudgetPortion 'Budget Portion';
+TABLE budgetpart(BudgetPortion);
+
+author 'Author' = DATA Employee (BudgetPortion);
+authorName 'Author' (BudgetPortion b) = name(author(b)) CHARWIDTH 20;
+dateTime 'Created' = DATA DATETIME (BudgetPortion) CHARWIDTH 30;
+
+sbj = ABSTRACT BudgetPortion (Assign) MATERIALIZED;
+part = DATA BudgetPortion (BudgetDetail);
+
+planned 'Planned, USD' (BudgetPortion b) = GROUP SUM planned(BudgetDetail d) IF  part(d) == b;
+numberCostCenter 'Number by Cost Center' (BudgetPortion b, CostCenter c) = GROUP SUM 1 IF  part(BudgetDetail d) == b AND costCenter(d) == c;
+numberEmployee 'Number by Employee' (BudgetPortion b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF access(c,e); 
+access 'Access' (BudgetPortion b, Employee e) = TRUE IF numberEmployee(b,e) > 0; 
+
+author (BudgetPortion b) <- currentUser() WHEN SET(b IS BudgetPortion);
+dateTime(BudgetPortion b) <- currentDateTime() WHEN CHANGED(planned(b));
+
+META extendBudgetPortion (form)
+    EXTEND FORM ##form
+        PROPERTIES(o) READONLY authorName, dateTime, planned
+        
+        OBJECTS d = BudgetDetail
+        PROPERTIES (d) descBudget, nameCostCenter, canonicalNameCostItem, name, planned, description PANEL , NEW, DELETE
+        FILTERS part(d) == o
+    ;
+
+    DESIGN ##form {
+        OBJECTS {
+            NEW pane FIRST {
+                fill = 1;
+                alignment = STRETCH;
+                type = CONTAINERV;
+                NEW headerPart {
+                    alignment = STRETCH;
+                    type = CONTAINERH;
+                    MOVE PROPERTY(planned(o)) { alignment = START; }
+                    MOVE PROPERTY(authorName(o)) { alignment = CENTER; }
+                    MOVE PROPERTY(dateTime(o));
+                }
+                NEW proposal {
+                    type = CONTAINERH;
+                    fill = 1;
+                    alignment = STRETCH;
+                    MOVE BOX (d) {
+                        fill = 4;
+                        alignment = STRETCH;
+                    }
+                    MOVE PROPERTY (description(d)) {
+                        fill = 1;
+                        alignment = STRETCH;
+                        panelCaptionAbove = TRUE;
+                    }                                
+                }
+            }
+        }
+    }    
+END
+
+FORM budgetPortion 'Edit single Budget Proposal'
+    OBJECTS o = BudgetPortion PANEL
+
+    EDIT BudgetPortion OBJECT o
+;
+@extendBudgetPortion(budgetPortion);
+
+//--- Initialize Procedure ---
+
+@defineStep(budgeting,'Budgeting cycle',BudgetPortion);
+EXTEND CLASS Step
+{
+    enter 'Entered',
+    review 'Reviewed',
+    approve 'Approved',
+    reject 'Rejected',
+    update 'Update'
+}
+
+newPart '+ Add' ()  { 
+    NEWSESSION {
+        NEW b = BudgetPortion {
+            author (b) <- currentUser();
+            dateTime(b) <- currentDateTime();
+            step(b) <- Step.update;
+            SHOW EDIT BudgetPortion = b DOCKED MANAGESESSION;
+        }
+    }
+}
+
+FORM budgetPortions 'Budget Proposals'
+    OBJECTS o = BudgetPortion
+    PROPERTIES(o) READONLY authorName, dateTime, planned, nameStep
+    PROPERTIES newPart() 
+    PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
+    FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
+    
+    OBJECTS bcid=(b=Budget,c=CostCenter,i=CostItem,d = BudgetDetail)
+    PROPERTIES (b) READONLY description
+    PROPERTIES (c) READONLY name
+    PROPERTIES (i) READONLY canonicalName
+    PROPERTIES(d) READONLY name, planned, description PANEL
+    FILTERS o == part(d) AND b == budget(d) AND c == costCenter(d) AND i == costItem(d)
+    
+    LIST BudgetPortion OBJECT o
+;
+
+DESIGN budgetPortions {
+    //REMOVE TOOLBARRIGHT;
+    OBJECTS {
+        NEW pane {
+            fill = 1;
+            alignment = STRETCH;
+            type = CONTAINERV;
+            NEW proposal {
+                type = CONTAINERH;
+                fill = 4;
+                alignment = STRETCH;
+                MOVE BOX (o) {
+                    fill = 1;
+                    alignment = STRETCH;
+                    TOOLBAR {
+                        MOVE PROPERTY (newPart());
+                        MOVE PROPERTY (editPart);
+                        MOVE PROPERTY (delPart);
+                    }
+                }
+                NEW details {
+                    fill = 3;
+                    alignment = STRETCH;
+                    type = CONTAINERV;
+                    MOVE BOX (bcid) {
+                        fill = 4;
+                        alignment = STRETCH;
+                        PROPERTY (canonicalName(i)) { caption='Cost type'; }
+                    }
+                    MOVE PROPERTY (description(d)) {
+                        fill = 1;
+                        alignment = STRETCH;
+                        panelCaptionAbove = TRUE;
+                    }                                
+                }
+            } 
+            NEW proc {
+                fill = 1;
+                alignment = STRETCH;
+            }
+        }
+    }
+}
+
+//--- Procedure: Init and Update Steps ---
+
+@defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal edition');
+@extendBudgetPortion(update);
+
+//--- Procedure: Review and Review Updated Steps ---
+
+@defineAssignment(BudgetPortion, budgeting, enter, 'Financial review');
+@extendBudgetPortion(enter);
+
+//--- Procedure: Approve Step ---
+
+@defineAssignment(BudgetPortion, budgeting, review, 'Budget Approval');
+@extendBudgetPortion(review);
+
+//--- Procedure: Updating information on Reject Step ---
+
+@defineAssignment(BudgetPortion, budgeting, reject, 'Revising Budgeting record');
+@extendBudgetPortion(reject);
+
+//--- Logging Procedure ---
+
+FORM steplog 'Budgeting log' OBJECTS l = StepLog;
+DESIGN steplog { OBJECTS { NEW pane { fill = 1; alignment = STRETCH; } } };
+@extendDetails(steplog,pane,v);
+@showStepAttributes(steplog,in);
+@showStepAttributes(steplog,out);
+
+planned 'Planned, USD' = DATA NUMERIC[16,3](StepLog);
+EXTEND FORM steplog PROPERTIES planned(l) READONLY;
+WHEN SETCHANGED (stepIn(StepLog l)) DO {
+    planned(l) <- planned(sbj(l));
+}
+
+EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o;
+@extendDetails(budgetPortions,proc,h);
+@showStepAttributes(budgetPortions,in);
+
+NAVIGATOR {
+    proc {
+        NEW budgetPortions;
+        NEW steplog;
+    }
+}

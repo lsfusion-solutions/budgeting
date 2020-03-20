@@ -1,0 +1,125 @@
+MODULE Cycle;
+
+REQUIRE Authentication, Time, Security, Country, Employee;
+
+disableEvents = DATA LOCAL BOOLEAN ();
+backgroundFill = RGB(255, 255, 224);
+
+afg 'AFG' = DATA BOOLEAN (Employee);
+EXTEND FORM employee PROPERTIES(e) afg;
+DESIGN employee { application {MOVE PROPERTY(afg(e));}}
+
+// Process cycles
+
+CLASS Stage 'Procurement stages';
+TABLE stage(Stage);
+
+name (Stage s) = staticCaption(s) IF s IS Stage CHARWIDTH 30;
+color = DATA COLOR (Stage);
+
+
+FORM stages
+    OBJECTS s = Stage
+    PROPERTIES(s) READONLY name, color
+    LIST Stage OBJECT s
+;
+
+NAVIGATOR {
+    masterData {
+        NEW FOLDER cycles 'Budgeting' {
+            NEW stages;
+        }
+    }
+}
+
+CLASS ABSTRACT Assign 'Assignment';
+TABLE assign(Assign) FULL;
+
+stage 'Stage' = ABSTRACT Stage (Assign) MATERIALIZED;
+nameStage 'Budgeting Stage' (Assign s)= name(stage(s));
+color 'Background Color' (Assign s)= color(stage(s));
+
+desc 'Description' = ABSTRACT ISTRING[1000](Assign) MATERIALIZED CHARWIDTH 50;
+sum 'Sum, USD' = ABSTRACT NUMERIC[16,3](Assign) MATERIALIZED CHARWIDTH 50;
+exec 'Execute'  ABSTRACT (Assign);
+
+dateTimeStart 'Date/Time start' = ABSTRACT DATETIME (Assign) MATERIALIZED CHARWIDTH 20;
+dateStart 'Date start' (Assign s) = DATE(dateTimeStart(s)) MATERIALIZED INDEXED CHARWIDTH 10;
+dateLine 'Deadline' = ABSTRACT DATE (Assign) MATERIALIZED CHARWIDTH 20;
+overdue 'Overdue' (s) = dateLine(s) < currentDate();
+
+TABLE employeeTask (Employee, Assign);
+assigned = ABSTRACT BOOLEAN (Employee, Assign) MATERIALIZED;
+skip = ABSTRACT BOOLEAN (Employee, Assign);
+in (Employee e, Assign s) = assigned(e, s) AND NOT skip(e, s) MATERIALIZED;
+
+stage = DATA LOCAL Stage ();
+nameStage 'Select Stage' = name (stage());
+
+FORM assignments 'Assignments'
+    PROPERTIES () nameStage
+
+    OBJECTS s = Assign GRID
+    PROPERTIES(s) READONLY dateTimeStart, dateLine, desc BACKGROUND color(s) , sum// nameStage, 
+    PROPERTIES(s) exec GRID
+    ORDER dateTimeStart(s)
+    FILTERS //in(currentUser(), s),
+            stage(s) == stage() OR NOT stage()
+    
+    FILTERGROUP overdue
+        FILTER 'Overdue' overdue(s) 
+;
+
+DESIGN assignments {
+    NEW filters FIRST {
+        MOVE PROPERTY(nameStage());
+    }
+    BOX(s) {
+        PROPERTY(sum(s)) { valueWidth = 20; }
+        MOVE PROPERTY(exec(s)) {
+            width = 10;            
+            fontStyle = 'bold';
+        }
+    }
+}
+
+NAVIGATOR {
+    NEW FOLDER proc 'Budgeting' WINDOW toolbar BEFORE masterData {
+        NEW assignments;
+    }
+}
+
+CLASS AssignLog 'Logging';
+TABLE assignlog(AssignLog);
+
+nameStage 'Budgeing Stage' = DATA BPISTRING[100] (AssignLog) CHARWIDTH 30;
+nameStep 'Output Step' = DATA BPISTRING[100] (AssignLog) CHARWIDTH 30;
+startDateTime 'Date/Time Start' = DATA DATETIME (AssignLog) CHARWIDTH 20;
+dateLine 'deadline' = DATA DATE (AssignLog) CHARWIDTH 10;
+desc 'Description' = DATA STRING[1000](AssignLog) CHARWIDTH 50;
+
+userName 'User' = DATA STRING[100] (AssignLog) CHARWIDTH 30;
+dateTimeExec 'Date/Time Execution' = DATA DATETIME (AssignLog) CHARWIDTH 30;
+
+WHEN DROPPED(Assign o IS Assign) DO {
+    NEW l = AssignLog { 
+        nameStage(l) <- PREV(nameStage(o));
+        startDateTime(l) <- PREV(dateTimeStart(o));
+        dateLine(l) <- PREV(dateLine(o));
+        desc(l) <- PREV(desc(o));
+        userName(l) <- name(currentUser());
+        dateTimeExec(l) <- currentDateTime();
+    }
+}
+
+FORM assignLog 'Assignments Log'
+    OBJECTS t=AssignLog
+    PROPERTIES(t) READONLY nameStage, startDateTime, dateLine, desc, userName, dateTimeExec
+
+;
+
+NAVIGATOR {
+    logs {
+        NEW assignLog;
+    }
+}

@@ -1,0 +1,168 @@
+MODULE Step;
+
+REQUIRE Cycle;
+
+// Define Step
+META defineStep (id,capName,ClassName)
+    CLASS Step 'Stage Step';
+    TABLE step(Step);
+    name 'Stage Step' (Step s) = staticCaption(s) IF s IS Step CHARWIDTH 30;
+    //isSmall 'Small update' = DATA BOOLEAN(Step); // @ToDo
+    
+    step = DATA Step(##ClassName);
+    nameStep 'Stage Step' (##ClassName s) = staticCaption(step(s)) CHARWIDTH 30;
+    
+    CLASS StepLog 'Steps Log';
+    TABLE steplog(StepLog);
+    sbj = DATA ClassName(StepLog);
+    comment 'Comment' = DATA TEXT(StepLog);
+    
+    @defineStepAttributes(in,'step');
+    @defineStepAttributes(out,'result');
+    
+    stepLog = DATA StepLog(##ClassName);
+    WHEN SETCHANGED (step(##ClassName s)) DO {
+        NEW l = StepLog {
+            stepLog(s) <- l;
+            sbj(l) <- s;
+            stepIn(l) <- step(s);
+        }
+    }
+    WHEN SETCHANGED (stepOut(StepLog l)) DO {
+        step(sbj(l)) <- stepOut(l);
+    }
+    //isSmall 'Is small change' (StepLog l) = isSmall(stepIn(l));
+    
+    FORM steps
+        OBJECTS s = Step GRID
+        PROPERTIES(s) READONLY name
+        LIST Step OBJECT s
+    ;
+
+    EXTEND FORM options
+        OBJECTS s##id = Step
+        PROPERTIES(s##id) READONLY name
+    ;
+    
+    DESIGN options {
+        pane {
+            NEW step##id {
+                caption = 'Steps of '##capName;
+                MOVE BOX(s##id);
+            }
+        }
+    }
+
+END
+
+// User, DateTime and Logging attributes
+META defineStepAttributes(type,det)
+    // Procedure In and Out Steps
+    step###type ###det = DATA Step(StepLog);
+    name###type ###det (StepLog s) = name(step###type(s)) CHARWIDTH 30;
+    // Users that started and finished the step
+    user###type ###det##' User' = DATA Employee(StepLog);
+    userName###type ###det##' set by' (StepLog s) = name(user###type(s)) CHARWIDTH 30;
+    // Timesteps of first start anf finish    
+    dateTime###type ###det##' Date/Time' = DATA DATETIME (StepLog);
+    date###type ###det##' Date' (StepLog s) = DATE(dateTime###type(s)) CHARWIDTH 30;
+    // initialization
+    WHEN SETCHANGED (step###type(StepLog l)) DO {
+        user###type(l) <- currentUser();
+        dateTime###type(l) <- currentDateTime();
+    }
+END
+
+META showStepAttributes(form,type)
+    EXTEND FORM form
+        PROPERTIES(l) READONLY name###type, userName###type, dateTime###type
+    ;
+END
+
+// Log viewer
+META extendDetails(form,pane,orientation)
+    EXTEND FORM form
+        PROPERTIES(l) READONLY PANEL comment
+        
+        //FILTERGROUP updates
+        //    FILTER 'Hide small updates' NOT isSmall(l) DEFAULT
+    ;
+    
+    DESIGN form {
+        pane {
+            NEW stepLog {
+                fill = 1;
+                alignment = STRETCH;
+                caption = 'Process steps log';
+                type = CONTAINER###orientation;
+                MOVE BOX(l) {
+                    caption = '';
+                    fill = 4;
+                    alignment = STRETCH;
+                }
+                MOVE PROPERTY(comment(l)) {
+                    fill = 1;
+                    alignment = STRETCH;
+                    panelCaptionAbove = TRUE;
+                }
+            }
+        }
+    }
+END
+
+// Assignment
+META defineAssignmentForm(subject,makeStep,header)
+
+    FORM makeStep header
+        OBJECTS o = ##subject PANEL
+        
+        OBJECTS l = StepLog PANEL
+        PROPERTIES(l) nameOut BACKGROUND backgroundFill(),comment
+        FILTERS l == stepLog(o)
+    ;
+    
+    DESIGN makeStep {
+        OBJECTS {        
+            NEW step {
+                alignment = STRETCH;
+                type = CONTAINERV;
+                MOVE PROPERTY(nameOut(l));
+                MOVE PROPERTY(comment(l)) { height = 160; panelCaptionAbove = TRUE; }
+            }
+        }
+    }
+    
+    exec (Assign###makeStep a) + { 
+	NEWSESSION {
+        SHOW makeStep OBJECTS o = sbj(a);//, l = stepLog(a) ;
+    }
+}
+
+END
+
+META defineAssignment(subject, staging, makeStep, header)
+
+    CLASS Assign###makeStep header : Assign;
+    
+    step###makeStep (##subject s) = step(s) == Step.makeStep;
+    assign###makeStep = AGGR Assign###makeStep WHERE step###makeStep(##subject sbj) MATERIALIZED INDEXED;
+    //assign###makeStep (##subject sbj) = AGGR Assign###makeStep WHERE step##subject(sbj);
+    sbj (Assign###makeStep a) += sbj(a);
+    dateTimeStart (Assign###makeStep a) += currentDateTime() IF a IS Assign###makeStep;
+    desc (Assign###makeStep a) += header IF a IS Assign###makeStep;
+    sum (Assign###makeStep a) += planned(sbj(a)) IF a IS Assign###makeStep;
+    
+    stage (Assign###makeStep a) += Stage.staging IF a IS Assign###makeStep;
+    
+    makeStep header = DATA BOOLEAN (UserRole) IN role###staging;
+    EXTEND FORM securityPolicy
+        PROPERTIES(ur) staging###makeStep = makeStep PANEL
+    ;
+    
+    has###makeStep(Employee e)  = GROUP SUM 1 IF has(e AS Employee, UserRole role) AND makeStep(role) MATERIALIZED;
+    assigned (Employee e, Assign###makeStep s) += has###makeStep(e) AND s IS Assign###makeStep; 
+    
+    @defineAssignmentForm(subject,makeStep,header);
+    
+END
+

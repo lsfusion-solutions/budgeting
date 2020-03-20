@@ -1,0 +1,13 @@
+MODULE POCycle;
+
+REQUIRE Step, PurchaseInvoice;
+
+EXTEND CLASS Stage 
+{
+    po 'Purchase Order formation'
+}
+onStarted() + { 
+    color(Stage s) <- RGB(225, 255, 240) WHERE s == Stage.po; 
+}
+
+

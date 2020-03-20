@@ -28,6 +28,7 @@ sensitive = ABSTRACT BOOLEAN (BudgetDetail) MATERIALIZED;
 
 budget = DATA Budget (BudgetDetail) NONULL DELETE;
 nameBudget 'Budget' (BudgetDetail d) = name(budget(d));
+descBudget 'Budget' (BudgetDetail d) = description(budget(d)) CHARWIDTH 30;
 
 costCenter = DATA CostCenter (BudgetDetail);
 nameCostCenter 'Cost Center' (BudgetDetail d) = name(costCenter(d));

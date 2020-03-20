@@ -1,0 +1,11 @@
+MODULE PaymentCycle;
+
+REQUIRE Step, Expense;
+
+EXTEND CLASS Stage 
+{
+    invoice 'Invoice Payment'
+}
+onStarted() + { 
+    color(Stage s) <- RGB(240, 255, 225) WHERE s == Stage.invoice; 
+}
