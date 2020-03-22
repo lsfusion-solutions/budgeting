@@ -140,7 +140,7 @@ FORM reconcileBudgetDetail 'Reconcile budget detail'
     
     OBJECTS d = BudgetDetail
     PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
-    FILTERS (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+    FILTERS (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) AND NOT hidden(d)
     
     FILTERGROUP date
         FILTER 'Same month' dt >= fromDate(budget(d)) AND dt <= toDate(budget(d)) DEFAULT

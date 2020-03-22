@@ -43,7 +43,8 @@ FORM expenses 'Expenses'
     OBJECTS d = BudgetDetail
     PROPERTIES(d) READONLY nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
     FILTERS budget(d) == b,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(d)
     
     OBJECTS e = Expense
     PROPERTIES(e) date, nameCurrency, amount, note, reference, NEW, DELETE

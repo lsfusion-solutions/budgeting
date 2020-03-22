@@ -140,7 +140,7 @@ META defineAssignmentForm(subject,makeStep,header)
 
 END
 
-META defineAssignment(subject, staging, makeStep, header)
+META defineAssignment(subject, staging, makeStep, header, summator)
 
     CLASS Assign###makeStep header : Assign;
     
@@ -150,7 +150,7 @@ META defineAssignment(subject, staging, makeStep, header)
     sbj (Assign###makeStep a) += sbj(a);
     dateTimeStart (Assign###makeStep a) += currentDateTime() IF a IS Assign###makeStep;
     desc (Assign###makeStep a) += header IF a IS Assign###makeStep;
-    sum (Assign###makeStep a) += planned(sbj(a)) IF a IS Assign###makeStep;
+    sum (Assign###makeStep a) += ##summator(sbj(a)) IF a IS Assign###makeStep;
     
     stage (Assign###makeStep a) += Stage.staging IF a IS Assign###makeStep;
     

@@ -48,7 +48,7 @@ CONSTRAINT contractor(BudgetDetail d) AND NOT [ GROUP SUM 1 IF hours(Period p, C
     CHECKED BY contractor[BudgetDetail] MESSAGE 'Selected contractor for budget detail doesn\'t have assigned hours or sum for the cost center';
 
 budgetDetail (CostCenter c, Budget b, Contractor cc) = GROUP LAST BudgetDetail d BY costCenter(d), budget(d), contractor(d);
-contractors 'Total amount, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM planned(BudgetDetail d) BY costCenter(d), budget(d), contractor(d);
+contractors 'Total amount, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY costCenter(d), budget(d), contractor(d);
 contractors 'Total amount (for month), USD' (Period p, Budget b, Contractor cc) = contractors(costCenter(p), b, cc); 
 
 monthlyContractors 'Total amount monthly, USD' (Period p, Contractor cc) = GROUP SUM contractors(costCenter(p), Budget b, cc) IF selected(p, b);

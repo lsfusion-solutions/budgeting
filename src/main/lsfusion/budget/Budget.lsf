@@ -25,6 +25,7 @@ CLASS BudgetDetail 'Budget detail';
 TABLE budgetDetail(BudgetDetail);
 
 sensitive = ABSTRACT BOOLEAN (BudgetDetail) MATERIALIZED;
+hidden = DATA BOOLEAN (BudgetDetail); // eliminate budgets that are being under approval
 
 budget = DATA Budget (BudgetDetail) NONULL DELETE;
 nameBudget 'Budget' (BudgetDetail d) = name(budget(d));
@@ -79,23 +80,23 @@ budget = ABSTRACT Budget (ExpenseLedger) MATERIALIZED INDEXED;
 budgetDetail = ABSTRACT BudgetDetail (ExpenseLedger) MATERIALIZED INDEXED;
 spent 'Spent, USD' (BudgetDetail d) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budgetDetail(l);
 
-planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) BY budget(d), costItem(d), costCenter(d) CHARWIDTH 8; 
-childPlanned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
+planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d), costItem(d), costCenter(d) CHARWIDTH 8; 
+childPlanned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) AND NOT hidden(d) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
 childSpent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), CostItem p) AND NOT skip(l) BY budget(l), p, costCenter(l) CHARWIDTH 8;
 
-planned 'Planned, USD' (CostItem i, CostCenter c) = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), i) BY costCenter(d) CHARWIDTH 8;
+planned 'Planned, USD' (CostItem i, CostCenter c) = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), i) AND NOT hidden(d) BY costCenter(d) CHARWIDTH 8;
 
-planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p CHARWIDTH 8; 
+planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) AND NOT hidden(d) BY budget(d), p CHARWIDTH 8; 
 spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costItem(l) CHARWIDTH 8; 
 childSpent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), CostItem p) AND NOT skip(l) BY budget(l), p CHARWIDTH 8; 
 
-planned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) BY budget(d), costCenter(d);
-optimizedPlanned 'Optimized, USD'  (Budget b, CostCenter cp) = GROUP  SUM optimizedPlanned(BudgetDetail d) BY  budget(d), costCenter(d);
+planned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d), costCenter(d);
+optimizedPlanned 'Optimized, USD'  (Budget b, CostCenter cp) = GROUP  SUM optimizedPlanned(BudgetDetail d) IF NOT hidden(d) BY  budget(d), costCenter(d);
 optimized 'Optimized, %' (Budget b, CostCenter cp) = NUMERIC[16,2](100.0 - (optimizedPlanned(b, cp) * 100.0 / planned(b, cp)));
-insensitivePlanned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT sensitive(d) BY budget(d), costCenter(d); 
+insensitivePlanned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT sensitive(d) AND NOT hidden(d) BY budget(d), costCenter(d); 
 spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costCenter(l); 
 
-planned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) BY budget(d); 
+planned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d); 
 spent 'Spent, USD' (Budget b) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l); 
 
 FORM budget 'Budget'
@@ -116,7 +117,8 @@ FORM budget 'Budget'
     PROPERTIES(d) nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
     PROPERTIES(d) NEW, DELETE
     FILTERS budget(d) == b,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(d)
     
     FILTERGROUP costCenter
         FILTER 'By cost center' costCenter(d) == cp
@@ -205,7 +207,8 @@ FORM budgetDetails 'Budget details'
     PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
     FILTERS costCenter(d) == filterCostCenter() OR NOT filterCostCenter(),
             costItem(d) == filterCostItem() OR NOT filterCostItem(),
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(d) 
         
     LIST BudgetDetail OBJECT d
 ;

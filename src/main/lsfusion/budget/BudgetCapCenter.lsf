@@ -57,9 +57,9 @@ overInsensitiveCap 'Cap, USD' (Period p, CostItem i) = OVERRIDE cap(p, i), PREV(
 totalChildCap 'Cap, USD' (Period p, CostItem i) = GROUP SUM totalCap(p, CostItem child) IF level(child, i);
 overTotalChildCap 'Cap, USD' (Period p, CostItem i) = OVERRIDE cap(p, i), PREV(totalChildCap(p, i));  
 
-planned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND costItem(d) == i AND costCenter(d) == costCenter(p);
-childPlanned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND level(costItem(d), i) AND costCenter(d) == costCenter(p);
-insensitivePlanned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND level(costItem(d), i) AND costCenter(d) == costCenter(p) AND NOT sensitive(d);
+planned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND costItem(d) == i AND costCenter(d) == costCenter(p) AND NOT hidden(d);
+childPlanned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND level(costItem(d), i) AND costCenter(d) == costCenter(p) AND NOT hidden(d);
+insensitivePlanned 'Planned, USD' (Period p, CostItem i) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND level(costItem(d), i) AND costCenter(d) == costCenter(p) AND NOT sensitive(d) AND NOT hidden(d);
 insensitiveSpent 'Spent, USD' (Period p, CostItem i) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) AND selected(p, budget(l)) AND level(costItem(l), i) AND costCenter(l) == costCenter(p) AND NOT sensitive(l);
 
 backgroundCap (Period p, CostItem i) = CASE WHEN CHANGED(cap(p, i)) THEN RGB(255,255,128)
@@ -108,7 +108,8 @@ FORM costCenterBudget 'Project budget'
     FILTERS selected(p, budget(pbd)),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pbd)) OR NOT hideSensitive(mainRole(currentUser())),
             level(costItem(pbd), ci),
-            costCenter(pbd) = costCenter(p)  
+            costCenter(pbd) = costCenter(p),
+            NOT hidden(pbd)  
 
     OBJECTS pe = ExpenseLedger
     PROPERTIES(pe) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
@@ -181,7 +182,8 @@ EXTEND FORM costCenterBudget
     PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
     FILTERS costCenter(bmd) == c,
             budget(bmd) == bm,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(bmd)
 
     TREE costItemsM cim = CostItem PARENT parent(cim)
     PROPERTIES(cim) READONLY order, name
@@ -244,7 +246,7 @@ NAVIGATOR {
 
 totalChildCap 'Cap, USD' (Period p) = GROUP SUM totalCap(p, CostItem i);
 
-planned 'Planned, USD' (Period p) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND costCenter(d) == costCenter(p);
+planned 'Planned, USD' (Period p) = GROUP SUM planned(BudgetDetail d) IF selected(p, budget(d)) AND costCenter(d) == costCenter(p) AND NOT hidden(d);
 
 totalChildCap (Period p, Budget b, CostItem i) = totalChildCap(p, i) / budgetCount(p) IF selected(p, b);
 
@@ -314,7 +316,7 @@ WHEN SET(Invoice i IS Invoice) AND NOT approved(i) OR DROPPED(approved(i)) DO {
 left 'Left' (BudgetDetail d) = planned(d) (-) invoiced(d);
 
 EXTEND FORM costCenterBudget
-    PROPERTIES(bmd) addInvoice GRID, invoiced, left
+    //PROPERTIES(bmd) addInvoice GRID, invoiced, left
     
     OBJECTS i = Invoice
     PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved, note

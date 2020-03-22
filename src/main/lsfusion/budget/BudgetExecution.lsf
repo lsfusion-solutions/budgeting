@@ -28,7 +28,8 @@ FORM budgetExecution 'Budget execution'
     PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
     FILTERS selected(budget(bd)),
             level(costItem(bd), c),
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bd)) OR NOT hideSensitive(mainRole(currentUser()))
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bd)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(bd)
 
     OBJECTS e = ExpenseLedger
     PROPERTIES(e) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
@@ -51,7 +52,8 @@ FORM budgetExecution 'Budget execution'
     FILTERS selected(p, budget(pbd)),
             level(costItem(pbd), pc),
             costCenter(pbd) = costCenter(p),
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pbd)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pbd)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(pbd) 
 
     OBJECTS pe = ExpenseLedger
     PROPERTIES(pe) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
@@ -80,7 +82,8 @@ FORM budgetExecution 'Budget execution'
     FILTERS level(costItem(bdm), pcm),
             costCenter(bdm) = cm,  
             budget(bdm) == bm,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bdm)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bdm)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(bdm) 
 
     OBJECTS em = ExpenseLedger
     PROPERTIES(em) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
