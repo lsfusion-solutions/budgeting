@@ -52,6 +52,19 @@ META defineStep (id,capName,ClassName)
             }
         }
     }
+    
+    showVariants 'Output Options' = DATA BOOLEAN (Step,Step);
+    showVariants 'Output Options' (StepLog l) = showVariants(stepIn(l),stepOut(l));
+    CONSTRAINT NOT showVariants(Step sIn, Step sOut) AND stepIn(StepLog l) == sIn AND stepOut(l) == sOut CHECKED BY stepOut[StepLog] MESSAGE 'Output step is not allowed by procedure';
+    TABLE stepStep(Step,Step);
+    FORM steps###id ##capName
+        OBJECTS sOut = Step
+    
+        OBJECTS sIn = Step
+        PROPERTIES (sIn) name READONLY
+        PROPERTIES showVariants(sIn,sOut) COLUMNS (sOut) HEADER name(sOut)
+    ; 
+    NAVIGATOR { masterData { cycles { NEW steps###id; } } }
 
 END
 
@@ -160,7 +173,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     ;
     
     has###makeStep(Employee e)  = GROUP SUM 1 IF has(e AS Employee, UserRole role) AND makeStep(role) MATERIALIZED;
-    assigned (Employee e, Assign###makeStep s) += has###makeStep(e) AND s IS Assign###makeStep; 
+    //assigned (Employee e, Assign###makeStep s) += has###makeStep(e) AND s IS Assign###makeStep; 
     
     @defineAssignmentForm(subject,makeStep,header);
     

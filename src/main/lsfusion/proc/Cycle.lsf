@@ -63,7 +63,7 @@ FORM assignments 'Assignments'
     PROPERTIES(s) READONLY dateTimeStart, dateLine, desc BACKGROUND color(s) , sum// nameStage, 
     PROPERTIES(s) exec GRID
     ORDER dateTimeStart(s)
-    FILTERS //in(currentUser(), s),
+    FILTERS in(currentUser(), s),
             stage(s) == stage() OR NOT stage()
     
     FILTERGROUP overdue

@@ -177,21 +177,25 @@ DESIGN budgetPortions {
 
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal edition',planned);
 @extendBudgetPortion(update);
+assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;// OR access(sbj(a),e);
 
 //--- Procedure: Review and Review Updated Steps ---
 
 @defineAssignment(BudgetPortion, budgeting, enter, 'Financial review',planned);
 @extendBudgetPortion(enter);
+assigned(Employee e,AssignEnter a) += TRUE IF (afg(e) OR hasEnter(e)) AND a IS AssignEnter;
 
 //--- Procedure: Approve Step ---
 
 @defineAssignment(BudgetPortion, budgeting, review, 'Budget Approval',planned);
 @extendBudgetPortion(review);
+assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR hasReview(e)) AND a IS AssignReview;
 
 //--- Procedure: Updating information on Reject Step ---
 
 @defineAssignment(BudgetPortion, budgeting, reject, 'Revising Budgeting record',planned);
 @extendBudgetPortion(reject);
+assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
 
 //--- Logging Procedure ---
 
