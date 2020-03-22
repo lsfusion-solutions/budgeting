@@ -59,13 +59,13 @@ END
 META defineStepAttributes(type,det)
     // Procedure In and Out Steps
     step###type ###det = DATA Step(StepLog);
-    name###type ###det (StepLog s) = name(step###type(s)) CHARWIDTH 30;
+    name###type ###det (StepLog s) = name(step###type(s)) CHARWIDTH 20;
     // Users that started and finished the step
     user###type ###det##' User' = DATA Employee(StepLog);
     userName###type ###det##' set by' (StepLog s) = name(user###type(s)) CHARWIDTH 30;
     // Timesteps of first start anf finish    
     dateTime###type ###det##' Date/Time' = DATA DATETIME (StepLog);
-    date###type ###det##' Date' (StepLog s) = DATE(dateTime###type(s)) CHARWIDTH 30;
+    date###type ###det##' Date' (StepLog s) = DATE(dateTime###type(s)) CHARWIDTH 20;
     // initialization
     WHEN SETCHANGED (step###type(StepLog l)) DO {
         user###type(l) <- currentUser();

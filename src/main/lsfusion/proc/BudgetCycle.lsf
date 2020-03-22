@@ -187,21 +187,74 @@ DESIGN budgetPortions {
 
 //--- Logging Procedure ---
 
-FORM steplog 'Budgeting log' OBJECTS l = StepLog;
-DESIGN steplog { OBJECTS { NEW pane { fill = 1; alignment = STRETCH; } } };
-@extendDetails(steplog,pane,v);
+authorName 'Proposal Author' (StepLog s) = authorName(sbj(s)) CHARWIDTH 20;
+dateTime 'Proposal Created' (StepLog s) = dateTime(sbj(s)) CHARWIDTH 30;
+planned 'Planned, USD' = DATA NUMERIC[16,3](StepLog);
+
+CLASS BudgetDetailLog 'Budgeting Log';
+TABLE budgetDetailLog(BudgetDetailLog);
+
+log 'Step Log' = DATA StepLog(BudgetDetailLog);
+budget 'Budget' = DATA Budget(BudgetDetailLog);
+costCenter 'Cost Center' = DATA CostCenter(BudgetDetailLog);
+costItem 'Cost Item' = DATA CostItem(BudgetDetailLog);
+name 'Name' = DATA STRING[100](BudgetDetailLog);
+description 'Description' = DATA RICHTEXT(BudgetDetailLog);
+planned 'Planned, USD' = DATA NUMERIC[16,3](BudgetDetailLog);
+
+WHEN SETCHANGED (stepOut(StepLog l)) DO {
+    planned(l) <- planned(sbj(l));
+    FOR part(BudgetDetail b) == sbj(l) NEW d = BudgetDetailLog DO {
+        log(d) <- l;
+        budget(d) <- budget(b);
+        costCenter(d) <- costCenter(b);
+        costItem(d) <- costItem(b);
+        name(d) <- name(b);
+        description(d) <- description(b);
+        planned(d) <- planned(b);
+    }
+}
+
+FORM steplog 'Budgeting log'
+    OBJECTS l = StepLog
+    PROPERTIES(l) READONLY authorName, dateTime, planned READONLY
+    
+    OBJECTS d = BudgetDetailLog
+    PROPERTIES READONLY =description(budget(d)), =name(costCenter(d)), =canonicalName(costItem(d))
+    PROPERTIES (d) READONLY name, planned, description PANEL
+    FILTERS log(d) == l
+;
+DESIGN steplog {
+    OBJECTS { 
+        NEW pane { 
+            fill = 2; 
+            alignment = STRETCH; 
+        }
+        NEW details { 
+            fill = 1; 
+            caption = 'Details of budgeting log';
+            type = CONTAINERH; 
+            alignment = STRETCH; 
+            MOVE BOX(d) {
+                caption = '';
+                fill = 4;
+                alignment = STRETCH;
+            }
+            MOVE PROPERTY(description(d)) {
+                fill = 1;
+                alignment = STRETCH;
+                panelCaptionAbove = TRUE;
+            }
+        }
+    }
+}
+@extendDetails(steplog,pane,h);
 @showStepAttributes(steplog,in);
 @showStepAttributes(steplog,out);
 
-planned 'Planned, USD' = DATA NUMERIC[16,3](StepLog);
-EXTEND FORM steplog PROPERTIES planned(l) READONLY;
-WHEN SETCHANGED (stepIn(StepLog l)) DO {
-    planned(l) <- planned(sbj(l));
-}
-
-EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o;
+EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND stepOut(l);
 @extendDetails(budgetPortions,proc,h);
-@showStepAttributes(budgetPortions,in);
+@showStepAttributes(budgetPortions,out);
 
 NAVIGATOR {
     proc {
