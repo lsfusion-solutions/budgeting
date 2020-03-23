@@ -108,8 +108,8 @@ FORM costCenterBudget 'Project budget'
     FILTERS selected(p, budget(pbd)),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pbd)) OR NOT hideSensitive(mainRole(currentUser())),
             level(costItem(pbd), ci),
-            costCenter(pbd) = costCenter(p),
-            NOT hidden(pbd)  
+            costCenter(pbd) = costCenter(p)//,
+            //NOT hidden(pbd)  
 
     OBJECTS pe = ExpenseLedger
     PROPERTIES(pe) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
@@ -182,8 +182,8 @@ EXTEND FORM costCenterBudget
     PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
     FILTERS costCenter(bmd) == c,
             budget(bmd) == bm,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser())),
-            NOT hidden(bmd)
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))//,
+            //NOT hidden(bmd)
 
     TREE costItemsM cim = CostItem PARENT parent(cim)
     PROPERTIES(cim) READONLY order, name

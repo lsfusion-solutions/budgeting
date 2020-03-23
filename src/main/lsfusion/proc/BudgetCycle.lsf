@@ -197,6 +197,22 @@ assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR ha
 @extendBudgetPortion(reject);
 assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
 
+//--- Automotive Proposal initialization ---
+
+author 'Author' = DATA Employee(BudgetDetail);
+searchProposal 'Search active proposals' (Employee e) = GROUP LAST BudgetPortion p IF step(p) == Step.update AND author(p) == e;
+WHEN SET (budget(BudgetDetail b)) AND NOT part(b) DO {
+    author(b) <- currentUser();
+    hidden(b) <- TRUE;
+    IF searchProposal(author(b)) THEN
+        part(b) <- searchProposal(author(b));
+    ELSE
+        NEW p = BudgetPortion {        
+            part(b) <- p;
+            step(p) <- Step.update;
+        }
+}
+
 //--- Logging Procedure ---
 
 authorName 'Proposal Author' (StepLog s) = authorName(sbj(s)) CHARWIDTH 20;
