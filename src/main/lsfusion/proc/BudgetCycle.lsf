@@ -1,6 +1,6 @@
 MODULE BudgetCycle;
 
-REQUIRE Cycle, Step, Budget, CostCenterEmployee;
+REQUIRE Cycle, Step, Budget, CostCenterEmployee, BudgetCapCenter;
 
 NAMESPACE Budget;
 
@@ -178,6 +178,17 @@ DESIGN budgetPortions {
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal edition',planned);
 @extendBudgetPortion(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;// OR access(sbj(a),e);
+
+userEntered 'Send all new records for Review' () { 
+        FOR StepLog l AND stepIn(l) = Step.update AND NOT stepOut(l) AND author(sbj(l)) == currentUser() DO {
+            stepOut(l) <- Step.enter;
+            DIALOG completeUpdate OBJECTS l = l FLOAT MANAGESESSION;
+        } 
+} TOOLBAR;
+userUpdated 'There is new proposal within this employee' () = 
+            TRUE IF [GROUP SUM 1 IF sbj(StepLog l) == part(BudgetDetail d) AND stepIn(l) = Step.update AND NOT stepOut(l) BY author(sbj(l))](currentUser());
+EXTEND FORM costCenterBudget PROPERTIES userEntered() SHOWIF userUpdated();
+DESIGN costCenterBudget { BOX (bm) {TOOLBAR {MOVE PROPERTY(userEntered()); } } }
 
 //--- Procedure: Review and Review Updated Steps ---
 

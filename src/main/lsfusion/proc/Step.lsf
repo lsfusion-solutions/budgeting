@@ -147,9 +147,9 @@ META defineAssignmentForm(subject,makeStep,header)
     
     exec (Assign###makeStep a) + { 
 	NEWSESSION {
-        SHOW makeStep OBJECTS o = sbj(a);//, l = stepLog(a) ;
+        SHOW makeStep OBJECTS o = sbj(a);
+        }
     }
-}
 
 END
 
@@ -176,6 +176,23 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     //assigned (Employee e, Assign###makeStep s) += has###makeStep(e) AND s IS Assign###makeStep; 
     
     @defineAssignmentForm(subject,makeStep,header);
+    
+    FORM complete###makeStep header
+        OBJECTS l = StepLog PANEL
+        PROPERTIES(l) nameOut BACKGROUND backgroundFill(),comment
+        PROPERTIES plan = planned(sbj(l))
+    ;
+    
+    DESIGN complete###makeStep {
+    //height = 400; width =480; 
+        NEW pane FIRST {
+            fill = 1;
+            type = CONTAINERV;
+            MOVE PROPERTY(nameOut(l)) {alignment = STRETCH;}
+            MOVE PROPERTY(plan) {alignment = STRETCH; caption = 'Total planned, USD';}
+            MOVE PROPERTY(comment(l)) {panelCaptionAbove = TRUE;  alignment = STRETCH; fill = 1;}
+        }
+    }
     
 END
 
