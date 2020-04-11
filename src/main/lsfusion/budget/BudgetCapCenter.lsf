@@ -169,6 +169,7 @@ DESIGN costCenterBudget {
 // Monthly
 
 spentLevel 'Spent, USD' (Budget b, CostItem i, CostCenter c) = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), i) AND NOT skip(l) BY budget(l), costCenter(l);
+readonlyProc (BudgetDetail d, CostCenter c) = isProcessing(d) OR readonly(d, c);
 
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
@@ -177,7 +178,7 @@ EXTEND FORM costCenterBudget
     FILTERS selected(bm, c)
     
     OBJECTS bmd = BudgetDetail
-    PROPERTIES(bmd) READONLYIF readonly(bmd, c) canonicalNameCostItem, name, planned, spent, description PANEL, sensitive, NEW, DELETE
+    PROPERTIES(bmd) READONLYIF readonlyProc(bmd, c) canonicalNameCostItem, name, planned, spent, description PANEL, sensitive, NEW, DELETE
     PROPERTIES(bmd) optimizedPlanned AFTER planned(bmd)
     PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
     FILTERS costCenter(bmd) == c,

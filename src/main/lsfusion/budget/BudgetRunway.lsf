@@ -50,7 +50,7 @@ EXTEND FORM budgets
     FILTERS level(i, ip)
 
     OBJECTS id = BudgetDetail
-    PROPERTIES(id) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
+    PROPERTIES(id) READONLYIF isProcessing(id) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
     FILTERS level(costItem(id), i),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(id)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT hidden(id) 
@@ -108,7 +108,7 @@ EXTEND FORM budgets
     PROPERTIES childPlanned(bic, i, c) COLUMNS (bic) HEADER name(bic) ON CHANGE changePlanned(bic, i, c) ON CHANGEWYS changePlanned(bic, i, c) BACKGROUND changedPlanned(bic, i, c)
 
     OBJECTS icd = BudgetDetail
-    PROPERTIES(icd) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
+    PROPERTIES(icd) READONLYIF isProcessing(icd) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
     FILTERS level(costItem(icd), i),
             costCenter(icd) == c,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(icd)) OR NOT hideSensitive(mainRole(currentUser())),

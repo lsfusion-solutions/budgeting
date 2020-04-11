@@ -26,6 +26,8 @@ TABLE budgetDetail(BudgetDetail);
 
 sensitive = ABSTRACT BOOLEAN (BudgetDetail) MATERIALIZED;
 hidden = DATA BOOLEAN (BudgetDetail); // eliminate budgets that are being under approval
+isProcessing = DATA BOOLEAN (BudgetDetail); // enable Budget Detail items for user editing: TRUE is SHOW
+isBudgeting (BudgetDetail d) = NOT isProcessing(d); // disable Budget Detail items for user editing: TRUE is READONLY
 
 budget = DATA Budget (BudgetDetail) NONULL DELETE;
 nameBudget 'Budget' (BudgetDetail d) = name(budget(d));
@@ -114,8 +116,8 @@ FORM budget 'Budget'
     ORDER order(ci) 
     
     OBJECTS d = BudgetDetail
-    PROPERTIES(d) nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
-    PROPERTIES(d) NEW, DELETE
+    PROPERTIES(d) READONLYIF isProcessing(d) nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
+    PROPERTIES(d) SHOWIF isBudgeting(d) NEW, DELETE
     FILTERS budget(d) == b,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT hidden(d)

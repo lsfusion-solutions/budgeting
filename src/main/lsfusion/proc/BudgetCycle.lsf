@@ -98,6 +98,9 @@ WHEN SETCHANGED (step(BudgetPortion s)) DO {
         IF step(s) == Step.update OR step(s) == Step.enter OR step(s) == Step.reject THEN
             hidden(d) <- TRUE;
         ELSE hidden(d) <- NULL;
+        IF step(s) == Step.enter OR step(s) == Step.review OR step(s) == Step.approve THEN
+            isProcessing(d) <- TRUE;
+        ELSE isProcessing(d) <- NULL;
     }
 }
 
