@@ -20,10 +20,10 @@ TABLE budgetpart(BudgetPortion);
 
 author 'Author' = DATA Employee (BudgetPortion);
 authorName 'Author' (BudgetPortion b) = name(author(b)) CHARWIDTH 20;
-dateTime 'Created' = DATA DATETIME (BudgetPortion) CHARWIDTH 30;
+dateTime 'Created' = DATA DATETIME (BudgetPortion) CHARWIDTH 20;
 
 sbj = ABSTRACT BudgetPortion (Assign) MATERIALIZED;
-part = DATA BudgetPortion (BudgetDetail);
+part = DATA BudgetPortion (BudgetDetail); // Budget Proposal may include multiple items, each is named BudgetDetail
 
 planned 'Planned, USD' (BudgetPortion b) = GROUP SUM planned(BudgetDetail d) IF  part(d) == b;
 numberCostCenter 'Number by Cost Center' (BudgetPortion b, CostCenter c) = GROUP SUM 1 IF  part(BudgetDetail d) == b AND costCenter(d) == c;
@@ -76,7 +76,6 @@ END
 
 FORM budgetPortion 'Edit single Budget Proposal'
     OBJECTS o = BudgetPortion PANEL
-
     EDIT BudgetPortion OBJECT o
 ;
 @extendBudgetPortion(budgetPortion);
@@ -159,7 +158,10 @@ DESIGN budgetPortions {
                     MOVE BOX (bcid) {
                         fill = 4;
                         alignment = STRETCH;
+                        PROPERTY (description(b)) { caption='Budget'; }
+                        PROPERTY (name(c)) { caption='Cost Center'; }
                         PROPERTY (canonicalName(i)) { caption='Cost type'; }
+                        PROPERTY (name(d)) { caption='Budget Detail'; }
                     }
                     MOVE PROPERTY (description(d)) {
                         fill = 1;
@@ -178,7 +180,7 @@ DESIGN budgetPortions {
 
 //--- Procedure: Init and Update Steps ---
 
-@defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal edition',planned);
+@defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal editing',planned);
 @extendBudgetPortion(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;// OR access(sbj(a),e);
 
@@ -230,7 +232,7 @@ WHEN SET (budget(BudgetDetail b)) AND NOT part(b) DO {
 //--- Logging Procedure ---
 
 authorName 'Proposal Author' (StepLog s) = authorName(sbj(s)) CHARWIDTH 20;
-dateTime 'Proposal Created' (StepLog s) = dateTime(sbj(s)) CHARWIDTH 30;
+dateTime 'Proposal Created' (StepLog s) = dateTime(sbj(s)) CHARWIDTH 20;
 planned 'Planned, USD' = DATA NUMERIC[16,3](StepLog);
 
 CLASS BudgetDetailLog 'Budgeting Log';
@@ -299,8 +301,6 @@ EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FI
 @showStepAttributes(budgetPortions,out);
 
 NAVIGATOR {
-    proc {
-        NEW budgetPortions;
-        NEW steplog;
-    }
+    proc { NEW budgetPortions AFTER assignments; }
+    logging { NEW steplog; }
 }

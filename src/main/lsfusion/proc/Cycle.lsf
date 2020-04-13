@@ -86,6 +86,7 @@ DESIGN assignments {
 NAVIGATOR {
     NEW FOLDER proc 'Budgeting' WINDOW toolbar BEFORE masterData {
         NEW assignments;
+        NEW FOLDER logging 'Logs';
     }
 }
 

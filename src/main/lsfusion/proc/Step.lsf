@@ -6,11 +6,11 @@ REQUIRE Cycle;
 META defineStep (id,capName,ClassName)
     CLASS Step 'Stage Step';
     TABLE step(Step);
-    name 'Stage Step' (Step s) = staticCaption(s) IF s IS Step CHARWIDTH 30;
+    name 'Stage Step' (Step s) = staticCaption(s) IF s IS Step CHARWIDTH 10;
     //isSmall 'Small update' = DATA BOOLEAN(Step); // @ToDo
     
     step = DATA Step(##ClassName);
-    nameStep 'Stage Step' (##ClassName s) = staticCaption(step(s)) CHARWIDTH 30;
+    nameStep 'Stage Step' (##ClassName s) = staticCaption(step(s)) CHARWIDTH 10;
     
     CLASS StepLog 'Steps Log';
     TABLE steplog(StepLog);

@@ -5,13 +5,13 @@ REQUIRE PurchaseInvoice, Contractor, BudgetContract, BudgetPurchaseInvoiceExpens
 NAMESPACE Budget;
 
 contractor = DATA Contractor(Invoice);
-nameContractor 'Contractor' (Invoice i) = name(contractor(i));
+nameContractor 'Contractor' (Invoice i) = name(contractor(i)) CHARWIDTH 30;
 
 contract = DATA Contract(Invoice);
-nameContract 'Contract' (Invoice i) = number(contract(i));
+nameContract 'Contract' (Invoice i) = number(contract(i)) CHARWIDTH 30;
 
-CONSTRAINT contractor(contract(Invoice i)) != contractor(i) CHECKED BY contract[Invoice] MESSAGE 'Contract\'s contractor doesn\'t match invoice\'s contractor';
-CONSTRAINT contractor(Invoice i) AND NOT contractor(budgetDetail(i)) == contractor(i) CHECKED BY budgetDetail[Invoice] MESSAGE 'Budget Detail\'s contractor doesn\'t match invoice\'s contractor';
+CONSTRAINT contractor(contract(Invoice i)) != contractor(i) CHECKED BY contract[Invoice],contractor[Invoice] MESSAGE 'Contract\'s contractor doesn\'t match invoice\'s contractor';
+//CONSTRAINT contractor(Invoice i) AND NOT contractor(budgetDetail(i)) == contractor(i) CHECKED BY budgetDetail[Invoice] MESSAGE 'Budget Detail\'s contractor doesn\'t match invoice\'s contractor';
 
 WHEN LOCAL CHANGED (contract(Invoice i)) DO {
     contractor(i) <- contractor(contract(i));    

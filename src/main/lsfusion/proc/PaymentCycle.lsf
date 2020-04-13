@@ -2,6 +2,8 @@ MODULE PaymentCycle;
 
 REQUIRE Step, Expense;
 
+NAMESPACE Expense;
+
 EXTEND CLASS Stage 
 {
     invoice 'Invoice Payment'
