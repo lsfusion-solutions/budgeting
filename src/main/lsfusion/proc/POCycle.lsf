@@ -135,6 +135,11 @@ EXTEND CLASS Step
     reject 'Rejected',
     update 'Update'
 }
+passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
+hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = CASE EXCLUSIVE 
+            WHEN stepIn(l) == Step.update AND passThreshold(sbj(l)) AND stepOut == Step.review THEN TRUE 
+            WHEN stepIn(l) == Step.update AND NOT passThreshold(sbj(l)) AND stepOut == Step.approve THEN TRUE
+            ELSE NULL;
 
 newPart '+ Add' ()  { 
     NEWSESSION {
@@ -152,23 +157,26 @@ newPart '+ Add' ()  {
 @defineAssignment(PurchaseOrder, po, update, 'Complete Purchase Order editing',planned);
 @extendPurchaseOrder(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;
+@buttonDecisions(update,review,'Send the Purchase Order for Approval');
 
 // Pass threshold logic
-passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
-CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.review AND passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Automated approval';
-CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.approve AND NOT passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Block automated approval';
+//CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.review AND passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Automated approval';
+//CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.approve AND NOT passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Block automated approval';
 
 //--- Procedure: Review and Review Updated Steps ---
 
 @defineAssignment(PurchaseOrder, po, enter, 'Route manually uploaded Purchase Order',planned);
 @extendPurchaseOrder(enter);
 assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND a IS AssignEnter;
+@buttonDecisions(enter,review,'Force the Manually uploaded invoice for Approval');
 
 //--- Procedure: Approve Step ---
 
 @defineAssignment(PurchaseOrder, po, review, 'Purchase order approval',planned);
 @extendPurchaseOrder(review);
 assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS AssignReview;
+@buttonDecisions(review,reject,'Reject and send the Purchase Order back for revising');
+@buttonDecisions(review,approve,'Approve the Purchase Order');
 
 isApproved 'Approved' (Invoice i) = TRUE IF passThreshold(i) OR step(part(i)) == Step.enter OR step(part(i)) == Step.approve;
 // Manually uploaded purchase orders go into Enter status and pass to payment automotically.  But they can be forced to approval via Review step.
@@ -178,6 +186,7 @@ isApproved 'Approved' (Invoice i) = TRUE IF passThreshold(i) OR step(part(i)) ==
 @defineAssignment(PurchaseOrder, po, reject, 'Revising Purchase Order',planned);
 @extendPurchaseOrder(reject);
 assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject;
+@buttonDecisions(reject,enter,'Send the revised Purchase Order for Approval');
 
 //--- Automotive Proposal initialization ---
 

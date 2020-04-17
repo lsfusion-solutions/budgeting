@@ -92,6 +92,9 @@ EXTEND CLASS Step
     reject 'Rejected',
     update 'Update'
 }
+hideVariant 'Logics for hiding variant buttons' = DATA BOOLEAN (Step,Step);
+hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = hideVariant (stepIn(l),stepOut);
+EXTEND FORM stepsBudgeting PROPERTIES hideVariant(sIn,sOut) BACKGROUND backgroundFill() COLUMNS (sOut) HEADER name(sOut);
 
 WHEN SETCHANGED (step(BudgetPortion s)) DO {
     FOR part(BudgetDetail d) == s DO {
@@ -188,6 +191,7 @@ DESIGN budgetPortions {
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal editing',planned);
 @extendBudgetPortion(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;// OR access(sbj(a),e);
+@buttonDecisions(update,enter,'Send the Budget Proposal for Review');
 
 userEntered 'Send all new records for Review' () { 
         FOR StepLog l AND stepIn(l) = Step.update AND NOT stepOut(l) AND author(sbj(l)) == currentUser() DO {
@@ -205,18 +209,23 @@ DESIGN costCenterBudget { BOX (bm) {TOOLBAR {MOVE PROPERTY(userEntered()); } } }
 @defineAssignment(BudgetPortion, budgeting, enter, 'Financial review',planned);
 @extendBudgetPortion(enter);
 assigned(Employee e,AssignEnter a) += TRUE IF (afg(e) OR hasEnter(e)) AND a IS AssignEnter;
+@buttonDecisions(enter,reject,'Reject and send the Budget Proposal back for revising');
+@buttonDecisions(enter,review,'Complete Review and send the Budget Proposal for Approval');
 
 //--- Procedure: Approve Step ---
 
 @defineAssignment(BudgetPortion, budgeting, review, 'Budget Approval',planned);
 @extendBudgetPortion(review);
 assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR hasReview(e)) AND a IS AssignReview;
+@buttonDecisions(review,reject,'Reject and send the Budget Proposal back for revising');
+@buttonDecisions(review,approve,'Approve the Budget');
 
 //--- Procedure: Updating information on Reject Step ---
 
 @defineAssignment(BudgetPortion, budgeting, reject, 'Revising Budgeting record',planned);
 @extendBudgetPortion(reject);
 assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
+@buttonDecisions(reject,enter,'Send the revised Budget Proposal for Review');
 
 //--- Automotive Proposal initialization ---
 

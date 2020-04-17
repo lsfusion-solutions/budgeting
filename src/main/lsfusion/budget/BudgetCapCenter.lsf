@@ -124,7 +124,8 @@ FORM costCenterBudget 'Project budget'
 DESIGN costCenterBudget {
     OBJECTS {
         NEW header {
-            MOVE BOX(c);
+            alignment = STRETCH;
+            MOVE PROPERTY (name(c)) {alignment = STRETCH; caption = 'Select name of Cost Center: '; }
         }
         NEW pane {
             type = TABBED;
@@ -173,13 +174,13 @@ readonlyProc (BudgetDetail d, CostCenter c) = isProcessing(d) OR readonly(d, c);
 
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
-    PROPERTIES(bm) READONLY fromDate, toDate, name
-    PROPERTIES READONLY planned(bm, c), optimizedPlanned(bm, c), optimized(bm, c)
+    PROPERTIES(bm) READONLY name //fromDate, toDate, 
+    PROPERTIES READONLY planned(bm, c) // , optimizedPlanned(bm, c), optimized(bm, c)
     FILTERS selected(bm, c)
     
     OBJECTS bmd = BudgetDetail
     PROPERTIES(bmd) READONLYIF readonlyProc(bmd, c) canonicalNameCostItem, name, planned, spent, description PANEL, sensitive, NEW, DELETE
-    PROPERTIES(bmd) optimizedPlanned AFTER planned(bmd)
+    PROPERTIES(bmd) optimizedPlanned AFTER spent(bmd)
     PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
     FILTERS costCenter(bmd) == c,
             budget(bmd) == bm,
@@ -271,7 +272,7 @@ EXTEND FORM budgets
 ;
 
 EXTEND FORM costCenterBudget 
-    PROPERTIES averageCap(bm, c) BEFORE planned(bm, c), spent(bm, c) BACKGROUND backgroundSpent(bm, c);
+    PROPERTIES(bm, c) spent BACKGROUND backgroundSpent(bm, c), averageCap; //  BEFORE planned(bm, c)
 
 FORM dialogMoveBudget 'Budgets'
     OBJECTS d = BudgetDetail PANEL 

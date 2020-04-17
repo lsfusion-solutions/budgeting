@@ -130,7 +130,7 @@ META defineAssignmentForm(subject,makeStep,header)
         OBJECTS o = ##subject PANEL
         
         OBJECTS l = StepLog PANEL
-        PROPERTIES(l) nameOut BACKGROUND backgroundFill(),comment
+        PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
         FILTERS l == stepLog(o)
     ;
     
@@ -139,7 +139,11 @@ META defineAssignmentForm(subject,makeStep,header)
             NEW step {
                 alignment = STRETCH;
                 type = CONTAINERV;
-                MOVE PROPERTY(nameOut(l));
+                //MOVE PROPERTY(nameOut(l));
+                NEW decisionButtons {
+                    type = CONTAINERH;
+                    alignment = CENTER;
+                }
                 MOVE PROPERTY(comment(l)) { height = 160; panelCaptionAbove = TRUE; }
             }
         }
@@ -179,7 +183,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     
     FORM complete###makeStep header
         OBJECTS l = StepLog PANEL
-        PROPERTIES(l) nameOut BACKGROUND backgroundFill(),comment
+        PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
         PROPERTIES plan = planned(sbj(l))
     ;
     
@@ -188,11 +192,30 @@ META defineAssignment(subject, staging, makeStep, header, summator)
         NEW pane FIRST {
             fill = 1;
             type = CONTAINERV;
-            MOVE PROPERTY(nameOut(l)) {alignment = STRETCH;}
-            MOVE PROPERTY(plan) {alignment = STRETCH; caption = 'Total planned, USD';}
+            //MOVE PROPERTY(nameOut(l)) {alignment = STRETCH;}
+            NEW decisionButtons {
+                type = CONTAINERH;
+                alignment = CENTER;
+                MOVE PROPERTY(plan) {alignment = STRETCH; caption = 'Total planned, USD';}
+            }
             MOVE PROPERTY(comment(l)) {panelCaptionAbove = TRUE;  alignment = STRETCH; fill = 1;}
         }
     }
     
 END
 
+META buttonDecisions(makeStep,variant,nameCaption)
+    button###makeStep###variant (StepLog l) {
+        stepOut(l) <- Step.##variant;
+        APPLY;
+        formClose();
+    }
+    
+    EXTEND FORM complete###makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
+    DESIGN complete###makeStep {  decisionButtons { 
+            MOVE PROPERTY(button###makeStep###variant(l)) {caption = ##nameCaption; alignment = STRETCH; } } }
+            
+    EXTEND FORM ##makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
+    DESIGN ##makeStep {  decisionButtons { 
+            MOVE PROPERTY(button###makeStep###variant(l)) {caption = ##nameCaption; alignment = STRETCH; } } }
+END
