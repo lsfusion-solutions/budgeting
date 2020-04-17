@@ -95,8 +95,8 @@ EXTEND CLASS Step
 WHEN SETCHANGED (step(BudgetPortion s)) DO {
     FOR part(BudgetDetail d) == s DO {
         IF step(s) == Step.update OR step(s) == Step.enter OR step(s) == Step.reject THEN
-            hidden(d) <- TRUE;
-        ELSE hidden(d) <- NULL;
+            hiddenSet(d) <- TRUE;
+        ELSE hiddenSet(d) <- NULL;
         IF step(s) == Step.enter OR step(s) == Step.review OR step(s) == Step.approve THEN
             isProcessing(d) <- TRUE;
         ELSE isProcessing(d) <- NULL;
@@ -219,7 +219,7 @@ author 'Author' = DATA Employee(BudgetDetail);
 searchProposal 'Search active proposals' (Employee e) = GROUP LAST BudgetPortion p IF step(p) == Step.update AND author(p) == e;
 WHEN SET (budget(BudgetDetail b)) AND NOT part(b) DO {
     author(b) <- currentUser();
-    hidden(b) <- TRUE;
+    hiddenSet(b) <- TRUE;
     IF searchProposal(author(b)) THEN
         part(b) <- searchProposal(author(b));
     ELSE

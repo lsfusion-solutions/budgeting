@@ -24,8 +24,12 @@ FORM dialogBudgets 'Budget'
 CLASS BudgetDetail 'Budget detail';
 TABLE budgetDetail(BudgetDetail);
 
+forceHidden 'Hide budgets that are being under approval' = DATA BOOLEAN ();
+EXTEND FORM options PROPERTIES forceHidden() ;
+DESIGN options { commons { MOVE PROPERTY(forceHidden()); } }
+hiddenSet = DATA BOOLEAN (BudgetDetail); // eliminate budgets that are being under approval
+hidden (BudgetDetail d) = TRUE IF hiddenSet(d) AND forceHidden(); // control hidding of budgets that are being under approval
 sensitive = ABSTRACT BOOLEAN (BudgetDetail) MATERIALIZED;
-hidden = DATA BOOLEAN (BudgetDetail); // eliminate budgets that are being under approval
 isProcessing = DATA BOOLEAN (BudgetDetail); // enable Budget Detail items for user editing: TRUE is SHOW
 isBudgeting (BudgetDetail d) = NOT isProcessing(d); // disable Budget Detail items for user editing: TRUE is READONLY
 
