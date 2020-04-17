@@ -32,6 +32,7 @@ access 'Access' (BudgetPortion b, Employee e) = TRUE IF numberEmployee(b,e) > 0;
 
 author (BudgetPortion b) <- currentUser() WHEN SET(b IS BudgetPortion);
 dateTime(BudgetPortion b) <- currentDateTime() WHEN CHANGED(planned(b));
+nameExplain 'Cost Centers involved' (BudgetPortion b) = GROUP CONCAT name(CostCenter c),'; ' IF numberCostCenter(b,c) ORDER name(c) CHARWIDTH 50;
 
 META extendBudgetPortion (form)
     EXTEND FORM ##form
@@ -116,7 +117,7 @@ newPart '+ Add' ()  {
 
 FORM budgetPortions 'Budget Proposals'
     OBJECTS o = BudgetPortion
-    PROPERTIES(o) READONLY authorName, dateTime, planned, nameStep
+    PROPERTIES(o) READONLY nameExplain, dateTime, planned, nameStep, authorName
     PROPERTIES newPart() 
     PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
     FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
@@ -140,10 +141,10 @@ DESIGN budgetPortions {
             type = CONTAINERV;
             NEW proposal {
                 type = CONTAINERH;
-                fill = 4;
+                fill = 1;
                 alignment = STRETCH;
                 MOVE BOX (o) {
-                    fill = 1;
+                    fill = 3;
                     alignment = STRETCH;
                     TOOLBAR {
                         MOVE PROPERTY (newPart());
@@ -151,28 +152,32 @@ DESIGN budgetPortions {
                         MOVE PROPERTY (delPart);
                     }
                 }
-                NEW details {
-                    fill = 3;
+                NEW proc {
+                    width = 500;
                     alignment = STRETCH;
-                    type = CONTAINERV;
-                    MOVE BOX (bcid) {
-                        fill = 4;
-                        alignment = STRETCH;
-                        PROPERTY (description(b)) { caption='Budget'; }
-                        PROPERTY (name(c)) { caption='Cost Center'; }
-                        PROPERTY (canonicalName(i)) { caption='Cost type'; }
-                        PROPERTY (name(d)) { caption='Budget Detail'; }
-                    }
+                }
+            } 
+            NEW details {
+                fill = 1;
+                alignment = STRETCH;
+                type = CONTAINERH;
+                MOVE BOX (bcid) {
+                    fill = 1;
+                    alignment = STRETCH;
+                    PROPERTY (description(b)) { caption='Budget'; }
+                    PROPERTY (name(c)) { caption='Cost Center'; }
+                    PROPERTY (canonicalName(i)) { caption='Cost type'; }
+                    PROPERTY (name(d)) { caption='Budget Detail'; }
+                }
+                NEW itemDetails {
+                    width = 250;
+                    alignment = STRETCH;
                     MOVE PROPERTY (description(d)) {
                         fill = 1;
                         alignment = STRETCH;
                         panelCaptionAbove = TRUE;
-                    }                                
+                    }                 
                 }
-            } 
-            NEW proc {
-                fill = 1;
-                alignment = STRETCH;
             }
         }
     }
@@ -297,7 +302,7 @@ DESIGN steplog {
 @showStepAttributes(steplog,out);
 
 EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND stepOut(l);
-@extendDetails(budgetPortions,proc,h);
+@extendDetails(budgetPortions,proc,v);
 @showStepAttributes(budgetPortions,out);
 
 NAVIGATOR {

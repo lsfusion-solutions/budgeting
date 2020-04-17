@@ -72,13 +72,13 @@ END
 META defineStepAttributes(type,det)
     // Procedure In and Out Steps
     step###type ###det = DATA Step(StepLog);
-    name###type ###det (StepLog s) = name(step###type(s)) CHARWIDTH 20;
+    name###type ###det (StepLog s) = name(step###type(s)) CHARWIDTH 10;
     // Users that started and finished the step
     user###type ###det##' User' = DATA Employee(StepLog);
-    userName###type ###det##' set by' (StepLog s) = name(user###type(s)) CHARWIDTH 30;
+    userName###type ###det##' set by' (StepLog s) = name(user###type(s)) CHARWIDTH 20;
     // Timesteps of first start anf finish    
     dateTime###type ###det##' Date/Time' = DATA DATETIME (StepLog);
-    date###type ###det##' Date' (StepLog s) = DATE(dateTime###type(s)) CHARWIDTH 20;
+    date###type ###det##' Date' (StepLog s) = DATE(dateTime###type(s)) CHARWIDTH 10;
     // initialization
     WHEN SETCHANGED (step###type(StepLog l)) DO {
         user###type(l) <- currentUser();
@@ -162,7 +162,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     //assign###makeStep (##subject sbj) = AGGR Assign###makeStep WHERE step##subject(sbj);
     sbj (Assign###makeStep a) += sbj(a);
     dateTimeStart (Assign###makeStep a) += currentDateTime() IF a IS Assign###makeStep;
-    desc (Assign###makeStep a) += header IF a IS Assign###makeStep;
+    desc (Assign###makeStep a) += header + ': ' + nameExplain(sbj(a)) IF a IS Assign###makeStep;
     sum (Assign###makeStep a) += ##summator(sbj(a)) IF a IS Assign###makeStep;
     
     stage (Assign###makeStep a) += Stage.staging IF a IS Assign###makeStep;

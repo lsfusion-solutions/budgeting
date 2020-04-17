@@ -33,6 +33,7 @@ access 'Access' (PurchaseOrder b, Employee e) = TRUE IF numberEmployee(b,e) > 0;
 
 author (PurchaseOrder b) <- currentUser() WHEN SET(b IS PurchaseOrder);
 dateTime(PurchaseOrder b) <- currentDateTime() WHEN CHANGED(planned(b));
+nameExplain 'Cost Centers involved' (PurchaseOrder b) = GROUP CONCAT name(CostCenter c),'; ' IF numberCostCenter(b,c) ORDER name(c) CHARWIDTH 50;
 
 // Extend basic items
 supply 'Known Supplier' = DATA BOOLEAN (Invoice);
@@ -202,7 +203,7 @@ WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
 
 FORM purchaseOrders 'Purchase Orders'
     OBJECTS o = PurchaseOrder
-    PROPERTIES(o) READONLY authorName, datePlan, planned, nameStep, passThreshold, searchSupply, dateTime
+    PROPERTIES(o) READONLY nameExplain, datePlan, planned, nameStep, passThreshold, searchSupply, dateTime, authorName
     PROPERTIES newPart() 
     PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
     ORDER datePlan(o)
@@ -210,7 +211,7 @@ FORM purchaseOrders 'Purchase Orders'
     
     OBJECTS d = Invoice
     PROPERTIES (d) READONLY budgetDetailName, nameCostCenter, costItemName, nameSupplier, amount, nameCurrency, passThreshold, note PANEL, text PANEL
-    //PROPERTIES (d) TOOLBAR open SHOWIF hasFile(d)
+    PROPERTIES (d) TOOLBAR open SHOWIF hasFile(d), load //SHOWIF NOT hasFile(d)
     FILTERS part(d) == o
     
     LIST PurchaseOrder OBJECT o
@@ -225,10 +226,10 @@ DESIGN purchaseOrders {
             type = CONTAINERV;
             NEW proposal {
                 type = CONTAINERH;
-                fill = 4;
+                fill = 1;
                 alignment = STRETCH;
                 MOVE BOX (o) {
-                    fill = 1;
+                    fill = 4;
                     alignment = STRETCH;
                     TOOLBAR {
                         MOVE PROPERTY (newPart());
@@ -236,30 +237,36 @@ DESIGN purchaseOrders {
                         MOVE PROPERTY (delPart);
                     }
                 }
-                NEW details {
-                    fill = 3;
+                NEW proc {
+                    width = 500;
                     alignment = STRETCH;
+                }
+            } 
+            NEW details {
+                fill = 1;
+                alignment = STRETCH;
+                type = CONTAINERH;
+                MOVE BOX (d) {
+                    fill = 4;
+                    alignment = STRETCH;
+                }
+                NEW itemDetails {
                     type = CONTAINERV;
-                    MOVE BOX (d) {
-                        fill = 4;
-                        alignment = STRETCH;
-                    }
+                    caption = 'Details for purchase invoice';
+                    width = 500;
+                    alignment = STRETCH;
+                    MOVE PROPERTY (note(d)) { alignment = STRETCH;}
                     NEW files {
                         type = CONTAINERH;
-                        alignment = STRETCH;
-                        //MOVE PROPERTY (open(d)) {caption = 'Attachment';}
-                        MOVE PROPERTY (note(d)) { alignment = STRETCH;}
+                        alignment = START;
+                        MOVE PROPERTY (load(d)) {caption = 'Load Attachment';}
+                        MOVE PROPERTY (open(d)) {caption = 'Open Attachment';}
                     }
                     MOVE PROPERTY (text(d)) {
-                        fill = 1;
                         alignment = STRETCH;
                         panelCaptionAbove = TRUE;
                     }                                
                 }
-            } 
-            NEW proc {
-                fill = 1;
-                alignment = STRETCH;
             }
         }
     }
@@ -354,7 +361,7 @@ DESIGN steplog {
 @showStepAttributes(steplog,out);
 
 EXTEND FORM purchaseOrders OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND stepOut(l);
-@extendDetails(purchaseOrders,proc,h);
+@extendDetails(purchaseOrders,proc,v);
 @showStepAttributes(purchaseOrders,out);
 
 NAVIGATOR {
