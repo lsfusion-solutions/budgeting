@@ -152,9 +152,14 @@ newPart '+ Add' ()  {
 @extendPurchaseOrder(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;
 
+// Pass threshold logic
+passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
+CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.review AND passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Automated approval';
+CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.approve AND NOT passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Block automated approval';
+
 //--- Procedure: Review and Review Updated Steps ---
 
-@defineAssignment(PurchaseOrder, po, enter, 'Validate Quotes for Purchase Order',planned);
+@defineAssignment(PurchaseOrder, po, enter, 'Route manually uploaded Purchase Order',planned);
 @extendPurchaseOrder(enter);
 assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND a IS AssignEnter;
 
@@ -164,10 +169,8 @@ assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND a IS AssignEnter;
 @extendPurchaseOrder(review);
 assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS AssignReview;
 
-// Pass threshold logic
-passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
-CONSTRAINT stepIn(StepLog l) == Step.enter AND stepOut(l) == Step.review AND passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Automated approval';
-CONSTRAINT stepIn(StepLog l) == Step.enter AND stepOut(l) == Step.approve AND NOT passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Block automated approval';
+isApproved 'Approved' (Invoice i) = TRUE IF passThreshold(i) OR step(part(i)) == Step.enter OR step(part(i)) == Step.approve;
+// Manually uploaded purchase orders go into Enter status and pass to payment automotically.  But they can be forced to approval via Review step.
 
 //--- Procedure: Updating information on Reject Step ---
 
