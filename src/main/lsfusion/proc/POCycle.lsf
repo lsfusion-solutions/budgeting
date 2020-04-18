@@ -39,8 +39,12 @@ nameExplain 'Cost Centers involved' (PurchaseOrder b) = GROUP CONCAT name(CostCe
 supply 'Known Supplier' = DATA BOOLEAN (Invoice);
 searchSupply 'Search Supplier' (PurchaseOrder o) = TRUE IF [GROUP SUM amount(Invoice i) IF NOT contractor(i) BY part(i)](o);
 budgetDetailName 'Budget Item' (Invoice d) = CONCAT ' - ', nameBudget(budgetDetail(d)), name(budgetDetail(d));  
+longBudgetDetailName 'Budget Item' (Invoice d) = longBudgetName(budgetDetail(d));  
 costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
+planned 'Planned, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
+spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
 limit 'Threshold limit' = DATA NUMERIC[14,2](CostCenter);
+paid 'Paid' = DATA BOOLEAN (Invoice);
 passThreshold 'Limit' (Invoice i) = amount(i) <= limit(costCenter(i));
 EXTEND FORM costCenter PROPERTIES (c) limit;
 
@@ -188,10 +192,10 @@ isApproved 'Approved' (Invoice i) = TRUE IF passThreshold(i) OR step(part(i)) ==
 assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject;
 @buttonDecisions(reject,enter,'Send the revised Purchase Order for Approval');
 
-//--- Automotive Proposal initialization ---
+//--- Automotive Purchase Order initialization ---
 
 author 'Author' = DATA Employee(Invoice);
-searchProposal 'Search active proposals' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.update AND author(p) == e;
+searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.enter AND author(p) == e;
 WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
     author(b) <- currentUser();
     //hidden(b) <- TRUE;
@@ -200,7 +204,7 @@ WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
     ELSE
         NEW p = PurchaseOrder {        
             part(b) <- p;
-            step(p) <- Step.update;
+            step(p) <- Step.enter;
         }
     IF contractor(b) THEN supply(b) <- TRUE;
     IF NOT nameSupplier(b) THEN nameSupplier(b) <- 'Search needed';
@@ -376,4 +380,97 @@ EXTEND FORM purchaseOrders OBJECTS l = StepLog PROPERTIES planned(l) READONLY FI
 NAVIGATOR {
     proc { NEW purchaseOrders BEFORE logging; }
     logging { NEW steplog; }
+}
+
+// Load Invoices one-by-one
+
+FORM invoiceLoad 'Load Purchase invoice'
+    OBJECTS i = Invoice PANEL
+    PROPERTIES(i) date, number, note, nameCurrency, amount, text, paid
+    PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
+    PROPERTIES (i) BACKGROUND backgroundFill() longBudgetDetailName
+    PROPERTIES (i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY planned, spent, nameCostCenter, costItemName
+    PROPERTIES(i) open SHOWIF hasFile(i), load
+;
+DESIGN invoiceLoad {
+    size = (800, 480);
+    OBJECTS {
+        type = CONTAINERH;
+        fill = 1;
+        alignment = STRETCH;
+        NEW invoice {        
+            type = CONTAINERV;
+            fill = 1;
+            alignment = STRETCH;   
+            NEW parameters {
+                alignment = STRETCH;
+                caption = 'Parameters';
+                type = CONTAINERH;
+                MOVE PROPERTY(date(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 2;}
+                MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 4;}
+                MOVE PROPERTY(amount(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 1;}
+                MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 1;}
+                MOVE PROPERTY (paid(i)) { panelCaptionAbove = TRUE; }
+            }
+            NEW budget {
+                alignment = STRETCH;
+                height = 85;
+                type = CONTAINERV;
+                NEW budgetItemLine {
+                    type = CONTAINERH;
+                    fill = 1;
+                    alignment = STRETCH;
+                    MOVE PROPERTY (longBudgetDetailName(i)) {
+                        alignment = STRETCH;
+                        fill = 6;
+                        panelCaptionAbove = TRUE;
+                        fontStyle = 'bold';
+                    }
+                    MOVE PROPERTY (planned(i)) {panelCaptionAbove = TRUE; fill = 1;}
+                    MOVE PROPERTY (spent(i)) {panelCaptionAbove = TRUE; fill = 1;}
+                }
+                NEW budgetItemDetails {
+                    type = CONTAINERH;
+                    fill = 1;
+                    alignment = STRETCH;
+                    MOVE PROPERTY (nameCostCenter(i)) {panelCaptionAbove = TRUE; alignment = STRETCH;  fill = 1;}
+                    MOVE PROPERTY (costItemName(i)) {panelCaptionAbove = TRUE; alignment = STRETCH;  fill = 1;}
+                }
+            }
+            NEW contract {
+                alignment = STRETCH;
+                caption = 'Supplier';
+                type = CONTAINERH;
+                alignment = STRETCH;
+                MOVE PROPERTY (supply(i)) {caption = 'Known Supplier'; panelCaptionAbove = TRUE; }
+                MOVE PROPERTY (nameSupplier(i)) {caption = 'Name of new Supplier if it is not known'; alignment = STRETCH;  panelCaptionAbove = TRUE;}
+                MOVE PROPERTY (nameContractor(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
+                MOVE PROPERTY (nameContract(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
+            }
+            NEW file {
+                alignment = STRETCH;
+                caption = 'Attachment';
+                type = CONTAINERH;
+                MOVE PROPERTY(load(i)) { fill = 1; height = 40; caption = 'Load Attachment'; }
+                MOVE PROPERTY(open(i)) { fill = 1; height = 40; caption = 'Open Attachment'; }
+            }
+            NEW note {
+                alignment = STRETCH;
+                caption = 'Note';
+                MOVE PROPERTY(note(i)) { alignment = STRETCH; }
+            }
+            MOVE PROPERTY (text(i)) { caption = 'Comment'; alignment = STRETCH; fill = 1; panelCaptionAbove = TRUE; }
+        }
+            
+    }
+}
+
+loadPO 'Load Invoice' () {
+    NEW i = Invoice {
+        SHOW invoiceLoad OBJECTS i = i FLOAT;
+    }
+}
+
+NAVIGATOR {
+    NEW loadPO BEFORE masterData;
 }

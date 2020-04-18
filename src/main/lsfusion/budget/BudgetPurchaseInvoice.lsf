@@ -37,9 +37,7 @@ EXTEND FORM invoices
 ;
 
 invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM round0(amount(Invoice i) / defaultRateOn(currency(i), date(i))) BY budgetDetail(i); 
-EXTEND FORM budgetDetails
-    PROPERTIES(d) READONLY invoiced
-;
+//EXTEND FORM budgetDetails PROPERTIES(d) READONLY invoiced;
 
 overCopy(Invoice ni, Invoice i) + {
     costCenter(ni) <- costCenter(i);

@@ -52,6 +52,7 @@ CONSTRAINT costCenter(BudgetDetail d) AND NOT selected(budget(d), costCenter(d))
 
 name 'Name' = DATA STRING[100] (BudgetDetail) CHARWIDTH 30;
 description 'Description' = DATA RICHTEXT (BudgetDetail);
+longBudgetName 'Budget' (BudgetDetail d) = CONCAT ' - ', nameBudget(d), name(d); 
 
 mandatoryNameBudgetDetail 'Name required for budget detail' = DATA BOOLEAN (CostItem);
 EXTEND FORM costItem
@@ -206,13 +207,33 @@ DESIGN budgets {
     }
 }
 
+//FORM budgetDetails 'Budget details'
+//    PROPERTIES() nameFilterCostCenter, nameFilterCostItem
+//    
+//    OBJECTS d = BudgetDetail
+//    PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
+//    FILTERS costCenter(d) == filterCostCenter() OR NOT filterCostCenter(),
+//            costItem(d) == filterCostItem() OR NOT filterCostItem(),
+//            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+//            NOT hidden(d) 
+//        
+//    LIST BudgetDetail OBJECT d
+//;
+
 FORM budgetDetails 'Budget details'
-    PROPERTIES() nameFilterCostCenter, nameFilterCostItem
+    OBJECTS c = CostCenter PANEL 
+    PROPERTIES (c) name BACKGROUND RGB(255, 255, 224) SELECTOR 
+    
+    TREE costItems t = CostItem PARENT parent(t)
+    PROPERTIES(t) READONLY order SHOWIF NULL, name
+    ORDER order(t) 
     
     OBJECTS d = BudgetDetail
-    PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
-    FILTERS costCenter(d) == filterCostCenter() OR NOT filterCostCenter(),
-            costItem(d) == filterCostItem() OR NOT filterCostItem(),
+    PROPERTIES(d) READONLY nameBudget, name, planned, spent, canonicalNameCostItem
+    PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
+    ORDER dateSorting DESC 
+    FILTERS costCenter(d) == c,
+            isParent(costItem(d),t),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT hidden(d) 
         
@@ -220,11 +241,28 @@ FORM budgetDetails 'Budget details'
 ;
 
 DESIGN budgetDetails {
+    size = (1000, 600);
     OBJECTS {
         NEW filters FIRST {
             type = CONTAINERH;
-            MOVE PROPERTY(nameFilterCostCenter());
-            MOVE PROPERTY(nameFilterCostItem());
+            alignment = STRETCH;
+            //MOVE PROPERTY(nameFilterCostCenter());
+            //MOVE PROPERTY(nameFilterCostItem());
+            MOVE PROPERTY(name(c)) {alignment = STRETCH; caption = 'Select Cost Center'; }
+            //MOVE PROPERTY(canonicalName(t)) {alignment = STRETCH;}
+        }
+        NEW items {
+            type = CONTAINERH;
+            fill = 1;
+            alignment = STRETCH;
+            MOVE BOX (TREE costItems) { 
+                fill = 1;
+                caption = 'Cost Items'; 
+            }
+            MOVE BOX (d) { 
+                fill = 3;
+                PROPERTY (nameBudget(d)) {fontStyle = 'bold';}
+            }
         }
     }
 }

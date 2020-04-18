@@ -16,6 +16,7 @@ nameParent 'Parent' (CostItem c)= name(parent(c));
 TABLE costItemItem (CostItem, CostItem);
 level 'Level' (CostItem child, CostItem parent) = RECURSION 1l IF child IS CostItem AND parent == child
                                                                  STEP 2l IF parent == parent($parent) MATERIALIZED;
+isParent 'is Parent Cost Item' (CostItem child, CostItem parent) = TRUE IF level(child, parent);
 
 costItem(CostItem child, LONG level)  = GROUP
                                             MAX CostItem parent IF level == level(child, parent);
