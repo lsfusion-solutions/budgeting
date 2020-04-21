@@ -221,6 +221,9 @@ DESIGN budgets {
 //;
 
 FORM budgetDetails 'Budget details'
+    OBJECTS b = Budget PANEL 
+    PROPERTIES (b) name SELECTOR 
+
     OBJECTS c = CostCenter PANEL 
     PROPERTIES (c) name BACKGROUND RGB(255, 255, 224) SELECTOR 
     
@@ -234,6 +237,7 @@ FORM budgetDetails 'Budget details'
     ORDER dateSorting DESC 
     FILTERS costCenter(d) == c,
             isParent(costItem(d),t),
+            budget(d) == b,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT hidden(d) 
         
@@ -255,9 +259,15 @@ DESIGN budgetDetails {
             type = CONTAINERH;
             fill = 1;
             alignment = STRETCH;
-            MOVE BOX (TREE costItems) { 
+            NEW selectors {
+                type = CONTAINERV;
                 fill = 1;
-                caption = 'Cost Items'; 
+                alignment = STRETCH;
+                MOVE PROPERTY (name(b)) { alignment = STRETCH; }
+                MOVE BOX (TREE costItems) { 
+                    fill = 1;
+                    caption = 'Cost Items'; 
+                }
             }
             MOVE BOX (d) { 
                 fill = 3;
@@ -270,3 +280,6 @@ DESIGN budgetDetails {
 NAVIGATOR {
     NEW budgets;
 }
+
+filterBudget = DATA LOCAL NESTED Budget();
+nameFilterBudget 'Budget' () = name(filterBudget());

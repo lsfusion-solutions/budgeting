@@ -28,8 +28,8 @@ nameUserApproved 'Approved by' = DATA STRING[200](Invoice) CHARWIDTH 20;
 
 file = DATA FILE (Invoice);
 hasFile (Invoice i) = TRUE IF file(i); 
-open 'Open' (Invoice i)  { open(file(i)); }
-load 'Load' (Invoice i)  { INPUT =file(i) CHANGE; }
+open 'Open Attachment' (Invoice i)  { open(file(i)); }
+load 'Load Attachment' (Invoice i)  { INPUT =file(i) CHANGE; }
 
 text '' = DATA RICHTEXT (Invoice);
 
@@ -103,18 +103,6 @@ copy 'Copy' (Invoice i) {
     }
 }
 
-FORM invoices 'Purchase invoices'
-    OBJECTS i = Invoice
-    PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved, note
-    PROPERTIES(i) TOOLBAR copy, open SHOWIF hasFile(i)
-    PROPERTIES(i) NEWSESSION NEW, EDIT, DELETE
-    ORDER date(i) DESC 
-;
-
-DESIGN invoices {
-    PROPERTY (amount(i)) { pattern = '#,##0.00'; }
-}
-
 FORM dialogInvoices 'Select purchase invoice'
     OBJECTS i = Invoice
     PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved
@@ -123,10 +111,6 @@ FORM dialogInvoices 'Select purchase invoice'
     LIST Invoice OBJECT i
 ;
 
-NAVIGATOR {
-    NEW invoices;
-}
-
 approve 'Approve' (Invoice i) {
     NEWSESSION {
         approved(i) <- TRUE;
@@ -134,10 +118,10 @@ approve 'Approve' (Invoice i) {
     }
 }
 
-EXTEND FORM invoices 
-    PROPERTIES(i) approve TOOLBAR 
-    
-    FILTERGROUP approved
-        FILTER 'Approved' approved(i) 'F10'
-        FILTER 'Not approved' NOT approved(i) 'F9'       
-;
+//EXTEND FORM invoices 
+//    PROPERTIES(i) approve TOOLBAR 
+//    
+//    FILTERGROUP approved
+//        FILTER 'Approved' approved(i) 'F10'
+//        FILTER 'Not approved' NOT approved(i) 'F9'       
+//;
