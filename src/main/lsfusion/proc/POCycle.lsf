@@ -44,10 +44,15 @@ costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
 planned 'Planned, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
 spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
 balance 'Balance, USD' (Invoice d) = planned(budgetDetail(d)) - invoiced(budgetDetail(d)) CHARWIDTH 10;
-limit 'Threshold limit' = DATA NUMERIC[14,2](CostCenter);
+// Threshold prepare
+limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
+limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostItem);
 paid 'Paid' = DATA BOOLEAN (Invoice);
-passThreshold 'Limit' (Invoice i) = amount(i) <= limit(costCenter(i));
+passThreshold 'Limit' (Invoice i) = amount(i) <= limit(costCenter(budgetDetail(i))) AND (amount(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
+EXTEND FORM costCenters PROPERTIES (c) limit;
 EXTEND FORM costCenter PROPERTIES (c) limit;
+EXTEND FORM costItems PROPERTIES (c) limit;
+EXTEND FORM costItem PROPERTIES (c) limit;
 
 META extendPurchaseOrder (form)
     EXTEND FORM ##form
@@ -469,7 +474,10 @@ loadPO 'Load Invoice' () {
     NEW i = Invoice {
         SHOW invoiceLoad OBJECTS i = i FLOAT;
     }
-}
+} TOOLBAR;
+
+EXTEND FORM invoices PROPERTIES loadPO();
+EXTEND FORM costCenterBudget PROPERTIES loadPO();
 
 NAVIGATOR {
     NEW loadPO BEFORE masterData;

@@ -1,6 +1,6 @@
 MODULE CostItem;
 
-REQUIRE Utils;
+REQUIRE Utils, MasterData;
 
 NAMESPACE Cost;
 
@@ -83,7 +83,9 @@ FORM plainCostItems 'Select cost type'
 ;
 
 NAVIGATOR {
-    NEW costItems;
+    masterData {
+        NEW costItems FIRST;
+    }
 }
 
 filterCostItem = DATA LOCAL NESTED CostItem();

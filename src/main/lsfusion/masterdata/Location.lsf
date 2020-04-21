@@ -31,5 +31,7 @@ FORM dialogLocation 'Select location'
 ;
 
 NAVIGATOR {
-    NEW locations; 
+    masterData {
+        NEW locations FIRST; 
+    }
 }

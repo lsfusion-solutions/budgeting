@@ -1,5 +1,7 @@
 MODULE CostCenter;
 
+REQUIRE MasterData;
+
 NAMESPACE Cost;
 
 CLASS CostCenter 'Cost Center';
@@ -27,7 +29,9 @@ FORM listCostCenters 'Select cost center'
 ;
 
 NAVIGATOR {
-    NEW costCenters;
+    masterData {
+        NEW costCenters FIRST;
+    }
 }
 
 filterCostCenter = DATA LOCAL NESTED CostCenter();
