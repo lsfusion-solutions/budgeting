@@ -476,8 +476,8 @@ loadPO 'Load Invoice' () {
     }
 } TOOLBAR;
 
-EXTEND FORM invoices PROPERTIES loadPO();
-EXTEND FORM costCenterBudget PROPERTIES loadPO();
+EXTEND FORM invoices PROPERTIES NEWSESSION loadPO();
+EXTEND FORM costCenterBudget PROPERTIES NEWSESSION loadPO();
 
 NAVIGATOR {
     NEW loadPO BEFORE masterData;
