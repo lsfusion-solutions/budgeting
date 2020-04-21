@@ -53,10 +53,14 @@ sensitive (ExtraCap e) += e == ExtraCap.salary;
 cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.salary AND salary(p, i) THEN salary(p, i);
 
 backgroundAssigned (Budget b, Employee e) = RGB(255,212,212) IF assigned(b, e) > 100;
+searchByName 'Search' = DATA LOCAL NESTED ISTRING ();
 EXTEND FORM costCenterBudget
+    PROPERTIES() searchByName
+
     OBJECTS e = Employee
     PROPERTIES(e) READONLY firstName, lastName, namePosition
     PROPERTIES assigned(p, e)
+    FILTERS isSubstring(firstName(e), searchByName()) OR isSubstring(lastName(e), searchByName()) OR isSubstring(namePosition(e), searchByName()) OR NOT searchByName()
     
     OBJECTS eb = Budget
     PROPERTIES(eb) READONLY fromDate, toDate, name
@@ -69,6 +73,7 @@ DESIGN costCenterBudget {
     periodRightPane {
         NEW teamPane {
             caption = 'Team';
+            MOVE PROPERTY (searchByName()) { alignment = STRETCH; }
             MOVE BOX(e);
             MOVE BOX(eb);
         }
