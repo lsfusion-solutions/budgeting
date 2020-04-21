@@ -175,13 +175,13 @@ readonlyProc (BudgetDetail d, CostCenter c) = isProcessing(d) OR readonly(d, c);
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
     PROPERTIES(bm) READONLY name //fromDate, toDate, 
-    PROPERTIES READONLY planned(bm, c) // , optimizedPlanned(bm, c), optimized(bm, c)
+    PROPERTIES READONLY planned(bm, c), invoiced(bm,c) // , optimizedPlanned(bm, c), optimized(bm, c)
     FILTERS selected(bm, c)
     
     OBJECTS bmd = BudgetDetail
-    PROPERTIES(bmd) READONLYIF readonlyProc(bmd, c) canonicalNameCostItem, name, planned, spent, description PANEL, sensitive, NEW, DELETE
-    PROPERTIES(bmd) optimizedPlanned AFTER spent(bmd)
-    PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
+    PROPERTIES(bmd) READONLYIF readonlyProc(bmd, c) canonicalNameCostItem, name, planned, invoiced, spent, description PANEL, sensitive, NEW, DELETE
+    //PROPERTIES(bmd) optimizedPlanned AFTER spent(bmd)
+    //PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
     FILTERS costCenter(bmd) == c,
             budget(bmd) == bm,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))//,

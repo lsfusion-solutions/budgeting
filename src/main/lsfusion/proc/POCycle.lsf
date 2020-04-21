@@ -43,6 +43,7 @@ longBudgetDetailName 'Budget Item' (Invoice d) = longBudgetName(budgetDetail(d))
 costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
 planned 'Planned, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
 spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
+balance 'Balance, USD' (Invoice d) = planned(budgetDetail(d)) - invoiced(budgetDetail(d)) CHARWIDTH 10;
 limit 'Threshold limit' = DATA NUMERIC[14,2](CostCenter);
 paid 'Paid' = DATA BOOLEAN (Invoice);
 passThreshold 'Limit' (Invoice i) = amount(i) <= limit(costCenter(i));
@@ -389,7 +390,7 @@ FORM invoiceLoad 'Load Purchase invoice'
     PROPERTIES(i) date, number, note, nameCurrency, amount, text, paid
     PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
     PROPERTIES (i) BACKGROUND backgroundFill() longBudgetDetailName
-    PROPERTIES (i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY planned, spent, nameCostCenter, costItemName
+    PROPERTIES (i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
     PROPERTIES(i) open SHOWIF hasFile(i), load
 ;
 DESIGN invoiceLoad {
@@ -426,8 +427,7 @@ DESIGN invoiceLoad {
                         panelCaptionAbove = TRUE;
                         fontStyle = 'bold';
                     }
-                    MOVE PROPERTY (planned(i)) {panelCaptionAbove = TRUE; fill = 1;}
-                    MOVE PROPERTY (spent(i)) {panelCaptionAbove = TRUE; fill = 1;}
+                    MOVE PROPERTY (balance(i)) {panelCaptionAbove = TRUE; fill = 1;}
                 }
                 NEW budgetItemDetails {
                     type = CONTAINERH;
