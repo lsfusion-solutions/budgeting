@@ -12,7 +12,7 @@ toDate 'To' = DATA DATE(Budget) IN id;
 
 name 'Name' = DATA STRING[50] (Budget) CHARWIDTH 8;
 
-description 'Description' (Budget b) = CONCAT '', name(b), '(' + fromDate(b) + ' - ' + toDate(b) + ')'; 
+description 'Description' (Budget b) = CONCAT ' ', name(b), '(' + fromDate(b) + ' - ' + toDate(b) + ')' CHARWIDTH 35; 
 
 FORM dialogBudgets 'Budget'
     OBJECTS o = Budget
@@ -35,7 +35,7 @@ isBudgeting (BudgetDetail d) = NOT isProcessing(d); // disable Budget Detail ite
 
 budget = DATA Budget (BudgetDetail) NONULL DELETE;
 nameBudget 'Budget' (BudgetDetail d) = name(budget(d));
-descBudget 'Budget' (BudgetDetail d) = description(budget(d)) CHARWIDTH 30;
+descBudget 'Budget' (BudgetDetail d) = description(budget(d)) CHARWIDTH 35;
 
 costCenter = DATA CostCenter (BudgetDetail);
 nameCostCenter 'Cost Center' (BudgetDetail d) = name(costCenter(d));
@@ -276,6 +276,25 @@ DESIGN budgetDetails {
                 PROPERTY (nameBudget(d)) {fontStyle = 'bold';}
             }
         }
+    }
+}
+
+FORM budgetDetailAdd 'Add Single Budget Item'
+    OBJECTS d = BudgetDetail PANEL
+    PROPERTIES (d) descBudget, name, nameCostCenter, canonicalNameCostItem, planned BACKGROUND RGB(255, 255, 224), description
+;
+
+DESIGN budgetDetailAdd {
+    size = (1000, 600);
+    OBJECTS {
+        type = CONTAINERV;
+        fill = 1;
+        MOVE PROPERTY (nameCostCenter(d)) { notNull = TRUE; alignment = STRETCH; }
+        MOVE PROPERTY (canonicalNameCostItem(d)) { notNull = TRUE; alignment = STRETCH; }
+        MOVE PROPERTY (descBudget(d)) { notNull = TRUE; alignment = STRETCH; }
+        MOVE PROPERTY (name(d)) { notNull = TRUE; alignment = STRETCH; }
+        MOVE PROPERTY (planned(d)) { notNull = TRUE; }
+        MOVE PROPERTY (description(d)) { alignment = STRETCH; fill = 1; panelCaptionAbove = TRUE; }
     }
 }
 

@@ -19,8 +19,10 @@ CLASS BudgetPortion 'Budget Portion';
 TABLE budgetpart(BudgetPortion);
 
 author 'Author' = DATA Employee (BudgetPortion);
-authorName 'Author' (BudgetPortion b) = name(author(b)) CHARWIDTH 20;
+//authorName 'Author' (BudgetPortion b) = name(author(b)) CHARWIDTH 20;
 dateTime 'Created' = DATA DATETIME (BudgetPortion) CHARWIDTH 20;
+costCenter 'Cost Center' = DATA CostCenter(BudgetPortion);
+nameCostCenter 'Cost Center' (BudgetPortion o) = name(costCenter(o));
 
 sbj = ABSTRACT BudgetPortion (Assign) MATERIALIZED;
 part = DATA BudgetPortion (BudgetDetail); // Budget Proposal may include multiple items, each is named BudgetDetail
@@ -32,54 +34,11 @@ access 'Access' (BudgetPortion b, Employee e) = TRUE IF numberEmployee(b,e) > 0;
 
 author (BudgetPortion b) <- currentUser() WHEN SET(b IS BudgetPortion);
 dateTime(BudgetPortion b) <- currentDateTime() WHEN CHANGED(planned(b));
-nameExplain 'Cost Centers involved' (BudgetPortion b) = GROUP CONCAT name(CostCenter c),'; ' IF numberCostCenter(b,c) ORDER name(c) CHARWIDTH 50;
 
-META extendBudgetPortion (form)
-    EXTEND FORM ##form
-        PROPERTIES(o) READONLY authorName, dateTime, planned
-        
-        OBJECTS d = BudgetDetail
-        PROPERTIES (d) descBudget, nameCostCenter, canonicalNameCostItem, name, planned, description PANEL , NEW, DELETE
-        FILTERS part(d) == o
-    ;
-
-    DESIGN ##form {
-        OBJECTS {
-            NEW pane FIRST {
-                fill = 1;
-                alignment = STRETCH;
-                type = CONTAINERV;
-                NEW headerPart {
-                    alignment = STRETCH;
-                    type = CONTAINERH;
-                    MOVE PROPERTY(planned(o)) { alignment = START; }
-                    MOVE PROPERTY(authorName(o)) { alignment = CENTER; }
-                    MOVE PROPERTY(dateTime(o));
-                }
-                NEW proposal {
-                    type = CONTAINERH;
-                    fill = 1;
-                    alignment = STRETCH;
-                    MOVE BOX (d) {
-                        fill = 4;
-                        alignment = STRETCH;
-                    }
-                    MOVE PROPERTY (description(d)) {
-                        fill = 1;
-                        alignment = STRETCH;
-                        panelCaptionAbove = TRUE;
-                    }                                
-                }
-            }
-        }
-    }    
-END
-
-FORM budgetPortion 'Edit single Budget Proposal'
-    OBJECTS o = BudgetPortion PANEL
-    EDIT BudgetPortion OBJECT o
-;
-@extendBudgetPortion(budgetPortion);
+author 'Author' = DATA Employee(BudgetDetail);
+numberAuthors 'Number from Employees' (BudgetPortion b, Employee e) = GROUP SUM 1 IF author(BudgetDetail d) == e AND part(d) = b; 
+authorName 'Author' (BudgetPortion b) = GROUP CONCAT name(Employee e),'; ' IF numberAuthors(b,e) > 0 ORDER name(e) CHARWIDTH 50;
+nameExplain 'Cost Centers involved' (BudgetPortion b) = CONCAT ' ',nameCostCenter(b),('('+authorName(b)+')')  CHARWIDTH 50;
 
 //--- Initialize Procedure ---
 
@@ -96,12 +55,22 @@ hideVariant 'Logics for hiding variant buttons' = DATA BOOLEAN (Step,Step);
 hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = hideVariant (stepIn(l),stepOut);
 EXTEND FORM stepsBudgeting PROPERTIES hideVariant(sIn,sOut) BACKGROUND backgroundFill() COLUMNS (sOut) HEADER name(sOut);
 
+background 'Background Color' = DATA COLOR (Step);
+onStarted() + { 
+    background(Step r) <- RGB(204,229,255) WHERE r == Step.enter; // deep blue
+    background(Step r) <- RGB(255,255,204) WHERE r == Step.review; // yellow
+    background(Step r) <- RGB(204,255,204) WHERE r == Step.approve; // green
+    background(Step r) <- RGB(255,204,255) WHERE r == Step.reject; // purple
+    background(Step r) <- RGB(204,255,255) WHERE r == Step.update; // blue
+}
+
 WHEN SETCHANGED (step(BudgetPortion s)) DO {
     FOR part(BudgetDetail d) == s DO {
         IF step(s) == Step.update OR step(s) == Step.enter OR step(s) == Step.reject THEN
             hiddenSet(d) <- TRUE;
         ELSE hiddenSet(d) <- NULL;
         IF step(s) == Step.enter OR step(s) == Step.review OR step(s) == Step.approve THEN
+
             isProcessing(d) <- TRUE;
         ELSE isProcessing(d) <- NULL;
     }
@@ -113,10 +82,17 @@ newPart '+ Add' ()  {
             author (b) <- currentUser();
             dateTime(b) <- currentDateTime();
             step(b) <- Step.update;
+            DIALOG listCostCenters OBJECTS c = costCenter(b) CHANGE;
             SHOW EDIT BudgetPortion = b DOCKED MANAGESESSION;
         }
     }
 }
+
+FORM budgetPortion 'Edit single Budget Proposal'
+    OBJECTS o = BudgetPortion PANEL
+    EDIT BudgetPortion OBJECT o
+;
+
 
 FORM budgetPortions 'Budget Proposals'
     OBJECTS o = BudgetPortion
@@ -130,7 +106,8 @@ FORM budgetPortions 'Budget Proposals'
     PROPERTIES (c) READONLY name
     PROPERTIES (i) READONLY canonicalName
     PROPERTIES(d) READONLY name, planned, description PANEL
-    FILTERS o == part(d) AND b == budget(d) AND c == costCenter(d) AND i == costItem(d)
+    FILTERS o == part(d) AND b == budget(d) AND c == costCenter(d) AND i == costItem(d),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
     
     LIST BudgetPortion OBJECT o
 ;
@@ -149,9 +126,10 @@ DESIGN budgetPortions {
                 MOVE BOX (o) {
                     fill = 3;
                     alignment = STRETCH;
+                    caption = 'Budget Proposals';
                     TOOLBAR {
                         MOVE PROPERTY (newPart());
-                        MOVE PROPERTY (editPart);
+                        MOVE PROPERTY (editPart) { caption = 'View details'; }
                         MOVE PROPERTY (delPart);
                     }
                 }
@@ -189,7 +167,6 @@ DESIGN budgetPortions {
 //--- Procedure: Init and Update Steps ---
 
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal editing',planned);
-@extendBudgetPortion(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;// OR access(sbj(a),e);
 @buttonDecisions(update,enter,'Send the Budget Proposal for Review');
 
@@ -199,15 +176,22 @@ userEntered 'Send all new records for Review' () {
             DIALOG completeUpdate OBJECTS l = l FLOAT MANAGESESSION;
         } 
 } TOOLBAR;
-userUpdated 'There is new proposal within this employee' () = 
+userUpdated 'New proposals from this Employee exist' () = 
             TRUE IF [GROUP SUM 1 IF sbj(StepLog l) == part(BudgetDetail d) AND stepIn(l) = Step.update AND NOT stepOut(l) BY author(sbj(l))](currentUser());
-EXTEND FORM costCenterBudget PROPERTIES userEntered() SHOWIF userUpdated();
-DESIGN costCenterBudget { BOX (bm) {TOOLBAR {MOVE PROPERTY(userEntered()); } } }
+centerEntered 'Send all new records for Review' (CostCenter c) { 
+        FOR StepLog l AND stepIn(l) = Step.update AND NOT stepOut(l) AND costCenter(sbj(l)) == c DO {
+            stepOut(l) <- Step.enter;
+            DIALOG completeUpdate OBJECTS l = l FLOAT MANAGESESSION;
+        } 
+} TOOLBAR;
+centerUpdated 'New proposals within this Cost Center exist' (CostCenter c) = 
+            TRUE IF [GROUP SUM 1 IF sbj(StepLog l) == part(BudgetDetail d) AND stepIn(l) = Step.update AND NOT stepOut(l) BY costCenter(sbj(l))](c);
+EXTEND FORM costCenterBudget PROPERTIES centerEntered(c) SHOWIF centerUpdated(c);
+DESIGN costCenterBudget { BOX (bm) {TOOLBAR {MOVE PROPERTY(centerEntered(c)); } } }
 
 //--- Procedure: Review and Review Updated Steps ---
 
 @defineAssignment(BudgetPortion, budgeting, enter, 'Financial review',planned);
-@extendBudgetPortion(enter);
 assigned(Employee e,AssignEnter a) += TRUE IF (afg(e) OR hasEnter(e)) AND a IS AssignEnter;
 @buttonDecisions(enter,reject,'Reject and send the Budget Proposal back for revising');
 @buttonDecisions(enter,review,'Complete Review and send the Budget Proposal for Approval');
@@ -215,7 +199,6 @@ assigned(Employee e,AssignEnter a) += TRUE IF (afg(e) OR hasEnter(e)) AND a IS A
 //--- Procedure: Approve Step ---
 
 @defineAssignment(BudgetPortion, budgeting, review, 'Budget Approval',planned);
-@extendBudgetPortion(review);
 assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR hasReview(e)) AND a IS AssignReview;
 @buttonDecisions(review,reject,'Reject and send the Budget Proposal back for revising');
 @buttonDecisions(review,approve,'Approve the Budget');
@@ -223,23 +206,25 @@ assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR ha
 //--- Procedure: Updating information on Reject Step ---
 
 @defineAssignment(BudgetPortion, budgeting, reject, 'Revising Budgeting record',planned);
-@extendBudgetPortion(reject);
 assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
 @buttonDecisions(reject,enter,'Send the revised Budget Proposal for Review');
 
 //--- Automotive Proposal initialization ---
 
-author 'Author' = DATA Employee(BudgetDetail);
 searchProposal 'Search active proposals' (Employee e) = GROUP LAST BudgetPortion p IF step(p) == Step.update AND author(p) == e;
+searchCenterProposal 'Search active proposals' (CostCenter c) = GROUP LAST BudgetPortion p IF step(p) == Step.update AND costCenter(p) == c;
 WHEN SET (budget(BudgetDetail b)) AND NOT part(b) DO {
     author(b) <- currentUser();
     hiddenSet(b) <- TRUE;
-    IF searchProposal(author(b)) THEN
-        part(b) <- searchProposal(author(b));
+    //IF searchProposal(author(b)) THEN
+    //    part(b) <- searchProposal(author(b));
+    IF searchCenterProposal(costCenter(b)) THEN
+        part(b) <- searchCenterProposal(costCenter(b));
     ELSE
-        NEW p = BudgetPortion {        
+        NEW p = BudgetPortion {
             part(b) <- p;
             step(p) <- Step.update;
+            costCenter(p) <- costCenter(b);
         }
 }
 
@@ -252,6 +237,8 @@ planned 'Planned, USD' = DATA NUMERIC[16,3](StepLog);
 CLASS BudgetDetailLog 'Budgeting Log';
 TABLE budgetDetailLog(BudgetDetailLog);
 
+dateTime 'Date/Time' = DATA DATETIME (BudgetDetailLog);
+item 'Budget Item' = DATA BudgetDetail(BudgetDetailLog);
 log 'Step Log' = DATA StepLog(BudgetDetailLog);
 budget 'Budget' = DATA Budget(BudgetDetailLog);
 costCenter 'Cost Center' = DATA CostCenter(BudgetDetailLog);
@@ -259,10 +246,15 @@ costItem 'Cost Item' = DATA CostItem(BudgetDetailLog);
 name 'Name' = DATA STRING[100](BudgetDetailLog);
 description 'Description' = DATA RICHTEXT(BudgetDetailLog);
 planned 'Planned, USD' = DATA NUMERIC[16,3](BudgetDetailLog);
+value 'Summary' (BudgetDetailLog l) = RICHTEXT ('-------\n' + (OVERRIDE dateTime(l) + ':\n' + name(l) + '\nPlanned, USD: ' + STRING(planned(l)) + 
+                                                    '\nBudget: ' + name(budget(l)) + '\n' + canonicalName(costItem(l)) , 'Some of necessary fields were empty') + 
+                                                    (OVERRIDE '\nDescription: '+description(l),'') );
 
 WHEN SETCHANGED (stepOut(StepLog l)) DO {
     planned(l) <- planned(sbj(l));
     FOR part(BudgetDetail b) == sbj(l) NEW d = BudgetDetailLog DO {
+        dateTime(d) <- dateTimeOut(l);
+        item(d) <- b;
         log(d) <- l;
         budget(d) <- budget(b);
         costCenter(d) <- costCenter(b);
@@ -272,6 +264,113 @@ WHEN SETCHANGED (stepOut(StepLog l)) DO {
         planned(d) <- planned(b);
     }
 }
+
+lastLog 'Record about last change' = GROUP LAST BudgetDetailLog bdl ORDER dateTime(bdl) BY item(bdl);
+prevLog 'Record from previous status' = GROUP LAST BudgetDetailLog bdl IF bdl != lastLog(item(bdl)) ORDER dateTime(bdl) BY item(bdl);
+isChanged 'The Budget item was changed on previous step' (BudgetDetail d) = TRUE IF (name(lastLog(d)) != name(prevLog(d)) 
+                                                                                            OR description(lastLog(d)) != description(prevLog(d)) 
+                                                                                            OR costItem(lastLog(d)) != costItem(prevLog(d)) 
+                                                                                            OR budget(lastLog(d)) != budget(prevLog(d)) 
+                                                                                            OR planned(lastLog(d)) != planned(prevLog(d)))
+                                                                                            AND lastLog(d) AND prevLog(d) MATERIALIZED;
+lastValue 'Last value before the proposed change' (BudgetDetail d) = value(prevLog(d));
+historyValue 'History values before the proposed change' (BudgetDetail d) = GROUP CONCAT value(BudgetDetailLog l),'\n' IF l != lastLog(item(l)) ORDER DESC dateTime(l) BY item(l) MATERIALIZED;
+background 'Background Color' (BudgetDetail d, BudgetPortion o) = IF NOT part(d) THEN RGB(240,240,240) // gray for old records
+                                                                            ELSE IF isChanged(d) AND part(d) == o AND step(o) != Step.approve THEN RGB(255,204,204) ELSE background(step(part(d))); // red if changed
+
+addBudgetDetail 'New budget item' (BudgetPortion o) {
+    NEW d = BudgetDetail {
+        part(d) <- o;
+        costCenter(d) <- costCenter(o);
+        author(d) <- currentUser();
+        hiddenSet(d) <- TRUE IF step(o) != Step.review;
+        SHOW budgetDetailAdd OBJECTS d = d FLOAT;
+    }
+} TOOLBAR;
+
+META extendBudgetPortion (form)
+    EXTEND FORM ##form
+        PROPERTIES(o) READONLY nameCostCenter, authorName, dateTime, planned
+        
+    PROPERTIES () nameFilterBudget 
+    TREE costItems t = CostItem PARENT parent(t)
+    PROPERTIES(t) READONLY order SHOWIF NULL, name
+    ORDER order(t) 
+        
+    OBJECTS d = BudgetDetail
+    PROPERTIES (d) nameBudget, canonicalNameCostItem
+    PROPERTIES (d) BACKGROUND background(d,o) name, planned
+    PROPERTIES (d) PANEL description, historyValue SHOWIF prevLog(d)
+    PROPERTIES TOOLBAR addBudgetDetail(o), DELETE (d)
+    PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
+    ORDER dateSorting DESC 
+    FILTERS costCenter(d) == costCenter(o),
+            isParent(costItem(d),t),
+            budget(d) == filterBudget() OR NOT filterBudget(),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
+    //FILTERS part(d) == o
+    ;
+
+    DESIGN ##form {
+        OBJECTS {
+            NEW pane FIRST {
+                fill = 3;
+                alignment = STRETCH;
+                type = CONTAINERV;
+                MOVE PROPERTY(nameCostCenter(o)) { alignment = STRETCH; }
+                NEW headerPart {
+                    alignment = STRETCH;
+                    type = CONTAINERH;
+                    MOVE PROPERTY(planned(o)) { alignment = START; caption = 'Planned by new Budget items, USD'; }
+                    MOVE PROPERTY(authorName(o)) { alignment = CENTER; }
+                    MOVE PROPERTY(dateTime(o));
+                }
+                NEW proposal {
+                    type = CONTAINERH;
+                    fill = 1;
+                    alignment = STRETCH;
+                    caption = 'Cost Center Budget overview';
+                    NEW category {
+                        caption = 'Block of filters';
+                        type = CONTAINERV;
+                        alignment = STRETCH;
+                        fill = 1;
+                        MOVE PROPERTY (nameFilterBudget()) { caption = 'Filter by Budget'; }
+                        MOVE BOX (TREE costItems) { caption = 'Filter by Cost Type'; }
+                    }
+                    MOVE BOX (d) { 
+                        fill = 3; 
+                        caption = 'List of Budget Details'; 
+                        PROPERTY(nameBudget(d)) { fontStyle = 'bold'; }
+                        TOOLBAR {
+                            MOVE PROPERTY(addBudgetDetail(o));
+                        }
+                    }
+                    NEW comments {
+                        type = CONTAINERV;
+                        width = 400;
+                        alignment = STRETCH;         
+                        MOVE PROPERTY (description(d)) {
+                            fill = 1;
+                            alignment = STRETCH;
+                            panelCaptionAbove = TRUE;
+                        }
+                        MOVE PROPERTY (historyValue(d)) {
+                            fill = 1;
+                            alignment = STRETCH;
+                            panelCaptionAbove = TRUE;
+                        }
+                    }
+                }
+            }
+        }
+    }    
+END
+@extendBudgetPortion(budgetPortion);
+@extendBudgetPortion(update);
+@extendBudgetPortion(enter);
+@extendBudgetPortion(review);
+@extendBudgetPortion(reject);
 
 FORM steplog 'Budgeting log'
     OBJECTS l = StepLog

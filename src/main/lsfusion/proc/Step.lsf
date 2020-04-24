@@ -144,7 +144,7 @@ META defineAssignmentForm(subject,makeStep,header)
                     type = CONTAINERH;
                     alignment = CENTER;
                 }
-                MOVE PROPERTY(comment(l)) { height = 160; panelCaptionAbove = TRUE; }
+                MOVE PROPERTY(comment(l)) { height = 200; panelCaptionAbove = TRUE; }
             }
         }
     }

@@ -39,7 +39,7 @@ stage 'Stage' = ABSTRACT Stage (Assign) MATERIALIZED;
 nameStage 'Budgeting Stage' (Assign s)= name(stage(s));
 color 'Background Color' (Assign s)= color(stage(s));
 
-desc 'Description' = ABSTRACT ISTRING[1000](Assign) MATERIALIZED CHARWIDTH 50;
+desc 'Description' = ABSTRACT ISTRING(Assign) MATERIALIZED CHARWIDTH 50;
 sum 'Sum, USD' = ABSTRACT NUMERIC[16,3](Assign) MATERIALIZED CHARWIDTH 50;
 exec 'Execute'  ABSTRACT (Assign);
 
