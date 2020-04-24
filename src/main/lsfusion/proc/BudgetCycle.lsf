@@ -167,7 +167,7 @@ DESIGN budgetPortions {
 //--- Procedure: Init and Update Steps ---
 
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal editing',planned);
-assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;// OR access(sbj(a),e);
+assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e OR access(sbj(a),currentUser()) AND a IS AssignUpdate;// OR access(sbj(a),e);
 @buttonDecisions(update,enter,'Send the Budget Proposal for Review');
 
 userEntered 'Send all new records for Review' () { 
@@ -206,7 +206,7 @@ assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR ha
 //--- Procedure: Updating information on Reject Step ---
 
 @defineAssignment(BudgetPortion, budgeting, reject, 'Revising Budgeting record',planned);
-assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
+assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e OR access(sbj(a),currentUser()) AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
 @buttonDecisions(reject,enter,'Send the revised Budget Proposal for Review');
 
 //--- Automotive Proposal initialization ---
@@ -246,7 +246,7 @@ costItem 'Cost Item' = DATA CostItem(BudgetDetailLog);
 name 'Name' = DATA STRING[100](BudgetDetailLog);
 description 'Description' = DATA RICHTEXT(BudgetDetailLog);
 planned 'Planned, USD' = DATA NUMERIC[16,3](BudgetDetailLog);
-value 'Summary' (BudgetDetailLog l) = RICHTEXT ('-------\n' + (OVERRIDE dateTime(l) + ':\n' + name(l) + '- Planned, USD: ' + STRING(planned(l)) + 
+value 'Summary' (BudgetDetailLog l) = RICHTEXT ('-------\n' + (OVERRIDE dateTime(l) + ':\n' + name(l) + ' - Planned, USD: ' + STRING(planned(l)) + 
                                                     ' (' + name(budget(l)) + '). Cost Type: ' + canonicalName(costItem(l)) , 'Some of necessary fields were empty') + 
                                                     (OVERRIDE '. Description: '+description(l),'') );
 
@@ -341,7 +341,7 @@ META extendBudgetPortion (form)
                         caption = 'Block of filters';
                         type = CONTAINERV;
                         alignment = STRETCH;
-                        fill = 1;
+                        width = 330;
                         MOVE PROPERTY (nameFilterBudget()) { caption = 'Filter by Budget'; }
                         MOVE BOX (TREE costItems) { caption = 'Filter by Cost Type'; }
                     }

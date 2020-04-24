@@ -16,6 +16,7 @@ META defineStep (id,capName,ClassName)
     TABLE steplog(StepLog);
     sbj = DATA ClassName(StepLog);
     comment 'Comment' = DATA TEXT(StepLog);
+    lastComment 'Last Comment' = GROUP LAST comment(StepLog l) BY sbj(l);
     
     @defineStepAttributes(in,'step');
     @defineStepAttributes(out,'result');
@@ -128,6 +129,7 @@ META defineAssignmentForm(subject,makeStep,header)
 
     FORM makeStep header
         OBJECTS o = ##subject PANEL
+        PROPERTIES(o) lastComment BACKGROUND RGB(240,240,240) SHOWIF lastComment(o)
         
         OBJECTS l = StepLog PANEL
         PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
@@ -144,7 +146,13 @@ META defineAssignmentForm(subject,makeStep,header)
                     type = CONTAINERH;
                     alignment = CENTER;
                 }
-                MOVE PROPERTY(comment(l)) { height = 200; panelCaptionAbove = TRUE; }
+                NEW commentsArea {
+                    type = CONTAINERH;
+                    height = 250;
+                    alignment = STRETCH;
+                    MOVE PROPERTY(comment(l)) { fill = 4; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
+                    MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
+                }
             }
         }
     }
