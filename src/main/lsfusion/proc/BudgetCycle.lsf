@@ -98,7 +98,7 @@ FORM budgetPortions 'Budget Proposals'
     OBJECTS o = BudgetPortion
     PROPERTIES(o) READONLY nameExplain, dateTime, planned, nameStep, authorName
     PROPERTIES newPart() 
-    PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
+    PROPERTIES(o) NEWSESSION editPart = EDIT SHOWIF afg(currentUser()), delPart = DELETE SHOWIF afg(currentUser())
     FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
     
     OBJECTS bcid=(b=Budget,c=CostCenter,i=CostItem,d = BudgetDetail)
@@ -246,9 +246,9 @@ costItem 'Cost Item' = DATA CostItem(BudgetDetailLog);
 name 'Name' = DATA STRING[100](BudgetDetailLog);
 description 'Description' = DATA RICHTEXT(BudgetDetailLog);
 planned 'Planned, USD' = DATA NUMERIC[16,3](BudgetDetailLog);
-value 'Summary' (BudgetDetailLog l) = RICHTEXT ('-------\n' + (OVERRIDE dateTime(l) + ':\n' + name(l) + '\nPlanned, USD: ' + STRING(planned(l)) + 
-                                                    '\nBudget: ' + name(budget(l)) + '\n' + canonicalName(costItem(l)) , 'Some of necessary fields were empty') + 
-                                                    (OVERRIDE '\nDescription: '+description(l),'') );
+value 'Summary' (BudgetDetailLog l) = RICHTEXT ('-------\n' + (OVERRIDE dateTime(l) + ':\n' + name(l) + '- Planned, USD: ' + STRING(planned(l)) + 
+                                                    ' (' + name(budget(l)) + '). Cost Type: ' + canonicalName(costItem(l)) , 'Some of necessary fields were empty') + 
+                                                    (OVERRIDE '. Description: '+description(l),'') );
 
 WHEN SETCHANGED (stepOut(StepLog l)) DO {
     planned(l) <- planned(sbj(l));
@@ -288,6 +288,12 @@ addBudgetDetail 'New budget item' (BudgetPortion o) {
     }
 } TOOLBAR;
 
+pushBudgetDetail 'Pick this item into processing' (BudgetPortion o, BudgetDetail d) {
+    part(d) <- o;
+} TOOLBAR;
+
+readonlyRun (BudgetPortion o, BudgetDetail d) = TRUE IF part(d) != o OR NOT part(d);
+
 META extendBudgetPortion (form)
     EXTEND FORM ##form
         PROPERTIES(o) READONLY nameCostCenter, authorName, dateTime, planned
@@ -298,17 +304,18 @@ META extendBudgetPortion (form)
     ORDER order(t) 
         
     OBJECTS d = BudgetDetail
-    PROPERTIES (d) nameBudget, canonicalNameCostItem
-    PROPERTIES (d) BACKGROUND background(d,o) name, planned
-    PROPERTIES (d) PANEL description, historyValue SHOWIF prevLog(d)
-    PROPERTIES TOOLBAR addBudgetDetail(o), DELETE (d)
+    PROPERTIES (d) READONLYIF readonlyRun(o,d) nameBudget, canonicalNameCostItem
+    PROPERTIES (d) READONLYIF readonlyRun(o,d) BACKGROUND background(d,o) name, planned
+    PROPERTIES (d) READONLYIF readonlyRun(o,d) PANEL description, historyValue SHOWIF prevLog(d)
+    PROPERTIES TOOLBAR pushBudgetDetail(o,d) SHOWIF readonlyRun(o,d), addBudgetDetail(o), DELETE (d)
     PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
-    ORDER dateSorting DESC 
+    ORDER dateSorting DESC , planned(d) DESC
     FILTERS costCenter(d) == costCenter(o),
             isParent(costItem(d),t),
             budget(d) == filterBudget() OR NOT filterBudget(),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
-    //FILTERS part(d) == o
+    FILTERGROUP newAndOld
+        FILTER 'Show items from this proposal only' part(d) == o
     ;
 
     DESIGN ##form {
