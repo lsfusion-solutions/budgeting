@@ -131,7 +131,7 @@ EXTEND FORM employees
     OBJECTS emp = Employee
     PROPERTIES (emp) READONLY firstName, lastName, namePosition, nameLocation
     PROPERTIES totalExpenses(emp, cur) COLUMNS (cur) HEADER name(cur)
-    FILTERS totalExpenses(emp)
+    FILTERS totalExpenses(emp) AND NOT isCandidate(emp)
     
     OBJECTS t = InvoiceEmployeeType
     PROPERTIES(t) READONLY name

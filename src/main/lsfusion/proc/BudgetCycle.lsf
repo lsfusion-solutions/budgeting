@@ -48,7 +48,7 @@ EXTEND CLASS Step
     enter 'Entered',
     review 'Reviewed',
     approve 'Approved',
-    reject 'Rejected',
+    reject 'Revising',
     update 'Update'
 }
 hideVariant 'Logics for hiding variant buttons' = DATA BOOLEAN (Step,Step);

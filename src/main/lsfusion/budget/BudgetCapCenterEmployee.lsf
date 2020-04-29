@@ -87,6 +87,7 @@ EXTEND FORM employees
     OBJECTS be = Employee
     PROPERTIES(be) READONLY firstName, lastName, namePosition, nameLocation, canonicalNameCostItem, nameMonthFrom, nameMonthTo
     PROPERTIES READONLY assigned(b, be) COLUMNS (b) HEADER name(b)
+    FILTERS NOT isCandidate(be)
     
     OBJECTS pb = (pe = Period, bb = Budget)
     PROPERTIES READONLY nameCostCenter(pe), name(bb)

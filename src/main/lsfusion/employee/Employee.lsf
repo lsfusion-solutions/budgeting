@@ -25,7 +25,9 @@ nameManager 'Manager' (Employee e) = name(manager(e));
 
 responsibilities 'Responsibilities' = DATA STRING[1000] (Employee) CHARWIDTH 40;
 
+isCandidate 'Candidate or Vacancy' = DATA BOOLEAN (Employee);
 hiringDate 'Hiring date' = DATA DATE(Employee);
+WHEN SET(hiringDate(Employee e)) DO isCandidate(e) <- NULL;
 
 probationPeriod 'Probation period (months)' = DATA INTEGER (Employee);
 probationDate 'Probation date' (Employee e) = sumMonth(hiringDate(e), probationPeriod(e));
@@ -40,7 +42,7 @@ FORM employee 'Employee'
     OBJECTS e = Employee PANEL
     PROPERTIES(e) firstName, lastName, referenceName, namePosition, nameLocation, 
                   nameManager, responsibilities, inactive, //RDOpenSpace,
-                  hiringDate, probationPeriod, passedProbation,
+                  isCandidate, hiringDate, probationPeriod, passedProbation,
                   login, sha256Password ON CHANGE changeSHA256Password(e), email, nameMainRole, birthday
     
     EDIT Employee OBJECT e 
@@ -69,6 +71,7 @@ DESIGN employee {
                 }
                 NEW hiringHeader {
                     caption = 'Hiring';
+                    MOVE PROPERTY(isCandidate(e));
                     MOVE PROPERTY(hiringDate(e));
                     MOVE PROPERTY(probationPeriod(e));
                     MOVE PROPERTY(passedProbation(e));
@@ -100,6 +103,14 @@ FORM employees 'Employees'
                                           nameManager, responsibilities,// RDOpenSpace,
                                           login, email, nameMainRole, birthday
     PROPERTIES(e) NEWSESSION NEW, EDIT, DELETE
+    FILTERS NOT isCandidate(e)
+    
+    OBJECTS ec = Employee
+    PROPERTIES(ec) READONLYIF isReadonly() BACKGROUND background(ec)
+                                          namePosition, nameLocation,
+                                          nameManager, responsibilities
+    PROPERTIES(ec) NEWSESSION NEW, EDIT, DELETE
+    FILTERS isCandidate(ec)
     
     FILTERGROUP inactive FILTER 'Active' NOT inactive(e) DEFAULT 
 ;
@@ -112,6 +123,9 @@ DESIGN employees {
             type = TABBED;
             MOVE BOX(e) {
                 caption = 'Employees';
+            }
+            MOVE BOX(ec) {
+                caption = 'Vacancies';
             }
         }
     }
