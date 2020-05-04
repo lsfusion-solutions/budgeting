@@ -210,7 +210,8 @@ WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
     ELSE
         NEW p = PurchaseOrder {        
             part(b) <- p;
-            step(p) <- Step.enter;
+            datePlan(p) <- DATE(OVERRIDE sumDay(DATETIME(date(b)),30),sumDay(currentDateTime(),30));
+            step(p) <- Step.review;
         }
     IF contractor(b) THEN supply(b) <- TRUE;
     IF NOT nameSupplier(b) THEN nameSupplier(b) <- 'Search needed';
