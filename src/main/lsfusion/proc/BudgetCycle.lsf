@@ -1,6 +1,6 @@
 MODULE BudgetCycle;
 
-REQUIRE Cycle, Step, Budget, CostCenterEmployee, BudgetCapCenter;
+REQUIRE Cycle, Step, Budget, CostCenterEmployee, BudgetCapCenter, Chat;
 
 NAMESPACE Budget;
 
@@ -301,6 +301,21 @@ pushBudgetDetail 'Pick this item into processing' (BudgetPortion o, BudgetDetail
 
 readonlyRun (BudgetPortion o, BudgetDetail d) = TRUE IF part(d) != o OR NOT part(d);
 
+// Enable Chat
+newComment 'New Comment' = DATA LOCAL TEXT (BudgetDetail);
+budgetDetail 'Budget Detail' = DATA BudgetDetail(Message);
+nameAuthorShort 'Author' (Message m) = TEXT(nameAuthor(m));
+addComment 'Send Comment' (BudgetDetail b)  { 
+    NEW m = Message {
+        dateTime(m) <- currentDateTime();
+        budgetDetail(m) <- b;
+        author(m) <- currentUser();
+        text(m) <- newComment(b);
+        newComment(b) <- NULL;
+    }
+    apply();
+}
+
 META extendBudgetPortion (form)
     EXTEND FORM ##form
         PROPERTIES(o) READONLY nameCostCenter, authorName, dateTime, planned
@@ -314,6 +329,7 @@ META extendBudgetPortion (form)
     PROPERTIES (d) READONLYIF readonlyRun(o,d) nameBudget, canonicalNameCostItem
     PROPERTIES (d) READONLYIF readonlyRun(o,d) BACKGROUND background(d,o) name, planned
     PROPERTIES (d) READONLYIF readonlyRun(o,d) PANEL description, historyValue SHOWIF prevLog(d)
+    PROPERTIES (d) PANEL newComment, addComment
     PROPERTIES TOOLBAR pushBudgetDetail(o,d) SHOWIF readonlyRun(o,d), addBudgetDetail(o), DELETE (d)
     PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
     ORDER dateSorting DESC , planned(d) DESC
@@ -323,12 +339,17 @@ META extendBudgetPortion (form)
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
     FILTERGROUP newAndOld
         FILTER 'Show items from this proposal only' part(d) == o
+        
+    OBJECTS m = Message
+    PROPERTIES(m) READONLY BACKGROUND backgroundMessage(m) nameAuthorShort, text, dateTime SHOWIF NULL
+    ORDER dateTime(m) DESC
+    FILTERS budgetDetail(m) == d
     ;
 
     DESIGN ##form {
         OBJECTS {
             NEW pane FIRST {
-                fill = 3;
+                fill = 5;
                 alignment = STRETCH;
                 type = CONTAINERV;
                 MOVE PROPERTY(nameCostCenter(o)) { alignment = STRETCH; }
@@ -361,18 +382,35 @@ META extendBudgetPortion (form)
                         }
                     }
                     NEW comments {
-                        type = CONTAINERV;
+                        type = TABBED;
                         width = 400;
-                        alignment = STRETCH;         
-                        MOVE PROPERTY (description(d)) {
-                            fill = 1;
-                            alignment = STRETCH;
-                            panelCaptionAbove = TRUE;
+                        alignment = STRETCH;
+                        NEW chat {
+                            caption = 'Comments';
+                            type = CONTAINERV;
+                            MOVE BOX(m) {
+                                PROPERTY(text(m)) {alignment = STRETCH;}
+                            }
+                            MOVE PROPERTY(newComment(d)) { alignment = STRETCH; panelCaptionAbove = TRUE; }
+                            MOVE PROPERTY(addComment(d));
                         }
-                        MOVE PROPERTY (historyValue(d)) {
-                            fill = 1;
-                            alignment = STRETCH;
-                            panelCaptionAbove = TRUE;
+                        NEW desc {
+                            caption = 'Description';
+                            MOVE PROPERTY (description(d)) {
+                                fill = 1;
+                                alignment = STRETCH;
+                                panelCaptionAbove = TRUE;
+                                caption = '';
+                            }
+                        }
+                        NEW history {
+                            caption = 'History';
+                            MOVE PROPERTY (historyValue(d)) {
+                                fill = 1;
+                                alignment = STRETCH;
+                                panelCaptionAbove = TRUE;
+                                caption = '';
+                            }                        
                         }
                     }
                 }
