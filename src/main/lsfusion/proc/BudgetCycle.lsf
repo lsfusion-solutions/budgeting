@@ -203,6 +203,13 @@ assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR ha
 @buttonDecisions(review,reject,'Reject and send the Budget Proposal back for revising');
 @buttonDecisions(review,approve,'Approve the Budget');
 
+isApproved (BudgetPortion s) = step(s) == Step.approve AND afg(currentUser());
+dropApproval 'Drop Approval' (BudgetPortion o) {
+    stepOut(stepLog(o)) <- Step.reject;
+    APPLY;
+} TOOLBAR;
+EXTEND FORM budgetPortions PROPERTIES(o) dropApproval SHOWIF isApproved(o);
+
 //--- Procedure: Updating information on Reject Step ---
 
 @defineAssignment(BudgetPortion, budgeting, reject, 'Revising Budgeting record',planned);
