@@ -66,6 +66,45 @@ META defineStep (id,capName,ClassName)
         PROPERTIES showVariants(sIn,sOut) COLUMNS (sOut) HEADER name(sOut)
     ; 
     NAVIGATOR { masterData { cycles { NEW steps###id; } } }
+    
+    // Notification templates
+    toNotify 'Notify' = DATA BOOLEAN (Notification, Step);
+    notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n);
+    // Notifications
+    sendNotification 'Send Notification' (Step s, Employee e) {
+        IF notification(s) THEN
+            sendNotification(header(notification(s)),text(notification(s)),email(e));
+    } 
+    EXTEND FORM notificationsForms
+        OBJECTS note###id = Notification
+        PROPERTIES (note###id) header, enabled, text PANEL, NEW
+        FILTERS stage(note###id) == Stage.##id
+        
+        OBJECTS step###id = Step
+        PROPERTIES  name(step###id) READONLY, toNotify(note###id,step###id) DRAW step###id
+    ;
+    DESIGN notificationsForms {
+        tabPane {
+            NEW ##id {
+                type = CONTAINERV;
+                fill = 1;
+                alignment = STRETCH;
+                caption = ##capName;
+                NEW list###id {
+                    type = CONTAINERH;
+                    fill = 1;
+                    alignment = STRETCH;
+                    MOVE BOX (note###id) {fill = 4;}
+                    MOVE BOX (step###id) {fill = 1;}
+                }
+                MOVE PROPERTY(text(note###id)) {
+                    fill = 2;
+                    alignment = STRETCH;
+                    panelCaptionAbove = TRUE;
+                }
+            }
+        }
+    }
 
 END
 
@@ -186,6 +225,12 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     
     has###makeStep(Employee e)  = GROUP SUM 1 IF has(e AS Employee, UserRole role) AND makeStep(role) MATERIALIZED;
     //assigned (Employee e, Assign###makeStep s) += has###makeStep(e) AND s IS Assign###makeStep; 
+    
+    WHEN SET(Assign###makeStep s IS Assign###makeStep) DO {
+        FOR assigned(Employee e, s) DO {
+            sendNotification(step(sbj(s)), e);
+        }
+    }
     
     @defineAssignmentForm(subject,makeStep,header);
     

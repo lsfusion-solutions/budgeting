@@ -119,8 +119,48 @@ FORM assignLog 'Assignments Log'
 
 ;
 
+// Email notifications
+
+CLASS Notification;
+TABLE notification(Notification);
+
+stage 'Procurement Stage' = DATA Stage(Notification);
+nameStage 'Procurement Stage' (Notification n) = name(stage(n));
+
+header 'Email header' = DATA STRING (Notification);
+text 'Notification text' = DATA RICHTEXT (Notification);
+enabled 'Enabled' = DATA BOOLEAN (Notification);
+
+FORM notification
+    OBJECTS r = RICHTEXT PANEL SUBREPORT
+    PROPERTIES(r) notification = VALUE
+;
+
+sendNotification 'Send Notification' (STRING header, TEXT text, STRING[400] email)  { 
+    LOCAL bodyFile = FILE ();
+    PRINT notification OBJECTS r = text HTML TO bodyFile;
+    EMAIL
+        SUBJECT header
+        TO email
+        BODY bodyFile();
+}
+
+FORM notificationsForms 'Templates';
+DESIGN notificationsForms {
+    OBJECTS {
+        NEW tabPane {
+            fill = 1;
+            alignment = STRETCH;
+            type = TABBED;
+        }
+    }
+}
+
 NAVIGATOR {
     logs {
         NEW assignLog;
+    }
+    notification {
+        NEW notificationsForms;
     }
 }
