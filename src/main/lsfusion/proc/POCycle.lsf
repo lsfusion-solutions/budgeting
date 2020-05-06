@@ -137,6 +137,7 @@ FORM purchaseOrder 'Edit single Purchase Order'
 //--- Initialize Procedure ---
 
 @defineStep(po,'Purchasing cycle',PurchaseOrder);
+@defineNotification(po,'Purchasing cycle',PurchaseOrder,author);
 EXTEND CLASS Step
 {
     enter 'Entered',
@@ -167,7 +168,7 @@ newPart '+ Add' ()  {
 @defineAssignment(PurchaseOrder, po, update, 'Complete Purchase Order editing',planned);
 @extendPurchaseOrder(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;
-@buttonDecisions(update,review,'Send the Purchase Order for Approval');
+@buttonDecisions(update,review,'Send the Purchase Order for Review');
 
 // Pass threshold logic
 //CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.review AND passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Automated approval';
@@ -175,10 +176,11 @@ assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 
 //--- Procedure: Review and Review Updated Steps ---
 
-@defineAssignment(PurchaseOrder, po, enter, 'Route manually uploaded Purchase Order',planned);
+@defineAssignment(PurchaseOrder, po, enter, 'Confirm Purchase Order on behalf of Cost Center',planned);
 @extendPurchaseOrder(enter);
 assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND a IS AssignEnter;
-@buttonDecisions(enter,review,'Force the Manually uploaded invoice for Approval');
+@buttonDecisions(enter,reject,'Reject and send the Purchase Order back for revising');
+@buttonDecisions(enter,review,'Send the Purchase Order for Approval');
 
 //--- Procedure: Approve Step ---
 
@@ -201,7 +203,7 @@ assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 //--- Automotive Purchase Order initialization ---
 
 author 'Author' = DATA Employee(Invoice);
-searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.enter AND author(p) == e;
+searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.update AND author(p) == e;
 WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
     author(b) <- currentUser();
     //hidden(b) <- TRUE;
@@ -211,7 +213,7 @@ WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
         NEW p = PurchaseOrder {        
             part(b) <- p;
             datePlan(p) <- DATE(OVERRIDE sumDay(DATETIME(date(b)),30),sumDay(currentDateTime(),30));
-            step(p) <- Step.review;
+            step(p) <- Step.enter;
         }
     IF contractor(b) THEN supply(b) <- TRUE;
     IF NOT nameSupplier(b) THEN nameSupplier(b) <- 'Search needed';

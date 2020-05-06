@@ -51,6 +51,7 @@ budgetDetail 'Budget Detail' = DATA BudgetDetail(Message);
 //--- Initialize Procedure ---
 
 @defineStep(budgeting,'Budgeting cycle',BudgetPortion);
+@defineNotification(budgeting,'Budgeting cycle',BudgetPortion,costCenter);
 EXTEND CLASS Step
 {
     enter 'Entered',
@@ -358,7 +359,13 @@ META extendBudgetPortion (form)
     PROPERTIES(m) READONLY BACKGROUND backgroundMessage(m) text, nameAuthorShort, dateTime SHOWIF NULL
     ORDER dateTime(m) DESC
     FILTERS budgetDetail(m) == d
+    
+    EVENTS ON APPLY AFTER seekLastMessageInFullChat()
     ;
+    
+    seekLastMessageInFullChat() + { 
+        SEEK FIRST ##form.m;
+    }
 
     DESIGN ##form {
         OBJECTS {
@@ -409,7 +416,7 @@ META extendBudgetPortion (form)
                 }
             }
         }
-    }    
+    }
 END
 @extendBudgetPortion(budgetPortion);
 @extendBudgetPortion(update);

@@ -67,14 +67,21 @@ META defineStep (id,capName,ClassName)
         PROPERTIES showVariants(sIn,sOut) COLUMNS (sOut) HEADER name(sOut)
     ; 
     NAVIGATOR { masterData { cycles { NEW steps###id; } } }
-    
-    // Notification templates
+END
+
+META defineNotification (id,capName,ClassName,Category)
     toNotify 'Notify' = DATA BOOLEAN (Notification, Step);
     notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n);
-    // Notifications
-    sendNotification 'Send Notification' (Step s, Employee e) {
-        IF notification(s) THEN
-            sendNotification(header(notification(s)),text(notification(s)),email(e));
+    generateHeader (##ClassName s) = STRING(replace(replace(header(notification(step(s))),
+                                                                                   'costCenter(s)', name(##Category(s))),
+                                                                                   'planned(s)', planned(s)));
+    generateNotification (##ClassName s) = RICHTEXT(replace(replace(replace(text(notification(step(s))),
+                                                                                   'costCenter(s)', name(##Category(s))),
+                                                                                   'date(s)', toDateDDMMYY(currentDate())), 
+                                                                                   'planned(s)', planned(s)));
+    sendNotification 'Send Notification' (##ClassName s, Employee e) {
+        IF notification(step(s)) THEN
+            sendNotification(generateHeader(s),generateNotification(s),email(e));
     } 
     EXTEND FORM notificationsForms
         OBJECTS note###id = Notification
@@ -106,7 +113,6 @@ META defineStep (id,capName,ClassName)
             }
         }
     }
-
 END
 
 // User, DateTime and Logging attributes
@@ -229,7 +235,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     
     WHEN SET(Assign###makeStep s IS Assign###makeStep) DO {
         FOR assigned(Employee e, s) DO {
-            sendNotification(step(sbj(s)), e);
+            sendNotification(sbj(s), e);
         }
     }
     
