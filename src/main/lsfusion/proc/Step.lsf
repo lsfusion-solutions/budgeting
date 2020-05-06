@@ -15,7 +15,7 @@ META defineStep (id,capName,ClassName)
     CLASS StepLog 'Steps Log';
     TABLE steplog(StepLog);
     sbj = DATA ClassName(StepLog);
-    comment 'Comment' = DATA TEXT(StepLog);
+    comment 'Comment' = DATA RICHTEXT(StepLog);
     lastComment 'Last Comment' = GROUP LAST comment(StepLog l) BY sbj(l);
     
     @defineStepAttributes(in,'step');
@@ -24,6 +24,7 @@ META defineStep (id,capName,ClassName)
     stepLog = DATA StepLog(##ClassName);
     WHEN SETCHANGED (step(##ClassName s)) DO {
         NEW l = StepLog {
+            comment(l) <- RICHTEXT('\n--- '+STRING(currentDateTime())+' ('+name(currentUser())+') ---\n'+comment(stepLog(s)));
             stepLog(s) <- l;
             sbj(l) <- s;
             stepIn(l) <- step(s);
@@ -168,7 +169,7 @@ META defineAssignmentForm(subject,makeStep,header)
 
     FORM makeStep header
         OBJECTS o = ##subject PANEL
-        PROPERTIES(o) lastComment BACKGROUND RGB(240,240,240) SHOWIF lastComment(o)
+        //PROPERTIES(o) lastComment BACKGROUND RGB(240,240,240) SHOWIF lastComment(o)
         
         OBJECTS l = StepLog PANEL
         PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
@@ -186,11 +187,11 @@ META defineAssignmentForm(subject,makeStep,header)
                     alignment = CENTER;
                 }
                 NEW commentsArea {
-                    type = CONTAINERH;
-                    height = 250;
+                    type = CONTAINERV;
+                    height = 100;
                     alignment = STRETCH;
-                    MOVE PROPERTY(comment(l)) { fill = 4; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
-                    MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
+                    MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
+                    //MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
                 }
             }
         }
