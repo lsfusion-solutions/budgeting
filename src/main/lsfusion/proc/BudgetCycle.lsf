@@ -275,8 +275,13 @@ isChanged 'The Budget item was changed on previous step' (BudgetDetail d) = TRUE
                                                                                             AND lastLog(d) AND prevLog(d) MATERIALIZED;
 lastValue 'Last value before the proposed change' (BudgetDetail d) = value(prevLog(d));
 historyValue 'History values before the proposed change' (BudgetDetail d) = GROUP CONCAT value(BudgetDetailLog l),'\n' IF l != lastLog(item(l)) ORDER DESC dateTime(l) BY item(l) MATERIALIZED;
-background 'Background Color' (BudgetDetail d, BudgetPortion o) = IF NOT part(d) THEN RGB(240,240,240) // gray for old records
-                                                                            ELSE IF isChanged(d) AND part(d) == o AND step(o) != Step.approve THEN RGB(255,204,204) ELSE background(step(part(d))); // red if changed
+//background 'Background Color' (BudgetDetail d, BudgetPortion o) = IF NOT part(d) THEN RGB(240,240,240) // gray for old records
+//                                                                            ELSE IF isChanged(d) AND part(d) == o AND step(o) != Step.approve THEN RGB(255,204,204) ELSE background(step(part(d))); // red if changed
+
+messageFlagPrev 'New message from previous step' = DATA BOOLEAN (BudgetDetail);
+messageFlagThis 'New message at this step' = DATA BOOLEAN (BudgetDetail);
+
+background 'Background Color' (BudgetDetail d, BudgetPortion o) = IF NOT part(d) THEN RGB(240,240,240) ELSE IF messageFlagPrev(d) THEN RGB(255,204,204) ELSE background(step(part(d)));
 
 WHEN SETCHANGED (stepOut(StepLog l)) DO {
     planned(l) <- planned(sbj(l));
@@ -290,6 +295,12 @@ WHEN SETCHANGED (stepOut(StepLog l)) DO {
         name(d) <- name(b);
         description(d) <- description(b);
         planned(d) <- planned(b);
+        // background from messaging
+        messageFlagPrev(b) <- NULL;
+        IF messageFlagThis(b) THEN {
+            messageFlagPrev(b) <- TRUE;
+            messageFlagThis(b) <- NULL;
+        }
     }
     FOR part(BudgetDetail d) == sbj(l) AND isChanged(d) NEW m = Message DO {
         dateTime(m) <- dateTimeOut(l);
@@ -300,6 +311,7 @@ WHEN SETCHANGED (stepOut(StepLog l)) DO {
         IF costItem(lastLog(d)) != costItem(prevLog(d)) THEN text(m) <- text(m) + 'Cost Type changed from "' + canonicalName(costItem(lastLog(d))) + '" \nto "' + canonicalName(costItem(prevLog(d))) + '"\n';
         IF budget(lastLog(d)) != budget(prevLog(d)) THEN text(m) <- text(m) + 'Budget changed from ' + name(budget(lastLog(d))) + ' \nto ' + name(budget(prevLog(d))) + '\n';
         IF planned(lastLog(d)) != planned(prevLog(d)) THEN text(m) <- text(m) + 'Planned sum changed from ' + planned(lastLog(d)) + ' USD to ' + planned(prevLog(d)) + ' USD\n';
+        messageFlagPrev(d) <- TRUE;
     }
 }
 
@@ -327,6 +339,7 @@ addComment 'Send Comment' (BudgetDetail b)  {
         author(m) <- currentUser();
         text(m) <- newComment(b);
         newComment(b) <- NULL;
+        messageFlagThis(b) <- TRUE;
     }
     apply();
 }
