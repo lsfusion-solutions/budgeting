@@ -240,7 +240,8 @@ FORM budgetDetails 'Budget details'
     FILTERS costCenter(d) == c,
             isParent(costItem(d),t),
             budget(d) == filterBudget() OR NOT filterBudget(),
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            //(hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT sensitive(d),
             NOT hidden(d) 
         
     LIST BudgetDetail OBJECT d
