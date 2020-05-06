@@ -44,6 +44,10 @@ nameExplain 'Cost Centers involved' (BudgetPortion b) = CONCAT ' ',nameCostCente
 quarterNumber 'Quarter ID' (Budget b) = extractYear(fromDate(b))*10 + floor( DOUBLE (extractMonthNumber(fromDate(b)) - 1) / 3 + 1 ) MATERIALIZED;
 quarter = GROUP AGGR Budget b BY quarterNumber(b); 
 
+// Enable Chat
+newComment 'New Comment' = DATA LOCAL TEXT (BudgetDetail);
+budgetDetail 'Budget Detail' = DATA BudgetDetail(Message);
+
 //--- Initialize Procedure ---
 
 @defineStep(budgeting,'Budgeting cycle',BudgetPortion);
@@ -261,6 +265,18 @@ value 'Summary' (BudgetDetailLog l) = RICHTEXT ('-------\n' + (OVERRIDE dateTime
                                                     ' (' + name(budget(l)) + '). Cost Type: ' + canonicalName(costItem(l)) , 'Some of necessary fields were empty') + 
                                                     (OVERRIDE '. Description: '+description(l),'') );
 
+lastLog 'Record about last change' = GROUP LAST BudgetDetailLog bdl ORDER dateTime(bdl) BY item(bdl);
+prevLog 'Record from previous status' = GROUP LAST BudgetDetailLog bdl IF bdl != lastLog(item(bdl)) ORDER dateTime(bdl) BY item(bdl);
+isChanged 'The Budget item was changed on previous step' (BudgetDetail d) = TRUE IF (name(lastLog(d)) != name(prevLog(d)) 
+                                                                                            OR costItem(lastLog(d)) != costItem(prevLog(d)) 
+                                                                                            OR budget(lastLog(d)) != budget(prevLog(d)) 
+                                                                                            OR planned(lastLog(d)) != planned(prevLog(d)))
+                                                                                            AND lastLog(d) AND prevLog(d) MATERIALIZED;
+lastValue 'Last value before the proposed change' (BudgetDetail d) = value(prevLog(d));
+historyValue 'History values before the proposed change' (BudgetDetail d) = GROUP CONCAT value(BudgetDetailLog l),'\n' IF l != lastLog(item(l)) ORDER DESC dateTime(l) BY item(l) MATERIALIZED;
+background 'Background Color' (BudgetDetail d, BudgetPortion o) = IF NOT part(d) THEN RGB(240,240,240) // gray for old records
+                                                                            ELSE IF isChanged(d) AND part(d) == o AND step(o) != Step.approve THEN RGB(255,204,204) ELSE background(step(part(d))); // red if changed
+
 WHEN SETCHANGED (stepOut(StepLog l)) DO {
     planned(l) <- planned(sbj(l));
     FOR part(BudgetDetail b) == sbj(l) NEW d = BudgetDetailLog DO {
@@ -274,20 +290,17 @@ WHEN SETCHANGED (stepOut(StepLog l)) DO {
         description(d) <- description(b);
         planned(d) <- planned(b);
     }
+    FOR part(BudgetDetail d) == sbj(l) AND isChanged(d) NEW m = Message DO {
+        dateTime(m) <- dateTimeOut(l);
+        budgetDetail(m) <- d;
+        author(m) <- currentUser();
+        text(m) <- '';
+        IF name(lastLog(d)) != name(prevLog(d)) THEN text(m) <- text(m) + 'Name changed from "' + name(lastLog(d)) + '" \nto "' + name(prevLog(d)) + '"\n';
+        IF costItem(lastLog(d)) != costItem(prevLog(d)) THEN text(m) <- text(m) + 'Cost Type changed from "' + canonicalName(costItem(lastLog(d))) + '" \nto "' + canonicalName(costItem(prevLog(d))) + '"\n';
+        IF budget(lastLog(d)) != budget(prevLog(d)) THEN text(m) <- text(m) + 'Budget changed from ' + name(budget(lastLog(d))) + ' \nto ' + name(budget(prevLog(d))) + '\n';
+        IF planned(lastLog(d)) != planned(prevLog(d)) THEN text(m) <- text(m) + 'Planned sum changed from ' + planned(lastLog(d)) + ' USD to ' + planned(prevLog(d)) + ' USD\n';
+    }
 }
-
-lastLog 'Record about last change' = GROUP LAST BudgetDetailLog bdl ORDER dateTime(bdl) BY item(bdl);
-prevLog 'Record from previous status' = GROUP LAST BudgetDetailLog bdl IF bdl != lastLog(item(bdl)) ORDER dateTime(bdl) BY item(bdl);
-isChanged 'The Budget item was changed on previous step' (BudgetDetail d) = TRUE IF (name(lastLog(d)) != name(prevLog(d)) 
-                                                                                            OR description(lastLog(d)) != description(prevLog(d)) 
-                                                                                            OR costItem(lastLog(d)) != costItem(prevLog(d)) 
-                                                                                            OR budget(lastLog(d)) != budget(prevLog(d)) 
-                                                                                            OR planned(lastLog(d)) != planned(prevLog(d)))
-                                                                                            AND lastLog(d) AND prevLog(d) MATERIALIZED;
-lastValue 'Last value before the proposed change' (BudgetDetail d) = value(prevLog(d));
-historyValue 'History values before the proposed change' (BudgetDetail d) = GROUP CONCAT value(BudgetDetailLog l),'\n' IF l != lastLog(item(l)) ORDER DESC dateTime(l) BY item(l) MATERIALIZED;
-background 'Background Color' (BudgetDetail d, BudgetPortion o) = IF NOT part(d) THEN RGB(240,240,240) // gray for old records
-                                                                            ELSE IF isChanged(d) AND part(d) == o AND step(o) != Step.approve THEN RGB(255,204,204) ELSE background(step(part(d))); // red if changed
 
 addBudgetDetail 'New budget item' (BudgetPortion o) {
     NEW d = BudgetDetail {
@@ -305,10 +318,7 @@ pushBudgetDetail 'Pick this item into processing' (BudgetPortion o, BudgetDetail
 
 readonlyRun (BudgetPortion o, BudgetDetail d) = TRUE IF part(d) != o OR NOT part(d);
 
-// Enable Chat
-newComment 'New Comment' = DATA LOCAL TEXT (BudgetDetail);
-budgetDetail 'Budget Detail' = DATA BudgetDetail(Message);
-nameAuthorShort 'Author' (Message m) = TEXT(nameAuthor(m));
+nameAuthorShort 'Author' (Message m) = TEXT(nameAuthor(m)+'\n'+STRING (dateTime(m)));
 addComment 'Send Comment' (BudgetDetail b)  { 
     NEW m = Message {
         dateTime(m) <- currentDateTime();
@@ -332,7 +342,7 @@ META extendBudgetPortion (form)
     OBJECTS d = BudgetDetail
     PROPERTIES (d) READONLYIF readonlyRun(o,d) nameBudget, canonicalNameCostItem
     PROPERTIES (d) READONLYIF readonlyRun(o,d) BACKGROUND background(d,o) name, planned
-    PROPERTIES (d) READONLYIF readonlyRun(o,d) PANEL description, historyValue SHOWIF prevLog(d)
+    //PROPERTIES (d) READONLYIF readonlyRun(o,d) PANEL description, historyValue SHOWIF prevLog(d)
     PROPERTIES (d) PANEL newComment, addComment
     PROPERTIES TOOLBAR pushBudgetDetail(o,d) SHOWIF readonlyRun(o,d), addBudgetDetail(o), DELETE (d)
     PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
@@ -345,7 +355,7 @@ META extendBudgetPortion (form)
         FILTER 'Show items from this proposal only' part(d) == o
         
     OBJECTS m = Message
-    PROPERTIES(m) READONLY BACKGROUND backgroundMessage(m) nameAuthorShort, text, dateTime SHOWIF NULL
+    PROPERTIES(m) READONLY BACKGROUND backgroundMessage(m) text, nameAuthorShort, dateTime SHOWIF NULL
     ORDER dateTime(m) DESC
     FILTERS budgetDetail(m) == d
     ;
@@ -385,37 +395,16 @@ META extendBudgetPortion (form)
                             MOVE PROPERTY(addBudgetDetail(o));
                         }
                     }
-                    NEW comments {
-                        type = TABBED;
-                        width = 400;
+                    NEW chat {
+                        caption = 'Comments';
+                        type = CONTAINERV;
+                        width = 500;
                         alignment = STRETCH;
-                        NEW chat {
-                            caption = 'Comments';
-                            type = CONTAINERV;
-                            MOVE BOX(m) {
-                                PROPERTY(text(m)) {alignment = STRETCH;}
-                            }
-                            MOVE PROPERTY(newComment(d)) { alignment = STRETCH; panelCaptionAbove = TRUE; }
-                            MOVE PROPERTY(addComment(d));
+                        MOVE BOX(m) {
+                            PROPERTY(text(m)) {alignment = STRETCH;}
                         }
-                        NEW desc {
-                            caption = 'Description';
-                            MOVE PROPERTY (description(d)) {
-                                fill = 1;
-                                alignment = STRETCH;
-                                panelCaptionAbove = TRUE;
-                                caption = '';
-                            }
-                        }
-                        NEW history {
-                            caption = 'History';
-                            MOVE PROPERTY (historyValue(d)) {
-                                fill = 1;
-                                alignment = STRETCH;
-                                panelCaptionAbove = TRUE;
-                                caption = '';
-                            }                        
-                        }
+                        MOVE PROPERTY(newComment(d)) { alignment = STRETCH; panelCaptionAbove = TRUE; }
+                        MOVE PROPERTY(addComment(d));
                     }
                 }
             }
