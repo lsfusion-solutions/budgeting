@@ -348,10 +348,10 @@ META extendBudgetPortion (form)
     EXTEND FORM ##form
         PROPERTIES(o) READONLY nameCostCenter, authorName, dateTime, planned
         
-    PROPERTIES () nameFilterBudget 
-    TREE costItems t = CostItem PARENT parent(t)
-    PROPERTIES(t) READONLY order SHOWIF NULL, name
-    ORDER order(t) 
+    PROPERTIES () nameFilterBudget , nameFilterCostItem
+    //TREE costItems t = CostItem PARENT parent(t)
+    //PROPERTIES(t) READONLY order SHOWIF NULL, name
+    //ORDER order(t) 
         
     OBJECTS d = BudgetDetail
     PROPERTIES (d) READONLYIF readonlyRun(o,d) nameBudget, canonicalNameCostItem
@@ -362,8 +362,9 @@ META extendBudgetPortion (form)
     PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
     ORDER dateSorting DESC , planned(d) DESC
     FILTERS costCenter(d) == costCenter(o),
-            isParent(costItem(d),t),
+            //isParent(costItem(d),t),
             budget(d) == filterBudget() OR NOT filterBudget(),
+            isParent(filterCostItem(),costItem(d)) OR NOT filterCostItem(),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
     FILTERGROUP newAndOld
         FILTER 'Show items from this proposal only' part(d) == o
@@ -386,29 +387,31 @@ META extendBudgetPortion (form)
                 fill = 5;
                 alignment = STRETCH;
                 type = CONTAINERV;
-                MOVE PROPERTY(nameCostCenter(o)) { alignment = STRETCH; }
                 NEW headerPart {
                     alignment = STRETCH;
                     type = CONTAINERH;
-                    MOVE PROPERTY(planned(o)) { alignment = START; caption = 'Planned by new Budget items, USD'; }
+                    MOVE PROPERTY(nameCostCenter(o)) { alignment = START; alignment = STRETCH; }
+                    MOVE PROPERTY(planned(o)) { caption = 'Planned by new Budget items, USD'; }
                     MOVE PROPERTY(authorName(o)) { alignment = CENTER; }
                     MOVE PROPERTY(dateTime(o));
+                }
+                NEW category {
+                    caption = 'Block of filters';
+                    type = CONTAINERH;
+                    alignment = STRETCH;
+                    //flex = 1;
+                    MOVE PROPERTY (nameFilterBudget()) { caption = 'Filter by Budget'; }
+                    //MOVE BOX (TREE costItems) { caption = 'Filter by Cost Type'; }
+                    MOVE PROPERTY (nameFilterCostItem()) { caption = 'Filter by Cost Type'; alignment = STRETCH;}
                 }
                 NEW proposal {
                     type = CONTAINERH;
                     fill = 1;
                     alignment = STRETCH;
                     caption = 'Cost Center Budget overview';
-                    NEW category {
-                        caption = 'Block of filters';
-                        type = CONTAINERV;
-                        alignment = STRETCH;
-                        width = 330;
-                        MOVE PROPERTY (nameFilterBudget()) { caption = 'Filter by Budget'; }
-                        MOVE BOX (TREE costItems) { caption = 'Filter by Cost Type'; }
-                    }
                     MOVE BOX (d) { 
-                        fill = 3; 
+                        fill = 1; 
+                        //width = 850;
                         caption = 'List of Budget Details'; 
                         PROPERTY(nameBudget(d)) { fontStyle = 'bold'; }
                         TOOLBAR {
@@ -418,6 +421,7 @@ META extendBudgetPortion (form)
                     NEW chat {
                         caption = 'Comments';
                         type = CONTAINERV;
+                        //fill = 1;
                         width = 500;
                         alignment = STRETCH;
                         MOVE BOX(m) {

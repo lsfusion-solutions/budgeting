@@ -15,7 +15,7 @@ META defineStep (id,capName,ClassName)
     CLASS StepLog 'Steps Log';
     TABLE steplog(StepLog);
     sbj = DATA ClassName(StepLog);
-    comment 'Comment' = DATA RICHTEXT(StepLog);
+    comment 'Notes' = DATA RICHTEXT(StepLog);
     lastComment 'Last Comment' = GROUP LAST comment(StepLog l) BY sbj(l);
     
     @defineStepAttributes(in,'step');
