@@ -13,6 +13,7 @@ period 'Period' = DATA Period (Contract) NONULL;
 number 'Number' = DATA STRING[30] (Contract) CHARWIDTH 10;
 date 'Date' = DATA DATE (Contract);
 nameContractor 'Contractor' (Contract c) = name(contractor(c));
+fileLink 'Agreement Link' = DATA LINK(Contract);
 
 note 'Note' = DATA STRING[500] (Contract) CHARWIDTH 30;
 
@@ -38,3 +39,41 @@ FORM dialogContracts 'Contracts'
     
     LIST Contract OBJECT c
 ;
+
+enableEdit 'Eneble Edit rows' = DATA LOCAL BOOLEAN ();
+
+EXTEND FORM contractors
+    PROPERTIES enableEdit() TOOLBAR
+    
+    OBJECTS ct = Contract
+    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, nameContractor, note, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
+    
+;
+
+DESIGN contractors {
+    OBJECTS {
+        NEW tabPane {
+            type = TABBED;
+            alignment = STRETCH;
+            fill = 1;
+            NEW contractors {
+                caption = 'Contractors';
+                fill = 1;
+                alignment = STRETCH;
+                MOVE BOX (c);
+                MOVE BOX (p);
+            }
+            NEW contracts {
+                caption = 'Contracts (Agreements)';
+                fill = 1;
+                alignment = STRETCH;
+                MOVE BOX (ct) {
+                    TOOLBAR {
+                        MOVE PROPERTY (enableEdit());
+                    }
+                }
+            }
+        }
+    }
+}
