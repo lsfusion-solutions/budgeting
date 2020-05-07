@@ -12,8 +12,10 @@ period 'Period' = DATA Period (Contract) NONULL;
 
 number 'Number' = DATA STRING[30] (Contract) CHARWIDTH 10;
 date 'Date' = DATA DATE (Contract);
+validity 'Validity' = DATA DATE (Contract);
 nameContractor 'Contractor' (Contract c) = name(contractor(c));
 fileLink 'Agreement Link' = DATA LINK(Contract);
+readFile 'Open Contract' (Contract c) {open(fileLink(c));} TOOLBAR ;
 
 note 'Note' = DATA STRING[500] (Contract) CHARWIDTH 30;
 
@@ -34,7 +36,7 @@ prevMonthPercentComplete 'Complete (prev month), %' (Contract c, Budget b) =
           
 FORM dialogContracts 'Contracts'
     OBJECTS c = Contract
-    PROPERTIES (c) READONLY number, date, note, nameCurrency, amount, amountUSD
+    PROPERTIES (c) READONLY number, date, validity, note, nameCurrency, amount, amountUSD
     ORDER date(c)
     
     LIST Contract OBJECT c
@@ -48,6 +50,7 @@ EXTEND FORM contractors
     OBJECTS ct = Contract
     PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, nameContractor, note, nameCurrency, amount, amountUSD, fileLink
     PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
+    PROPERTIES (ct) readFile SHOWIF fileLink(ct)
     
 ;
 

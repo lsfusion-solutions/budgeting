@@ -37,7 +37,7 @@ dateTime(BudgetPortion b) <- currentDateTime() WHEN CHANGED(planned(b));
 
 author 'Author' = DATA Employee(BudgetDetail);
 numberAuthors 'Number from Employees' (BudgetPortion b, Employee e) = GROUP SUM 1 IF author(BudgetDetail d) == e AND part(d) = b; 
-authorName 'Author' (BudgetPortion b) = GROUP CONCAT name(Employee e),'; ' IF numberAuthors(b,e) > 0 ORDER name(e) CHARWIDTH 50;
+authorName 'Author' (BudgetPortion b) = GROUP CONCAT name(Employee e),'; ' IF numberAuthors(b,e) > 0 ORDER name(e) CHARWIDTH 15;
 nameExplain 'Cost Centers involved' (BudgetPortion b) = CONCAT ' ',nameCostCenter(b),('('+authorName(b)+')')  CHARWIDTH 50;
 
 // Quarters
@@ -202,15 +202,15 @@ DESIGN costCenterBudget { BOX (bm) {TOOLBAR {MOVE PROPERTY(centerEntered(c)); } 
 
 @defineAssignment(BudgetPortion, budgeting, enter, 'Financial review',planned);
 assigned(Employee e,AssignEnter a) += TRUE IF (afg(e) OR hasEnter(e)) AND a IS AssignEnter;
-@buttonDecisions(enter,reject,'Reject and send the Budget Proposal back for revising');
 @buttonDecisions(enter,review,'Complete Review and send the Budget Proposal for Approval');
+@buttonDecisions(enter,reject,'Reject and send the Budget Proposal back for revising');
 
 //--- Procedure: Approve Step ---
 
 @defineAssignment(BudgetPortion, budgeting, review, 'Budget Approval',planned);
 assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR hasReview(e)) AND a IS AssignReview;
-@buttonDecisions(review,reject,'Reject and send the Budget Proposal back for revising');
 @buttonDecisions(review,approve,'Approve the Budget');
+@buttonDecisions(review,reject,'Reject and send the Budget Proposal back for revising');
 
 isApproved (BudgetPortion s) = step(s) == Step.approve AND afg(currentUser());
 dropApproval 'Drop Approval' (BudgetPortion o) {
@@ -281,7 +281,7 @@ historyValue 'History values before the proposed change' (BudgetDetail d) = GROU
 messageFlagPrev 'New message from previous step' = DATA BOOLEAN (BudgetDetail);
 messageFlagThis 'New message at this step' = DATA BOOLEAN (BudgetDetail);
 
-background 'Background Color' (BudgetDetail d, BudgetPortion o) = IF NOT part(d) THEN RGB(240,240,240) ELSE IF messageFlagPrev(d) THEN RGB(255,204,204) ELSE background(step(part(d)));
+background 'Background Color' (BudgetDetail d, BudgetPortion o) = IF NOT part(d) THEN RGB(240,240,240) ELSE IF messageFlagPrev(d) THEN RGB(255,204,204) ELSE RGB(255,255,255); // background(step(part(d)));
 
 WHEN SETCHANGED (stepOut(StepLog l)) DO {
     planned(l) <- planned(sbj(l));
@@ -331,7 +331,8 @@ pushBudgetDetail 'Pick this item into processing' (BudgetPortion o, BudgetDetail
 
 readonlyRun (BudgetPortion o, BudgetDetail d) = TRUE IF part(d) != o OR NOT part(d);
 
-nameAuthorShort 'Author' (Message m) = TEXT(nameAuthor(m)+'\n'+STRING (dateTime(m)));
+nameAuthorShort 'Author' (Message m) = TEXT(nameAuthor(m)+'\n'+STRING (dateTime(m))) CHARWIDTH 15;
+textPrint 'Message' (Message m) = text(m) CHARWIDTH 30;
 addComment 'Send Comment' (BudgetDetail b)  { 
     NEW m = Message {
         dateTime(m) <- currentDateTime();
@@ -346,7 +347,7 @@ addComment 'Send Comment' (BudgetDetail b)  {
 
 META extendBudgetPortion (form)
     EXTEND FORM ##form
-        PROPERTIES(o) READONLY nameCostCenter, authorName, dateTime, planned
+        PROPERTIES(o) READONLY nameCostCenter, authorName, planned//, dateTime
         
     PROPERTIES () nameFilterBudget , nameFilterCostItem
     //TREE costItems t = CostItem PARENT parent(t)
@@ -355,7 +356,7 @@ META extendBudgetPortion (form)
         
     OBJECTS d = BudgetDetail
     PROPERTIES (d) READONLYIF readonlyRun(o,d) nameBudget, canonicalNameCostItem
-    PROPERTIES (d) READONLYIF readonlyRun(o,d) BACKGROUND background(d,o) name, planned
+    PROPERTIES (d) READONLYIF readonlyRun(o,d) BACKGROUND background(d,o) name, planned, description PANEL
     //PROPERTIES (d) READONLYIF readonlyRun(o,d) PANEL description, historyValue SHOWIF prevLog(d)
     PROPERTIES (d) PANEL newComment, addComment
     PROPERTIES TOOLBAR pushBudgetDetail(o,d) SHOWIF readonlyRun(o,d), addBudgetDetail(o), DELETE (d)
@@ -370,7 +371,7 @@ META extendBudgetPortion (form)
         FILTER 'Show items from this proposal only' part(d) == o
         
     OBJECTS m = Message
-    PROPERTIES(m) READONLY BACKGROUND backgroundMessage(m) text, nameAuthorShort, dateTime SHOWIF NULL
+    PROPERTIES(m) READONLY BACKGROUND backgroundMessage(m) textPrint, nameAuthorShort, dateTime SHOWIF NULL
     ORDER dateTime(m) DESC
     FILTERS budgetDetail(m) == d
     
@@ -386,29 +387,28 @@ META extendBudgetPortion (form)
             NEW pane FIRST {
                 fill = 5;
                 alignment = STRETCH;
-                type = CONTAINERV;
-                NEW headerPart {
+                type = CONTAINERH;
+                NEW allDetails {
+                    type = CONTAINERV;
+                    fill = 3;
                     alignment = STRETCH;
-                    type = CONTAINERH;
-                    MOVE PROPERTY(nameCostCenter(o)) { alignment = START; alignment = STRETCH; }
-                    MOVE PROPERTY(planned(o)) { caption = 'Planned by new Budget items, USD'; }
-                    MOVE PROPERTY(authorName(o)) { alignment = CENTER; }
-                    MOVE PROPERTY(dateTime(o));
-                }
-                NEW category {
-                    caption = 'Block of filters';
-                    type = CONTAINERH;
-                    alignment = STRETCH;
-                    //flex = 1;
-                    MOVE PROPERTY (nameFilterBudget()) { caption = 'Filter by Budget'; }
-                    //MOVE BOX (TREE costItems) { caption = 'Filter by Cost Type'; }
-                    MOVE PROPERTY (nameFilterCostItem()) { caption = 'Filter by Cost Type'; alignment = STRETCH;}
-                }
-                NEW proposal {
-                    type = CONTAINERH;
-                    fill = 1;
-                    alignment = STRETCH;
-                    caption = 'Cost Center Budget overview';
+                    NEW headerPart {
+                        alignment = STRETCH;
+                        type = CONTAINERH;
+                        MOVE PROPERTY(planned(o)) { caption = 'Planned by new Budget items, USD'; }
+                        MOVE PROPERTY(authorName(o));// { alignment = CENTER; }
+                        //MOVE PROPERTY(dateTime(o));
+                    }
+                    NEW category {
+                        caption = 'Block of filters';
+                        type = CONTAINERH;
+                        alignment = STRETCH;
+                        //flex = 1;
+                        MOVE PROPERTY(nameCostCenter(o)) { alignment = START; alignment = STRETCH;} //charWidth = 50;
+                        MOVE PROPERTY (nameFilterBudget()) { caption = 'Filter by Budget'; }
+                        //MOVE BOX (TREE costItems) { caption = 'Filter by Cost Type'; }
+                        MOVE PROPERTY (nameFilterCostItem()) { caption = 'Filter by Cost Type'; alignment = STRETCH;}
+                    }
                     MOVE BOX (d) { 
                         fill = 1; 
                         //width = 850;
@@ -418,18 +418,32 @@ META extendBudgetPortion (form)
                             MOVE PROPERTY(addBudgetDetail(o));
                         }
                     }
-                    NEW chat {
-                        caption = 'Comments';
-                        type = CONTAINERV;
-                        //fill = 1;
-                        width = 500;
-                        alignment = STRETCH;
-                        MOVE BOX(m) {
-                            PROPERTY(text(m)) {alignment = STRETCH;}
+                }
+                NEW chat {
+                    caption = 'Comments';
+                    type = CONTAINERV;
+                    //fill = 1;
+                    width = 500;
+                    alignment = STRETCH;
+                    NEW commentsAll {
+                        type = TABBED;
+                        fill = 1;
+                        NEW commentsChat {
+                            fill = 1;
+                            caption = 'Message Chat';
+                            MOVE BOX(m) {
+                                PROPERTY(textPrint(m)) {alignment = STRETCH;}
+                                REMOVE TOOLBARLEFT(m);
+                            }
                         }
-                        MOVE PROPERTY(newComment(d)) { alignment = STRETCH; panelCaptionAbove = TRUE; }
-                        MOVE PROPERTY(addComment(d));
+                        NEW descAll {
+                            fill = 1;
+                            caption = 'Description';
+                            MOVE PROPERTY (description(d)) { caption = ''; fill = 1;}
+                        }
                     }
+                    MOVE PROPERTY(newComment(d)) { alignment = STRETCH; panelCaptionAbove = TRUE; }
+                    MOVE PROPERTY(addComment(d)) { alignment = CENTER; }
                 }
             }
         }
@@ -486,9 +500,9 @@ EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FI
 
 quarterName 'Quarter' (INTEGER q) =  STRING[4](floor(q/10)) + ' \'Q' + STRING[1] (q - floor(q/10)*10);
 
-quarterPlanned (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
-quarterSpent (CostCenter c, INTEGER q) = GROUP SUM spent(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
-quarterProposal (CostCenter c, INTEGER q) = GROUP LAST nameStep(part(BudgetDetail d)) IF q == quarterNumber(budget(d)) AND c == costCenter(d) ORDER dateTime(part(d)) CHARWIDTH 10;
+quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterSpent 'Spent, USD' (CostCenter c, INTEGER q) = GROUP SUM spent(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterProposal 'Budgeting status' (CostCenter c, INTEGER q) = GROUP LAST nameStep(part(BudgetDetail d)) IF q == quarterNumber(budget(d)) AND c == costCenter(d) ORDER dateTime(part(d)) CHARWIDTH 10;
 
 filterCostCenter = DATA LOCAL NESTED CostCenter();
 nameFilterCostCenter 'CostCenter' () = name(filterCostCenter());

@@ -16,6 +16,7 @@ META defineStep (id,capName,ClassName)
     TABLE steplog(StepLog);
     sbj = DATA ClassName(StepLog);
     comment 'Notes' = DATA RICHTEXT(StepLog);
+    commentString 'Notes' (StepLog l) = STRING(comment(l));
     lastComment 'Last Comment' = GROUP LAST comment(StepLog l) BY sbj(l);
     
     @defineStepAttributes(in,'step');
@@ -24,7 +25,7 @@ META defineStep (id,capName,ClassName)
     stepLog = DATA StepLog(##ClassName);
     WHEN SETCHANGED (step(##ClassName s)) DO {
         NEW l = StepLog {
-            comment(l) <- RICHTEXT('\n--- '+STRING(currentDateTime())+' ('+name(currentUser())+') ---\n'+comment(stepLog(s)));
+            //comment(l) <- RICHTEXT('\n--- '+STRING(currentDateTime())+' ('+name(currentUser())+') ---\n'+comment(stepLog(s)));
             stepLog(s) <- l;
             sbj(l) <- s;
             stepIn(l) <- step(s);
@@ -180,25 +181,38 @@ META defineAssignmentForm(subject,makeStep,header)
         OBJECTS l = StepLog PANEL
         PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
         FILTERS l == stepLog(o)
+        
+        OBJECTS lc = StepLog
+        PROPERTIES(lc) BACKGROUND RGB(250,250,250) dateTimeOut, commentString, userNameOut
+        ORDER dateTimeOut(lc) DESC
+        FILTERS sbj(lc) == o
     ;
     
     DESIGN makeStep {
         OBJECTS {        
             NEW step {
                 alignment = STRETCH;
-                type = CONTAINERV;
+                type = CONTAINERH;
                 //MOVE PROPERTY(nameOut(l));
+                height = 150;
                 NEW decisionButtons {
-                    type = CONTAINERH;
-                    alignment = CENTER;
-                }
-                NEW commentsArea {
                     type = CONTAINERV;
-                    height = 100;
-                    alignment = STRETCH;
-                    MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
-                    //MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
+                    alignment = CENTER;
+                    MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; caption = 'Overall comment for this Decision'; } //  height = 200;
                 }
+                MOVE BOX (lc) {
+                    fill = 3;
+                    caption = 'Comments for previous decisions and procedure steps';
+                    MOVE PROPERTY(commentString(lc)) {charWidth = 50;alignment =STRETCH;}
+                    MOVE PROPERTY(userNameOut(lc)) {charWidth = 20;}
+                    REMOVE TOOLBARLEFT(lc);
+                }
+                //NEW commentsArea {
+                //    type = CONTAINERV;
+                //    alignment = STRETCH;
+                //    fill = 1;
+                    //MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
+                //}
             }
         }
     }
@@ -273,9 +287,9 @@ META buttonDecisions(makeStep,variant,nameCaption)
     
     EXTEND FORM complete###makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
     DESIGN complete###makeStep {  decisionButtons { 
-            MOVE PROPERTY(button###makeStep###variant(l)) {caption = ##nameCaption; alignment = STRETCH; } } }
+            MOVE PROPERTY(button###makeStep###variant(l)) FIRST {caption = ##nameCaption; alignment = STRETCH; } } }
             
     EXTEND FORM ##makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
     DESIGN ##makeStep {  decisionButtons { 
-            MOVE PROPERTY(button###makeStep###variant(l)) {caption = ##nameCaption; alignment = STRETCH; } } }
+            MOVE PROPERTY(button###makeStep###variant(l)) FIRST {caption = ##nameCaption; alignment = STRETCH; } } }
 END

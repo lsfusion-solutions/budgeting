@@ -203,7 +203,7 @@ assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 //--- Automotive Purchase Order initialization ---
 
 author 'Author' = DATA Employee(Invoice);
-searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.update AND author(p) == e;
+searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.enter AND author(p) == e;
 WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
     author(b) <- currentUser();
     //hidden(b) <- TRUE;
