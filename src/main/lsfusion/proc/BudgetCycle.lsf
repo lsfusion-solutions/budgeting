@@ -307,10 +307,14 @@ WHEN SETCHANGED (stepOut(StepLog l)) DO {
         budgetDetail(m) <- d;
         author(m) <- currentUser();
         text(m) <- '';
-        IF name(lastLog(d)) != name(prevLog(d)) THEN text(m) <- text(m) + 'Name changed from "' + name(lastLog(d)) + '" \nto "' + name(prevLog(d)) + '"\n';
-        IF costItem(lastLog(d)) != costItem(prevLog(d)) THEN text(m) <- text(m) + 'Cost Type changed from "' + canonicalName(costItem(lastLog(d))) + '" \nto "' + canonicalName(costItem(prevLog(d))) + '"\n';
-        IF budget(lastLog(d)) != budget(prevLog(d)) THEN text(m) <- text(m) + 'Budget changed from ' + name(budget(lastLog(d))) + ' \nto ' + name(budget(prevLog(d))) + '\n';
-        IF planned(lastLog(d)) != planned(prevLog(d)) THEN text(m) <- text(m) + 'Planned sum changed from ' + planned(lastLog(d)) + ' USD to ' + planned(prevLog(d)) + ' USD\n';
+        IF name(lastLog(d)) != name(prevLog(d)) THEN 
+            text(m) <- text(m) + 'Name changed from "' + (OVERRIDE name(lastLog(d)),'') + '" \nto "' + (OVERRIDE name(prevLog(d)),'') + '"\n';
+        IF costItem(lastLog(d)) != costItem(prevLog(d)) THEN 
+            text(m) <- text(m) + 'Cost Type changed from "' + (OVERRIDE canonicalName(costItem(lastLog(d))),'') + '" \nto "' + (OVERRIDE canonicalName(costItem(prevLog(d))),'') + '"\n';
+        IF budget(lastLog(d)) != budget(prevLog(d)) THEN 
+            text(m) <- text(m) + 'Budget changed from ' + (OVERRIDE name(budget(lastLog(d))),'') + ' \nto ' + (OVERRIDE name(budget(prevLog(d))),'') + '\n';
+        IF planned(lastLog(d)) != planned(prevLog(d)) THEN 
+            text(m) <- text(m) + 'Planned sum changed from ' + (OVERRIDE STRING (planned(lastLog(d))),'') + ' USD to ' + (OVERRIDE STRING (planned(prevLog(d))),'') + ' USD\n';
         messageFlagPrev(d) <- TRUE;
     }
 }
@@ -334,15 +338,16 @@ readonlyRun (BudgetPortion o, BudgetDetail d) = TRUE IF part(d) != o OR NOT part
 nameAuthorShort 'Author' (Message m) = TEXT(nameAuthor(m)+'\n'+STRING (dateTime(m))) CHARWIDTH 15;
 textPrint 'Message' (Message m) = text(m) CHARWIDTH 30;
 addComment 'Send Comment' (BudgetDetail b)  { 
-    NEW m = Message {
-        dateTime(m) <- currentDateTime();
-        budgetDetail(m) <- b;
-        author(m) <- currentUser();
-        text(m) <- newComment(b);
-        newComment(b) <- NULL;
-        messageFlagThis(b) <- TRUE;
-    }
-    apply();
+    IF newComment(b) THEN {NEW m = Message {
+                                   dateTime(m) <- currentDateTime();
+                                   budgetDetail(m) <- b;
+                                   author(m) <- currentUser();
+                                   text(m) <- newComment(b);
+                                   newComment(b) <- NULL;
+                                   messageFlagThis(b) <- TRUE;
+                               }
+                               apply(); } 
+    
 }
 
 META extendBudgetPortion (form)

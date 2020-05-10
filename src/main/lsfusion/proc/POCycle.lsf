@@ -42,8 +42,10 @@ budgetDetailName 'Budget Item' (Invoice d) = CONCAT ' - ', nameBudget(budgetDeta
 longBudgetDetailName 'Budget Item' (Invoice d) = longBudgetName(budgetDetail(d));  
 costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
 planned 'Planned, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
-spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
-balance 'Balance, USD' (Invoice d) = planned(budgetDetail(d)) - invoiced(budgetDetail(d)) CHARWIDTH 10;
+//spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
+balance 'Balance, USD' (Invoice d) = (OVERRIDE planned(budgetDetail(d)),0) - (OVERRIDE invoiced(budgetDetail(d)),0) - (OVERRIDE spent(budgetDetail(d)),0) CHARWIDTH 10;
+CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
+
 // Threshold prepare
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostItem);
@@ -82,7 +84,7 @@ META extendPurchaseOrder (form)
                     MOVE PROPERTY(dateTime(o));
                 }
                 NEW proposal {
-                    type = CONTAINERH;
+                    type = CONTAINERV;
                     fill = 1;
                     alignment = STRETCH;
                     MOVE BOX (d) {
@@ -90,8 +92,8 @@ META extendPurchaseOrder (form)
                         alignment = STRETCH;
                     }
                     NEW details {
-                        //fill = 1;
-                        width = 400;
+                        fill = 1;
+                        //width = 400;
                         alignment = STRETCH;
                         type = CONTAINERV;
                         MOVE PROPERTY (note(d)) {alignment = STRETCH;}
@@ -181,6 +183,8 @@ assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND a IS AssignEnter;
 @buttonDecisions(enter,reject,'Reject and send the Purchase Order back for revising');
 @buttonDecisions(enter,review,'Send the Purchase Order for Approval');
+@buttonDecisions(enter,approve,'Approve the Purchase Order');
+CONSTRAINT stepIn(StepLog l) = Step.enter AND stepOut(l) == Step.approve AND NOT passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'The Purchase doesn\'t pass the limits';
 
 //--- Procedure: Approve Step ---
 
@@ -207,13 +211,15 @@ searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST 
 WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
     author(b) <- currentUser();
     //hidden(b) <- TRUE;
-    IF searchProposal(author(b)) THEN
-        part(b) <- searchProposal(author(b));
-    ELSE
+    //IF searchProposal(author(b)) THEN
+    //    part(b) <- searchProposal(author(b));
+    //ELSE
         NEW p = PurchaseOrder {        
             part(b) <- p;
             datePlan(p) <- DATE(OVERRIDE sumDay(DATETIME(date(b)),30),sumDay(currentDateTime(),30));
-            step(p) <- Step.enter;
+            //IF passThreshold(b) THEN step(p) <- Step.approve;
+            //ELSE 
+                step(p) <- Step.enter;
         }
     IF contractor(b) THEN supply(b) <- TRUE;
     IF NOT nameSupplier(b) THEN nameSupplier(b) <- 'Search needed';

@@ -15,10 +15,10 @@ nameSupplier 'Supplier' = DATA STRING[50] (Invoice);
 
 description 'Description' (Invoice i) = CONCAT ' / ', number(i), date(i), nameSupplier(i); 
 
-currency 'Currency' = DATA Currency (Invoice);
+currency 'Currency' = DATA Currency (Invoice) NONULL;
 nameCurrency 'Currency' (Invoice i) = name(currency(i));
 
-amount 'Sum' = DATA NUMERIC[14,2] (Invoice);
+amount 'Sum' = DATA NUMERIC[14,2] (Invoice) NONULL;
 
 note 'Note' = DATA STRING[1000] (Invoice) CHARWIDTH 20;
 

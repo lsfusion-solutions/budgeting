@@ -7,7 +7,7 @@ NAMESPACE Budget;
 costCenter 'Cost center' = DATA CostCenter (Invoice);
 nameCostCenter 'Cost center' (Invoice i) = name(costCenter(i));
 
-budgetDetail 'Budget detail' = DATA BudgetDetail (Invoice);
+budgetDetail 'Budget detail' = DATA BudgetDetail (Invoice) NONULL;
 
 CONSTRAINT costCenter(Invoice i) != costCenter(budgetDetail(i)) CHECKED BY budgetDetail[Invoice],costCenter[Invoice] MESSAGE 'Cost center is not equal to cost center of budget detail'; 
 WHEN LOCAL CHANGED (budgetDetail(Invoice i)) DO { costCenter(i) <- costCenter(budgetDetail(i)); }
@@ -80,7 +80,7 @@ DESIGN invoices {
     }
 }
 
-invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM round0(amount(Invoice i) / defaultRateOn(currency(i), date(i))) BY budgetDetail(i); 
+invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM round0(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate()))) BY budgetDetail(i); 
 invoiced 'Invoiced, USD' (Budget b, CostCenter cp) = GROUP SUM invoiced(BudgetDetail d) BY budget(d), costCenter(d);
 //EXTEND FORM budgetDetails PROPERTIES(d) READONLY invoiced;
 
