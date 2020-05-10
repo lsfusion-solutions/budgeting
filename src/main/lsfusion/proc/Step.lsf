@@ -86,7 +86,7 @@ META defineNotification (id,capName,ClassName,Category)
     } 
     EXTEND FORM notificationsForms
         OBJECTS note###id = Notification
-        PROPERTIES (note###id) header, enabled, text PANEL, NEW
+        PROPERTIES (note###id) header, enabled, text PANEL, NEW, DELETE TOOLBAR
         FILTERS stage(note###id) == Stage.##id
         
         OBJECTS step###id = Step
