@@ -50,7 +50,7 @@ CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] ME
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostItem);
 paid 'Paid' = DATA BOOLEAN (Invoice);
-passThreshold 'Limit' (Invoice i) = amount(i) <= limit(costCenter(budgetDetail(i))) AND (amount(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
+passThreshold 'Limit' (Invoice i) = invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
 EXTEND FORM costCenters PROPERTIES (c) limit;
 EXTEND FORM costCenter PROPERTIES (c) limit;
 EXTEND FORM costItems PROPERTIES (c) limit;
@@ -146,12 +146,13 @@ EXTEND CLASS Step
     review 'Reviewed',
     approve 'Approved',
     reject 'Rejected',
-    update 'Update'
+    update 'Update',
+    pay 'Payed'
 }
 passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
 hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = CASE EXCLUSIVE 
-            WHEN stepIn(l) == Step.update AND passThreshold(sbj(l)) AND stepOut == Step.review THEN TRUE 
-            WHEN stepIn(l) == Step.update AND NOT passThreshold(sbj(l)) AND stepOut == Step.approve THEN TRUE
+            WHEN stepIn(l) == Step.enter AND passThreshold(sbj(l)) AND stepOut == Step.review THEN TRUE 
+            WHEN stepIn(l) == Step.enter AND NOT passThreshold(sbj(l)) AND stepOut == Step.approve THEN TRUE
             ELSE NULL;
 
 newPart '+ Add' ()  { 
@@ -167,6 +168,7 @@ newPart '+ Add' ()  {
 
 //--- Procedure: Init and Update Steps ---
 
+FORM purchaseOrders 'Purchase Orders' OBJECTS o = PurchaseOrder;
 @defineAssignment(PurchaseOrder, po, update, 'Complete Purchase Order editing',planned);
 @extendPurchaseOrder(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;
@@ -184,7 +186,6 @@ assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND a IS AssignEnter;
 @buttonDecisions(enter,reject,'Reject and send the Purchase Order back for revising');
 @buttonDecisions(enter,review,'Send the Purchase Order for Approval');
 @buttonDecisions(enter,approve,'Approve the Purchase Order');
-CONSTRAINT stepIn(StepLog l) = Step.enter AND stepOut(l) == Step.approve AND NOT passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'The Purchase doesn\'t pass the limits';
 
 //--- Procedure: Approve Step ---
 
@@ -194,8 +195,35 @@ assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS
 @buttonDecisions(review,reject,'Reject and send the Purchase Order back for revising');
 @buttonDecisions(review,approve,'Approve the Purchase Order');
 
-isApproved 'Approved' (Invoice i) = TRUE IF passThreshold(i) OR step(part(i)) == Step.enter OR step(part(i)) == Step.approve;
-// Manually uploaded purchase orders go into Enter status and pass to payment automotically.  But they can be forced to approval via Review step.
+isApproved (PurchaseOrder po) = step(po) == Step.approve AND afg(currentUser());
+dropApproval 'Drop Approval' (PurchaseOrder o) {
+    stepOut(stepLog(o)) <- Step.reject;
+    APPLY;
+} TOOLBAR;
+EXTEND FORM purchaseOrders PROPERTIES(o) dropApproval SHOWIF isApproved(o);
+
+//--- Procedure: Payment Step ---
+
+@defineAssignment(PurchaseOrder, po, approve, 'Payment by Purchase order approval',planned);
+@extendPurchaseOrder(approve);
+assigned(Employee e,AssignApprove a) += TRUE IF (afg(e) OR hasApprove(e)) AND a IS AssignApprove;
+@buttonDecisions(approve,reject,'Reject and send the Purchase Order back for revising');
+@buttonDecisions(approve,pay,'Invoice by the Purchase Order was payed');
+
+EXTEND FORM approve
+    OBJECTS log = StepLog
+    PROPERTIES (log) userNameOut, dateTimeOut, nameOut
+    ORDER dateTimeOut(log) DESC
+    FILTERS sbj(log) == o
+;
+DESIGN approve { commentsArea { height = 150; MOVE BOX(log) { caption = 'Approval steps'; } } }
+
+isPayed (PurchaseOrder po) = step(po) == Step.pay;
+WHEN SET(isPayed (PurchaseOrder po)) DO {
+    FOR Employee e AND (author(po) == e OR access(po,e)) DO {
+        sendNotification(po, e);
+    }
+}
 
 //--- Procedure: Updating information on Reject Step ---
 
@@ -229,8 +257,7 @@ WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
 
 //--- Main Form ---
 
-FORM purchaseOrders 'Purchase Orders'
-    OBJECTS o = PurchaseOrder
+EXTEND FORM purchaseOrders
     PROPERTIES(o) READONLY nameExplain, datePlan, planned, nameStep, passThreshold, searchSupply, dateTime, authorName
     PROPERTIES newPart() 
     PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
@@ -309,6 +336,7 @@ planned 'Planned, USD' = DATA NUMERIC[16,3](StepLog);
 CLASS PurchaseOrderLog 'Purchase Orders Log';
 TABLE purOrderLog(PurchaseOrderLog);
 
+item 'Invoice Item' = DATA Invoice(PurchaseOrderLog);
 log 'Step Log' = DATA StepLog(PurchaseOrderLog);
 datePlan 'Date plan' = DATA DATE (PurchaseOrderLog) CHARWIDTH 10;
 costCenter 'Cost Center' = DATA CostCenter(PurchaseOrderLog);
@@ -323,6 +351,7 @@ WHEN SETCHANGED (stepOut(StepLog l)) DO {
     planned(l) <- planned(sbj(l));
     FOR part(Invoice b) == sbj(l) NEW d = PurchaseOrderLog DO {
         log(d) <- l;
+        item(d) <- b;
         datePlan(d) <- datePlan(sbj(l));
         costCenter(d) <- costCenter(b);
         budgetDetail(d) <- budgetDetail(b);
@@ -475,7 +504,7 @@ DESIGN invoiceLoad {
             }
             MOVE PROPERTY (text(i)) { caption = 'Comment'; alignment = STRETCH; fill = 1; panelCaptionAbove = TRUE; }
         }
-            
+
     }
 }
 

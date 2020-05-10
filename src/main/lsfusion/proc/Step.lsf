@@ -194,7 +194,7 @@ META defineAssignmentForm(subject,makeStep,header)
                 alignment = STRETCH;
                 type = CONTAINERH;
                 //MOVE PROPERTY(nameOut(l));
-                height = 150;
+                //height = 150;
                 NEW decisionButtons {
                     type = CONTAINERV;
                     alignment = CENTER;
@@ -207,12 +207,12 @@ META defineAssignmentForm(subject,makeStep,header)
                 //    MOVE PROPERTY(userNameOut(lc)) {charWidth = 20;}
                 //    REMOVE TOOLBARLEFT(lc);
                 //}
-                //NEW commentsArea {
-                //    type = CONTAINERV;
-                //    alignment = STRETCH;
-                //    fill = 1;
+                NEW commentsArea {
+                    type = CONTAINERV;
+                    alignment = STRETCH;
+                    fill = 1;
                     //MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
-                //}
+                }
             }
         }
     }
