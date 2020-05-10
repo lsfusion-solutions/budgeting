@@ -75,11 +75,11 @@ META defineNotification (id,capName,ClassName,Category)
     notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n);
     generateHeader (##ClassName s) = STRING(replace(replace(header(notification(step(s))),
                                                                                    'costCenter(s)', name(##Category(s))),
-                                                                                   'planned(s)', planned(s)));
+                                                                                   'planned(s)', STRING(planned(s))));
     generateNotification (##ClassName s) = RICHTEXT(replace(replace(replace(text(notification(step(s))),
                                                                                    'costCenter(s)', name(##Category(s))),
                                                                                    'date(s)', toDateDDMMYY(currentDate())), 
-                                                                                   'planned(s)', planned(s)));
+                                                                                   'planned(s)', STRING(planned(s))));
     sendNotification 'Send Notification' (##ClassName s, Employee e) {
         IF notification(step(s)) THEN
             sendNotification(generateHeader(s),generateNotification(s),email(e));
