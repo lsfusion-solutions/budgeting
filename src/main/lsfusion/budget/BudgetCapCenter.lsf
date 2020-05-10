@@ -307,7 +307,7 @@ WHEN CHANGED(amount(Invoice i)) OR CHANGED(currency(i)) DO {
 
 invoiceApprovalEmailTo 'To' = DATA STRING[400] () CHARWIDTH 20;
 
-WHEN SET(Invoice i IS Invoice) AND NOT approved(i) OR DROPPED(approved(i)) DO {
+WHEN SET(Invoice i IS Invoice) AND NULL AND NOT approved(i) OR DROPPED(approved(i)) DO { // this emailing is replaced by procedure
     EMAIL 
     SUBJECT 'Invoice needs approval'
     TO invoiceApprovalEmailTo()
