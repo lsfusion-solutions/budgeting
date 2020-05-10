@@ -179,13 +179,13 @@ META defineAssignmentForm(subject,makeStep,header)
         //PROPERTIES(o) lastComment BACKGROUND RGB(240,240,240) SHOWIF lastComment(o)
         
         OBJECTS l = StepLog PANEL
-        PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
+        //PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
         FILTERS l == stepLog(o)
         
-        OBJECTS lc = StepLog
-        PROPERTIES(lc) BACKGROUND RGB(250,250,250) dateTimeOut, commentString, userNameOut
-        ORDER dateTimeOut(lc) DESC
-        FILTERS sbj(lc) == o
+        //OBJECTS lc = StepLog
+        //PROPERTIES(lc) BACKGROUND RGB(250,250,250) dateTimeOut, commentString, userNameOut
+        //ORDER dateTimeOut(lc) DESC
+        //FILTERS sbj(lc) == o
     ;
     
     DESIGN makeStep {
@@ -198,15 +198,15 @@ META defineAssignmentForm(subject,makeStep,header)
                 NEW decisionButtons {
                     type = CONTAINERV;
                     alignment = CENTER;
-                    MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; caption = 'Overall comment for this Decision'; } //  height = 200;
+                    //MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; caption = 'Overall comment for this Decision'; } //  height = 200;
                 }
-                MOVE BOX (lc) {
-                    fill = 3;
-                    caption = 'Comments for previous decisions and procedure steps';
-                    MOVE PROPERTY(commentString(lc)) {charWidth = 50;alignment =STRETCH;}
-                    MOVE PROPERTY(userNameOut(lc)) {charWidth = 20;}
-                    REMOVE TOOLBARLEFT(lc);
-                }
+                //MOVE BOX (lc) {
+                //    fill = 3;
+                //    caption = 'Comments for previous decisions and procedure steps';
+                //    MOVE PROPERTY(commentString(lc)) {charWidth = 50;alignment =STRETCH;}
+                //    MOVE PROPERTY(userNameOut(lc)) {charWidth = 20;}
+                //    REMOVE TOOLBARLEFT(lc);
+                //}
                 //NEW commentsArea {
                 //    type = CONTAINERV;
                 //    alignment = STRETCH;
