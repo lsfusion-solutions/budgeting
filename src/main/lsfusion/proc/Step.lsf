@@ -76,7 +76,7 @@ META defineNotification (id,capName,ClassName,Category)
     generateHeader (##ClassName s) = STRING(replace(replace(header(notification(step(s))),
                                                                                    'costCenter(s)', name(##Category(s))),
                                                                                    'planned(s)', STRING(planned(s))));
-    generateNotification (##ClassName s) = RICHTEXT(replace(replace(replace(text(notification(step(s))),
+    generateNotification (##ClassName s) = TEXT(replace(replace(replace(text(notification(step(s))),
                                                                                    'costCenter(s)', name(##Category(s))),
                                                                                    'date(s)', toDateDDMMYY(currentDate())), 
                                                                                    'planned(s)', STRING(planned(s))));

@@ -128,11 +128,11 @@ stage 'Procurement Stage' = DATA Stage(Notification);
 nameStage 'Procurement Stage' (Notification n) = name(stage(n));
 
 header 'Email header' = DATA STRING (Notification);
-text 'Notification text' = DATA RICHTEXT (Notification);
+text 'Notification text' = DATA TEXT (Notification);
 enabled 'Enabled' = DATA BOOLEAN (Notification);
 
 FORM notification
-    OBJECTS r = RICHTEXT PANEL SUBREPORT
+    OBJECTS r = TEXT PANEL SUBREPORT
     PROPERTIES(r) notification = VALUE
 ;
 
