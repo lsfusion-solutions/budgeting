@@ -143,6 +143,7 @@ copyFrom 'Copy from' (Budget bb, CostCenter c) {
             name(bd) <- name(d);
             planned(bd) <- planned(d);
             contractor(bd) <- contractor(d);
+            sensitive(bd) <- sensitive(d);
         }
     }
 }
