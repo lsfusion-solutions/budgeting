@@ -283,8 +283,8 @@ EXTEND FORM purchaseOrders
     FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
     
     OBJECTS d = Invoice
-    PROPERTIES (d) READONLY budgetDetailName, nameCostCenter, costItemName, nameSupplier, amountName, passThreshold, text PANEL
-    PROPERTIES (d) TOOLBAR open SHOWIF hasFile(d), load //SHOWIF NOT hasFile(d)
+    PROPERTIES (d) READONLY urgent, budgetDetailName, nameCostCenter, costItemName, nameSupplier, amountName, passThreshold, text PANEL
+    PROPERTIES (d) PANEL open SHOWIF hasFile(d), load,  openPayment SHOWIF hasPayment(d), loadPayment SHOWIF afg(currentUser()) //SHOWIF NOT hasFile(d)
     FILTERS part(d) == o
     
     LIST PurchaseOrder OBJECT o
@@ -326,7 +326,7 @@ DESIGN purchaseOrders {
                 NEW itemDetails {
                     type = CONTAINERV;
                     caption = 'Details for purchase invoice';
-                    width = 500;
+                    width = 300;
                     alignment = STRETCH;
                     NEW files {
                         type = CONTAINERH;
@@ -334,9 +334,16 @@ DESIGN purchaseOrders {
                         MOVE PROPERTY (load(d)) {caption = 'Load Attachment';}
                         MOVE PROPERTY (open(d)) {caption = 'Open Attachment';}
                     }
+                    NEW payment {
+                        type = CONTAINERH;
+                        alignment = START;
+                        MOVE PROPERTY (loadPayment(d));
+                        MOVE PROPERTY (openPayment(d));
+                    }
                     MOVE PROPERTY (text(d)) {
                         alignment = STRETCH;
                         panelCaptionAbove = TRUE;
+                        fill = 1;
                     }                                
                 }
             }
