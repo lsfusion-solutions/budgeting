@@ -31,12 +31,17 @@ hasFile (Invoice i) = TRUE IF file(i);
 open 'Open Attachment' (Invoice i)  { open(file(i)); }
 load 'Load Attachment' (Invoice i)  { INPUT =file(i) CHANGE; }
 
+payment = DATA FILE (Invoice);
+hasPayment (Invoice i) = TRUE IF file(i); 
+openPayment 'Open Payment Confirmation' (Invoice i)  { open(payment(i)); }
+loadPayment 'Load Payment Confirmation' (Invoice i)  { INPUT =payment(i) CHANGE; }
+
 text '' = DATA RICHTEXT (Invoice);
 
 FORM invoice 'Purchase invoice'
     OBJECTS i = Invoice PANEL
     PROPERTIES(i) date, number, nameSupplier, note, nameCurrency, amount, text
-    PROPERTIES(i) open SHOWIF hasFile(i), load
+    PROPERTIES(i) open SHOWIF hasFile(i), load,  openPayment SHOWIF hasPayment(i), loadPayment
     
     //EDIT Invoice OBJECT i
 ;
