@@ -23,6 +23,7 @@ author 'Author' = DATA Employee (BudgetPortion);
 dateTime 'Created' = DATA DATETIME (BudgetPortion) CHARWIDTH 20;
 costCenter 'Cost Center' = DATA CostCenter(BudgetPortion);
 nameCostCenter 'Cost Center' (BudgetPortion o) = name(costCenter(o));
+color 'Color' = DATA COLOR (BudgetPortion);
 attachmentName = DATA STRING (BudgetPortion);
 attachment = DATA FILE(BudgetPortion);
 

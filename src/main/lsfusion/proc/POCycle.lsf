@@ -37,6 +37,8 @@ dateTime(PurchaseOrder b) <- currentDateTime() WHEN CHANGED(planned(b));
 nameExplain 'Cost Centers involved' (PurchaseOrder b) = GROUP CONCAT name(CostCenter c),'; ' IF numberCostCenter(b,c) ORDER name(c) CHARWIDTH 50;
 
 // Extend basic items
+urgent 'Urgent' = DATA BOOLEAN (Invoice);
+color 'Color' (PurchaseOrder o) = RGB(250,200,200) IF [GROUP SUM 1 IF urgent(Invoice i) BY part(i)](o);
 supply 'Known Supplier' = DATA BOOLEAN (Invoice);
 searchSupply 'Search Supplier' (PurchaseOrder o) = TRUE IF [GROUP SUM amount(Invoice i) IF NOT contractor(i) BY part(i)](o);
 budgetDetailName 'Budget Item' (Invoice d) = CONCAT ' - ', nameBudget(budgetDetail(d)), name(budgetDetail(d));  
@@ -78,7 +80,7 @@ META extendPurchaseOrder (form)
         PROPERTIES(o) datePlan
         
         OBJECTS d = Invoice
-        PROPERTIES(d) READONLY nameCostCenter, nameBudget, itemBudgetDetail 
+        PROPERTIES(d) READONLY urgent BACKGROUND RGB(250,200,200), nameCostCenter, nameBudget, itemBudgetDetail 
         PROPERTIES (d) READONLY costItemName, planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold , new=NEW, delete=DELETE
         PROPERTIES(d) READONLY PANEL supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d), text
         PROPERTIES (d) PANEL load, open SHOWIF hasFile(d)
@@ -442,7 +444,7 @@ NAVIGATOR {
 
 FORM invoiceLoad 'Load Purchase invoice'
     OBJECTS i = Invoice PANEL
-    PROPERTIES(i) date, number, nameCurrency, amount, text, paid
+    PROPERTIES(i) urgent,date, number, nameCurrency, amount, text, paid
     PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
     PROPERTIES (i) BACKGROUND backgroundFill() longBudgetDetailName
     PROPERTIES (i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
@@ -464,6 +466,7 @@ DESIGN invoiceLoad {
                 alignment = STRETCH;
                 caption = 'Parameters';
                 type = CONTAINERH;
+                MOVE PROPERTY(urgent(i)) { panelCaptionAbove = TRUE; fontStyle = 'bold';}
                 MOVE PROPERTY(date(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 2;}
                 MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 4;}
                 MOVE PROPERTY(amount(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 1;}
