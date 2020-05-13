@@ -54,7 +54,6 @@ quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balan
 EXTEND FORM budgetPortionsOverview 
 PROPERTIES(c,q) AFTER quarterPlanned(c,q) quarterInvoiced, quarterBalance BACKGROUND RGB (200,250,200)
 PROPERTIES invoiced(d), balanceItem=balance(d,currentDate()) DRAW d BACKGROUND RGB (200,250,200), spent(d)
-PROPERTIES =getQuarter(currentDate()) PANEL, =quarterNumber(budget(d))
 ; 
 DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Remain, USD'; }}
 

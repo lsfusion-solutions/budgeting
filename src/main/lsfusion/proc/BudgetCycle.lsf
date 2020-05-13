@@ -520,9 +520,11 @@ quarterProposal 'Budgeting status' (CostCenter c, INTEGER q) = GROUP LAST nameSt
 
 filterCostCenter = DATA LOCAL NESTED CostCenter();
 nameFilterCostCenter 'CostCenter' () = name(filterCostCenter());
+filterQuarter = DATA LOCAL NESTED Budget ();
+nameFilterQuarter 'Quarter' () = quarterName(quarterNumber(filterQuarter()));
 
 FORM budgetPortionsOverview 'Quarter Budgets'
-    PROPERTIES () nameFilterCostCenter
+    PROPERTIES () nameFilterCostCenter, nameFilterQuarter
 
     OBJECTS qc=(q = INTEGER, c = CostCenter)
     PROPERTIES(q) quarterName, VALUE//SHOWIF NULL 
@@ -530,7 +532,8 @@ FORM budgetPortionsOverview 'Quarter Budgets'
     PROPERTIES (c,q) quarterProposal, quarterPlanned, quarterSpent
     ORDER quarterName(q) DESC
     FILTERS quarterPlanned(c,q) > 0,
-            c == filterCostCenter() OR NOT filterCostCenter()
+            c == filterCostCenter() OR NOT filterCostCenter(),
+            q == quarterNumber(filterQuarter()) OR NOT filterQuarter()
     
     FILTERGROUP archive
         FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT
@@ -546,8 +549,22 @@ FORM budgetPortionsOverview 'Quarter Budgets'
 
 DESIGN budgetPortionsOverview {
     OBJECTS {
-        type = SPLITH;
-        PROPERTY (nameFilterCostCenter()) {alignment = STRETCH; caption = 'Autofilter by CostCenter';}
+        type = CONTAINERV ;
+        alignment = STRETCH;
+        fill = 1;
+        NEW filters {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY (nameFilterQuarter()) {caption = 'Autofilter by Quarter';}
+            MOVE PROPERTY (nameFilterCostCenter()) {alignment = STRETCH; caption = 'Autofilter by CostCenter';}
+        }
+        NEW quarters {
+            type = SPLITH;
+            alignment = STRETCH;
+            fill = 1;
+            MOVE BOX (qc);
+            MOVE BOX (d);
+        }
     }
 }
 
