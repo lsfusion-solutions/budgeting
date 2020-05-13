@@ -26,7 +26,7 @@ datePlan 'Date plan' = DATA DATE (PurchaseOrder) CHARWIDTH 10;
 sbj = ABSTRACT PurchaseOrder (Assign) MATERIALIZED;
 part = DATA PurchaseOrder (Invoice); // Purchase order may include multiple items, each is named Invoice
 
-planned 'Planned, USD' (PurchaseOrder b) = GROUP SUM amount(Invoice d) IF  part(d) == b;
+planned 'Planned, USD' (PurchaseOrder b) = NUMERIC[16,3](GROUP SUM invoiced(Invoice d) IF part(d) == b);
 numberCostCenter 'Number by Cost Center' (PurchaseOrder b, CostCenter c) = GROUP SUM 1 IF  part(Invoice d) == b AND costCenter(d) == c;
 numberEmployee 'Number by Employee' (PurchaseOrder b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF access(c,e); 
 access 'Access' (PurchaseOrder b, Employee e) = TRUE IF numberEmployee(b,e) > 0; 
@@ -41,10 +41,11 @@ searchSupply 'Search Supplier' (PurchaseOrder o) = TRUE IF [GROUP SUM amount(Inv
 budgetDetailName 'Budget Item' (Invoice d) = CONCAT ' - ', nameBudget(budgetDetail(d)), name(budgetDetail(d));  
 longBudgetDetailName 'Budget Item' (Invoice d) = longBudgetName(budgetDetail(d));  
 costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
-planned 'Planned, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
+planned 'Budgeted, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
 //spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
-balance 'Balance, USD' (Invoice d) = (OVERRIDE planned(budgetDetail(d)),0) - (OVERRIDE invoiced(budgetDetail(d)),0) - (OVERRIDE spent(budgetDetail(d)),0) CHARWIDTH 10;
+balance 'Balance Remain, USD' (Invoice d) = (OVERRIDE planned(budgetDetail(d)),0) - (OVERRIDE invoiced(budgetDetail(d)),0) - (OVERRIDE spent(budgetDetail(d)),0) CHARWIDTH 10;
 CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
+amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
 
 // Threshold prepare
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
@@ -62,10 +63,11 @@ META extendPurchaseOrder (form)
         PROPERTIES(o) datePlan
         
         OBJECTS d = Invoice
-        PROPERTIES(d) nameCostCenter, nameBudget, itemBudgetDetail 
-        PROPERTIES (d) costItemName, amount, nameCurrency, passThreshold , new=NEW, delete=DELETE
-        PROPERTIES(d) PANEL supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d)
-        PROPERTIES (d) PANEL load, open SHOWIF hasFile(d), note, text
+        PROPERTIES(d) READONLY nameCostCenter, nameBudget, itemBudgetDetail 
+        PROPERTIES (d) READONLY costItemName, planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold , new=NEW, delete=DELETE
+        PROPERTIES(d) READONLY PANEL supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d), text
+        PROPERTIES (d) PANEL load, open SHOWIF hasFile(d)
+        PROPERTIES (d) TOOLBAR NEWSESSION NEW, EDIT, DELETE SHOWIF afg(currentUser())
         FILTERS part(d) == o
     ;
 
@@ -96,7 +98,6 @@ META extendPurchaseOrder (form)
                         //width = 400;
                         alignment = STRETCH;
                         type = CONTAINERV;
-                        MOVE PROPERTY (note(d)) {alignment = STRETCH;}
                         MOVE PROPERTY (supply(d));
                         NEW contractor {
                             type = CONTAINERV;
@@ -265,7 +266,7 @@ EXTEND FORM purchaseOrders
     FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
     
     OBJECTS d = Invoice
-    PROPERTIES (d) READONLY budgetDetailName, nameCostCenter, costItemName, nameSupplier, amount, nameCurrency, passThreshold, note PANEL, text PANEL
+    PROPERTIES (d) READONLY budgetDetailName, nameCostCenter, costItemName, nameSupplier, amountName, passThreshold, text PANEL
     PROPERTIES (d) TOOLBAR open SHOWIF hasFile(d), load //SHOWIF NOT hasFile(d)
     FILTERS part(d) == o
     
@@ -310,7 +311,6 @@ DESIGN purchaseOrders {
                     caption = 'Details for purchase invoice';
                     width = 500;
                     alignment = STRETCH;
-                    MOVE PROPERTY (note(d)) { alignment = STRETCH;}
                     NEW files {
                         type = CONTAINERH;
                         alignment = START;
@@ -341,7 +341,6 @@ log 'Step Log' = DATA StepLog(PurchaseOrderLog);
 datePlan 'Date plan' = DATA DATE (PurchaseOrderLog) CHARWIDTH 10;
 costCenter 'Cost Center' = DATA CostCenter(PurchaseOrderLog);
 budgetDetail 'Budget Detail' = DATA BudgetDetail(PurchaseOrderLog);
-note 'Note' = DATA STRING[1000](PurchaseOrderLog);
 text 'Description' = DATA RICHTEXT(PurchaseOrderLog);
 planned 'Planned, USD' = DATA NUMERIC[16,3](PurchaseOrderLog);
 currency 'Currency' = DATA Currency(PurchaseOrderLog);
@@ -355,7 +354,6 @@ WHEN SETCHANGED (stepOut(StepLog l)) DO {
         datePlan(d) <- datePlan(sbj(l));
         costCenter(d) <- costCenter(b);
         budgetDetail(d) <- budgetDetail(b);
-        note(d) <- note(b);
         text(d) <- text(b);
         planned(d) <- amount(b);
         currency(d) <- currency(b);
@@ -375,7 +373,7 @@ FORM steplog 'Purchase Orders log'
     OBJECTS d = PurchaseOrderLog
     PROPERTIES (d) READONLY datePlan,budgetDetailName, planned, nameCurrency
     PROPERTIES READONLY =nameCostCenter(budgetDetail(d)), =canonicalNameCostItem(budgetDetail(d))
-    PROPERTIES (d) READONLY PANEL note, text, open SHOWIF hasFile(d)
+    PROPERTIES (d) READONLY PANEL text, open SHOWIF hasFile(d)
     FILTERS log(d) == l
 ;
 DESIGN steplog {
@@ -402,7 +400,6 @@ DESIGN steplog {
                     type = CONTAINERH;
                     alignment = STRETCH;
                     MOVE PROPERTY (open(d)) { height = 40; width = 160; caption = 'Attachment';}
-                    MOVE PROPERTY (note(d)) {alignment = STRETCH; panelCaptionAbove = TRUE;}
                 }
                 MOVE PROPERTY (text(d)) {
                     fill = 1;
@@ -430,11 +427,13 @@ NAVIGATOR {
 
 FORM invoiceLoad 'Load Purchase invoice'
     OBJECTS i = Invoice PANEL
-    PROPERTIES(i) date, number, note, nameCurrency, amount, text, paid
+    PROPERTIES(i) date, number, nameCurrency, amount, text, paid
     PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
     PROPERTIES (i) BACKGROUND backgroundFill() longBudgetDetailName
     PROPERTIES (i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
     PROPERTIES(i) open SHOWIF hasFile(i), load
+    
+    EDIT Invoice OBJECT i
 ;
 DESIGN invoiceLoad {
     size = (800, 480);
@@ -496,11 +495,6 @@ DESIGN invoiceLoad {
                 type = CONTAINERH;
                 MOVE PROPERTY(load(i)) { fill = 1; height = 40; caption = 'Load Attachment'; }
                 MOVE PROPERTY(open(i)) { fill = 1; height = 40; caption = 'Open Attachment'; }
-            }
-            NEW note {
-                alignment = STRETCH;
-                caption = 'Note';
-                MOVE PROPERTY(note(i)) { alignment = STRETCH; }
             }
             MOVE PROPERTY (text(i)) { caption = 'Comment'; alignment = STRETCH; fill = 1; panelCaptionAbove = TRUE; }
         }

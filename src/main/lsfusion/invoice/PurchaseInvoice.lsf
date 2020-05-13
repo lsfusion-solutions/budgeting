@@ -38,7 +38,7 @@ FORM invoice 'Purchase invoice'
     PROPERTIES(i) date, number, nameSupplier, note, nameCurrency, amount, text
     PROPERTIES(i) open SHOWIF hasFile(i), load
     
-    EDIT Invoice OBJECT i
+    //EDIT Invoice OBJECT i
 ;
 DESIGN invoice {
     OBJECTS {
