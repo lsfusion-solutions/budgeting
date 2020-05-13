@@ -136,6 +136,16 @@ FORM notification
     PROPERTIES(r) notification = VALUE
 ;
 
+sendNotificationFile 'Send Notification' (STRING header, TEXT text, STRING[400] email, FILE attachment, STRING filename)  { 
+    LOCAL bodyFile = FILE ();
+    PRINT notification OBJECTS r = text HTML TO bodyFile;
+    EMAIL
+        SUBJECT header
+        TO email
+        BODY bodyFile()
+        ATTACH attachment NAME filename+'.'+getExtension(attachment);
+}
+
 sendNotification 'Send Notification' (STRING header, TEXT text, STRING[400] email)  { 
     LOCAL bodyFile = FILE ();
     PRINT notification OBJECTS r = text HTML TO bodyFile;

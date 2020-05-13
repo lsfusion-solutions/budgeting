@@ -25,6 +25,7 @@ datePlan 'Date plan' = DATA DATE (PurchaseOrder) CHARWIDTH 10;
 
 sbj = ABSTRACT PurchaseOrder (Assign) MATERIALIZED;
 part = DATA PurchaseOrder (Invoice); // Purchase order may include multiple items, each is named Invoice
+countInvoices 'Number of Invoices in Purchase Order' = GROUP SUM 1 BY part(Invoice i);
 
 planned 'Planned, USD' (PurchaseOrder b) = NUMERIC[16,3](GROUP SUM invoiced(Invoice d) IF part(d) == b);
 numberCostCenter 'Number by Cost Center' (PurchaseOrder b, CostCenter c) = GROUP SUM 1 IF  part(Invoice d) == b AND costCenter(d) == c;
@@ -56,6 +57,10 @@ PROPERTIES(c,q) AFTER quarterPlanned(c,q) quarterInvoiced, quarterBalance BACKGR
 PROPERTIES invoiced(d), balanceItem=balance(d,currentDate()) DRAW d BACKGROUND RGB (200,250,200), spent(d)
 ; 
 DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Remain, USD'; }}
+
+// Attachment
+attachmentName (PurchaseOrder p) = IF countInvoices(p) == 1 THEN 'Invoice' ELSE 'InvoicesArchive';
+attachment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST file(Invoice i) BY part(i)](p) ELSE NULL;
 
 // Threshold prepare
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
@@ -191,19 +196,19 @@ assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 
 //--- Procedure: Review and Review Updated Steps ---
 
-@defineAssignment(PurchaseOrder, po, enter, 'Confirm Purchase Order on behalf of Cost Center',planned);
+@defineAssignment(PurchaseOrder, po, enter, 'Product Owner Purchase order Approval',planned);
 @extendPurchaseOrder(enter);
 assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND a IS AssignEnter;
-@buttonDecisions(enter,reject,'Reject and send the Purchase Order back for revising');
-@buttonDecisions(enter,review,'Send the Purchase Order for Approval');
-@buttonDecisions(enter,approve,'Approve the Purchase Order');
+@buttonDecisions(enter,reject,'Send the Purchase Order back for revising');
+@buttonDecisions(enter,review,'Approve and send the Purchase Order to AFG');
+@buttonDecisions(enter,approve,'Approve the Purchase Order (passed limits)');
 
 //--- Procedure: Approve Step ---
 
-@defineAssignment(PurchaseOrder, po, review, 'Purchase order approval',planned);
+@defineAssignment(PurchaseOrder, po, review, 'AFG Purchase order Approval',planned);
 @extendPurchaseOrder(review);
 assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS AssignReview;
-@buttonDecisions(review,reject,'Reject and send the Purchase Order back for revising');
+@buttonDecisions(review,reject,'Send the Purchase Order back for revising');
 @buttonDecisions(review,approve,'Approve the Purchase Order');
 
 isApproved (PurchaseOrder po) = step(po) == Step.approve AND afg(currentUser());
@@ -424,9 +429,9 @@ DESIGN steplog {
 @showStepAttributes(steplog,in);
 @showStepAttributes(steplog,out);
 
-EXTEND FORM purchaseOrders OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND stepOut(l);
-@extendDetails(purchaseOrders,proc,v);
-@showStepAttributes(purchaseOrders,out);
+//EXTEND FORM purchaseOrders OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND stepOut(l);
+//@extendDetails(purchaseOrders,proc,v);
+//@showStepAttributes(purchaseOrders,out);
 
 NAVIGATOR {
     proc { NEW purchaseOrders BEFORE logging; }
@@ -441,7 +446,7 @@ FORM invoiceLoad 'Load Purchase invoice'
     PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
     PROPERTIES (i) BACKGROUND backgroundFill() longBudgetDetailName
     PROPERTIES (i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
-    PROPERTIES(i) open SHOWIF hasFile(i), load
+    PROPERTIES(i) open SHOWIF hasFile(i), load, openPayment SHOWIF hasPayment(i), loadPayment SHOWIF afg(currentUser())
     
     EDIT Invoice OBJECT i
 ;
@@ -505,6 +510,8 @@ DESIGN invoiceLoad {
                 type = CONTAINERH;
                 MOVE PROPERTY(load(i)) { fill = 1; height = 40; caption = 'Load Attachment'; }
                 MOVE PROPERTY(open(i)) { fill = 1; height = 40; caption = 'Open Attachment'; }
+                MOVE PROPERTY(loadPayment(i)) { fill = 1; height = 40; }
+                MOVE PROPERTY(openPayment(i)) { fill = 1; height = 40; }
             }
             MOVE PROPERTY (text(i)) { caption = 'Comment'; alignment = STRETCH; fill = 1; panelCaptionAbove = TRUE; }
         }

@@ -81,8 +81,10 @@ META defineNotification (id,capName,ClassName,Category)
                                                                                    'date(s)', toDateDDMMYY(currentDate())), 
                                                                                    'planned(s)', STRING(planned(s))));
     sendNotification 'Send Notification' (##ClassName s, Employee e) {
-        IF notification(step(s)) THEN
-            sendNotification(generateHeader(s),generateNotification(s),email(e));
+        IF notification(step(s)) THEN {
+            IF attachment(s) THEN sendNotificationFile(generateHeader(s),generateNotification(s),email(e),attachment(s),attachmentName(s));
+            ELSE sendNotification(generateHeader(s),generateNotification(s),email(e));
+        }
     } 
     EXTEND FORM notificationsForms
         OBJECTS note###id = Notification

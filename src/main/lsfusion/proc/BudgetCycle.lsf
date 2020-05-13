@@ -23,6 +23,8 @@ author 'Author' = DATA Employee (BudgetPortion);
 dateTime 'Created' = DATA DATETIME (BudgetPortion) CHARWIDTH 20;
 costCenter 'Cost Center' = DATA CostCenter(BudgetPortion);
 nameCostCenter 'Cost Center' (BudgetPortion o) = name(costCenter(o));
+attachmentName = DATA STRING (BudgetPortion);
+attachment = DATA FILE(BudgetPortion);
 
 sbj = ABSTRACT BudgetPortion (Assign) MATERIALIZED;
 part = DATA BudgetPortion (BudgetDetail); // Budget Proposal may include multiple items, each is named BudgetDetail
@@ -80,7 +82,6 @@ WHEN SETCHANGED (step(BudgetPortion s)) DO {
             hiddenSet(d) <- TRUE;
         ELSE hiddenSet(d) <- NULL;
         IF step(s) == Step.enter OR step(s) == Step.review OR step(s) == Step.approve THEN
-
             isProcessing(d) <- TRUE;
         ELSE isProcessing(d) <- NULL;
     }
