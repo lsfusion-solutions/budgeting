@@ -116,7 +116,8 @@ FORM budgetPortions 'Budget Proposals'
     PROPERTIES (i) READONLY canonicalName
     PROPERTIES(d) READONLY name, planned, description PANEL
     FILTERS o == part(d) AND b == budget(d) AND c == costCenter(d) AND i == costItem(d),
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT archive(c)
             
     LIST BudgetPortion OBJECT o
 ;
@@ -529,6 +530,9 @@ FORM budgetPortionsOverview 'Quarter Budgets'
     ORDER quarterName(q) DESC
     FILTERS quarterPlanned(c,q) > 0,
             c == filterCostCenter() OR NOT filterCostCenter()
+    
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT
 
     OBJECTS d = BudgetDetail
     PROPERTIES (d) READONLY nameBudget, canonicalNameCostItem, name, planned

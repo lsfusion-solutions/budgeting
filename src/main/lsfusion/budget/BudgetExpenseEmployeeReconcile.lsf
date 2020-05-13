@@ -15,6 +15,9 @@ EXTEND FORM expenses
     OBJECTS ec = CostCenter
     PROPERTIES SHOWIF ie IS EmployeeExpense READONLY name(ec), assigned(ie, ec), amount(ie, ec)
     FILTERS assigned(ie, ec)
+    
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(ec) DEFAULT
 ;
 
 DESIGN expenses {

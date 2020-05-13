@@ -114,6 +114,9 @@ FORM budget 'Budget'
     PROPERTIES(cp) READONLY name
     PROPERTIES READONLY planned(b, cp), spent(b, cp)
     FILTERS selected(b, cp)
+    
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(cp) DEFAULT
 
     TREE costItems ci = CostItem PARENT parent(ci)
     PROPERTIES(ci) READONLY order, name

@@ -21,6 +21,9 @@ EXTEND FORM expenses
     PROPERTIES SHOWIF ie IS EmployeeTaxExpense READONLY name(cct), firstName(eet), lastName(eet), canonicalNameCostItem(eet), assigned(ie, cct, eet), amount(ie, cct, eet)
     FILTERS assigned(ie, cct, eet)
     
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(cct) DEFAULT
+    
     PROPERTIES SHOWIF ie IS EmployeeTaxExpense salary(ie) PANEL
 ;
 

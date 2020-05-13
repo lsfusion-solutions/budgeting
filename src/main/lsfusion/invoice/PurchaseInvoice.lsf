@@ -7,18 +7,18 @@ NAMESPACE Purchase;
 CLASS Invoice 'Purchase invoice';
 TABLE invoice(Invoice);
 
-date 'Date' = DATA DATE (Invoice);
+date 'Date' = DATA DATE (Invoice) IN id;
 
-number 'Number' = DATA STRING[50] (Invoice) CHARWIDTH 15;
+number 'Number' = DATA STRING[50] (Invoice) CHARWIDTH 15 IN id;
 
 nameSupplier 'Supplier' = DATA STRING[50] (Invoice);
 
 description 'Description' (Invoice i) = CONCAT ' / ', number(i), date(i), nameSupplier(i); 
 
 currency 'Currency' = DATA Currency (Invoice) NONULL;
-nameCurrency 'Currency' (Invoice i) = name(currency(i));
+nameCurrency 'Currency' (Invoice i) = name(currency(i)) IN id;
 
-amount 'Sum' = DATA NUMERIC[14,2] (Invoice) NONULL;
+amount 'Sum' = DATA NUMERIC[14,2] (Invoice) NONULL IN id;
 
 note 'Note' = DATA STRING[1000] (Invoice) CHARWIDTH 20;
 

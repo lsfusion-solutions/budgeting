@@ -7,23 +7,27 @@ NAMESPACE Cost;
 CLASS CostCenter 'Cost Center';
 TABLE costCenter(CostCenter);
 name 'Name' = DATA ISTRING[50] (CostCenter) IN id;
+archive 'Archive' = DATA BOOLEAN (CostCenter) IN id;
 
 FORM costCenter 'Cost Center'
     OBJECTS c = CostCenter PANEL
-    PROPERTIES(c) name
+    PROPERTIES(c) name,archive
     
     EDIT CostCenter OBJECT c
 ;
 
 FORM costCenters 'Cost centers'
     OBJECTS c = CostCenter
-    PROPERTIES(c) READONLY name
+    PROPERTIES(c) READONLY name,archive
     PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE
 ;
 
 FORM listCostCenters 'Select cost center'
     OBJECTS c = CostCenter
     PROPERTIES(c) READONLY name
+
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT
     
     LIST CostCenter OBJECT c
 ;

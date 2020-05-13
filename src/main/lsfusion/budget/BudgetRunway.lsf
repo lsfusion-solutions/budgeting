@@ -107,6 +107,9 @@ EXTEND FORM budgets
     PROPERTIES(c) READONLY name
     PROPERTIES childPlanned(bic, i, c) COLUMNS (bic) HEADER name(bic) ON CHANGE changePlanned(bic, i, c) ON CHANGEWYS changePlanned(bic, i, c) BACKGROUND changedPlanned(bic, i, c)
 
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT
+
     OBJECTS icd = BudgetDetail
     PROPERTIES(icd) READONLYIF isProcessing(icd) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
     FILTERS level(costItem(icd), i),
