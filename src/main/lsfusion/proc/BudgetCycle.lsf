@@ -41,7 +41,8 @@ authorName 'Author' (BudgetPortion b) = GROUP CONCAT name(Employee e),'; ' IF nu
 nameExplain 'Cost Centers involved' (BudgetPortion b) = CONCAT ' ',nameCostCenter(b),('('+authorName(b)+')')  CHARWIDTH 50;
 
 // Quarters
-quarterNumber 'Quarter ID' (Budget b) = extractYear(fromDate(b))*10 + floor( DOUBLE (extractMonthNumber(fromDate(b)) - 1) / 3 + 1 ) MATERIALIZED;
+quarterNumber 'Quarter ID' (Budget b) = extractYear(fromDate(b))*10 + floor( DOUBLE (extractMonthNumber(fromDate(b)) - 1) / 3) + 1 MATERIALIZED;
+getQuarter 'Quarter from date' (DATE d) = extractYear(d)*10 + floor( DOUBLE (extractMonthNumber(d) - 1) / 3) + 1;
 quarter = GROUP AGGR Budget b BY quarterNumber(b); 
 
 // Enable Chat

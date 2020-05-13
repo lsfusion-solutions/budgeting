@@ -7,7 +7,7 @@ NAMESPACE Purchase;
 CLASS Invoice 'Purchase invoice';
 TABLE invoice(Invoice);
 
-date 'Date' = DATA DATE (Invoice) IN id;
+date 'Date' = DATA DATE (Invoice) IN id NONULL;
 
 number 'Number' = DATA STRING[50] (Invoice) CHARWIDTH 15 IN id;
 

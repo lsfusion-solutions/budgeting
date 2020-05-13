@@ -1,6 +1,6 @@
 MODULE POCycle;
 
-REQUIRE Step, BudgetContractPurchaseInvoice, CostCenterEmployee, BudgetPurchaseInvoice;
+REQUIRE Step, BudgetContractPurchaseInvoice, CostCenterEmployee, BudgetPurchaseInvoice, BudgetCycle;
 
 NAMESPACE Purchase;
 
@@ -43,9 +43,20 @@ longBudgetDetailName 'Budget Item' (Invoice d) = longBudgetName(budgetDetail(d))
 costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
 planned 'Budgeted, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
 //spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
-balance 'Balance Remain, USD' (Invoice d) = (OVERRIDE planned(budgetDetail(d)),0) - (OVERRIDE invoiced(budgetDetail(d)),0) - (OVERRIDE spent(budgetDetail(d)),0) CHARWIDTH 10;
+balance 'Balance Remain, USD' (BudgetDetail d, DATE date) = IF date IS DATE THEN 
+    ((OVERRIDE planned(d),0) - (IF getQuarter(date) == quarterNumber(budget(d)) THEN (OVERRIDE invoiced(d),0) ELSE (OVERRIDE spent(d),0))) ELSE NULL CHARWIDTH 10;
+balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),date(d)) CHARWIDTH 10;
 CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
 amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
+
+quarterInvoiced 'Invoiced, USD' (CostCenter c, INTEGER q) = GROUP SUM invoiced(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balance(BudgetDetail d, currentDate()) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+EXTEND FORM budgetPortionsOverview 
+PROPERTIES(c,q) AFTER quarterPlanned(c,q) quarterInvoiced, quarterBalance BACKGROUND RGB (200,250,200)
+PROPERTIES invoiced(d), balanceItem=balance(d,currentDate()) DRAW d BACKGROUND RGB (200,250,200), spent(d)
+PROPERTIES =getQuarter(currentDate()) PANEL, =quarterNumber(budget(d))
+; 
+DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Remain, USD'; }}
 
 // Threshold prepare
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
