@@ -32,7 +32,7 @@ open 'Open Attachment' (Invoice i)  { open(file(i)); }
 load 'Load Attachment' (Invoice i)  { INPUT =file(i) CHANGE; }
 
 payment = DATA FILE (Invoice);
-hasPayment (Invoice i) = TRUE IF file(i); 
+hasPayment (Invoice i) = TRUE IF payment(i); 
 openPayment 'Open Payment Confirmation' (Invoice i)  { open(payment(i)); }
 loadPayment 'Load Payment Confirmation' (Invoice i)  { INPUT =payment(i) CHANGE; }
 
