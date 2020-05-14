@@ -48,7 +48,7 @@ planned 'Budgeted, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
 //spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
 balance 'Balance Remain, USD' (BudgetDetail d, DATE date) = IF date IS DATE THEN 
     ((OVERRIDE planned(d),0) - (IF getQuarter(date) == quarterNumber(budget(d)) THEN (OVERRIDE invoiced(d),0) ELSE (OVERRIDE spent(d),0))) ELSE NULL CHARWIDTH 10;
-balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),date(d)) CHARWIDTH 10;
+balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),(OVERRIDE date(d),currentDate())) CHARWIDTH 10;
 CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
 amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
 
@@ -74,17 +74,29 @@ EXTEND FORM costCenter PROPERTIES (c) limit;
 EXTEND FORM costItems PROPERTIES (c) limit;
 EXTEND FORM costItem PROPERTIES (c) limit;
 
+FORM invoiceLoad 'Load Purchase invoice'
+    OBJECTS i = Invoice PANEL
+    EDIT Invoice OBJECT i
+;
+addPO 'Add Invoice' (PurchaseOrder o) {
+    NEW i = Invoice {
+        part(i) <- o;
+        SHOW invoiceLoad OBJECTS i = i FLOAT;
+    }
+} TOOLBAR;
+
 META extendPurchaseOrder (form)
     EXTEND FORM ##form
         PROPERTIES(o) READONLY authorName, planned, dateTime
         PROPERTIES(o) datePlan
         
         OBJECTS d = Invoice
-        PROPERTIES(d) READONLY urgent BACKGROUND RGB(250,200,200), nameCostCenter, nameBudget, itemBudgetDetail 
+        PROPERTIES(d) READONLY urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail 
         PROPERTIES (d) READONLY costItemName, planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold , new=NEW, delete=DELETE
         PROPERTIES(d) READONLY PANEL supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d), text
         PROPERTIES (d) PANEL load, open SHOWIF hasFile(d)
-        PROPERTIES (d) TOOLBAR NEWSESSION NEW, EDIT, DELETE SHOWIF afg(currentUser())
+        PROPERTIES (o) TOOLBAR NEWSESSION addPO DRAW d
+        PROPERTIES (d) TOOLBAR NEWSESSION EDIT, DELETE SHOWIF afg(currentUser())
         FILTERS part(d) == o
     ;
 
@@ -190,7 +202,7 @@ FORM purchaseOrders 'Purchase Orders' OBJECTS o = PurchaseOrder;
 @defineAssignment(PurchaseOrder, po, update, 'Complete Purchase Order editing',planned);
 @extendPurchaseOrder(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;
-@buttonDecisions(update,review,'Send the Purchase Order for Review');
+@buttonDecisions(update,enter,'Send the Purchase Order for Approval');
 
 // Pass threshold logic
 //CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.review AND passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Automated approval';
@@ -449,15 +461,12 @@ NAVIGATOR {
 
 // Load Invoices one-by-one
 
-FORM invoiceLoad 'Load Purchase invoice'
-    OBJECTS i = Invoice PANEL
+EXTEND FORM invoiceLoad
     PROPERTIES(i) urgent,date, number, nameCurrency, amount, text, paid
     PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
     PROPERTIES (i) BACKGROUND backgroundFill() longBudgetDetailName
     PROPERTIES (i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
     PROPERTIES(i) open SHOWIF hasFile(i), load, openPayment SHOWIF hasPayment(i), loadPayment SHOWIF afg(currentUser())
-    
-    EDIT Invoice OBJECT i
 ;
 DESIGN invoiceLoad {
     size = (800, 480);
