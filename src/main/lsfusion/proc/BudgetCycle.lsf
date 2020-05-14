@@ -180,7 +180,7 @@ DESIGN budgetPortions {
 //--- Procedure: Init and Update Steps ---
 
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal editing',planned);
-assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e OR (access(sbj(a),currentUser()) AND hasUpdate(e)) AND a IS AssignUpdate;// OR access(sbj(a),e);
+assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e OR (access(sbj(a),e) AND hasUpdate(e)) AND a IS AssignUpdate;// OR access(sbj(a),e);
 @buttonDecisions(update,enter,'Send the Budget Proposal for Review');
 
 userEntered 'Send all new records for Review' () { 
@@ -233,7 +233,7 @@ WHEN SET(isApproved (BudgetPortion o)) DO {
 //--- Procedure: Updating information on Reject Step ---
 
 @defineAssignment(BudgetPortion, budgeting, reject, 'Revising Budgeting record',planned);
-assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e OR (access(sbj(a),currentUser()) AND hasReject(e)) AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
+assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e OR (access(sbj(a),e) AND hasReject(e)) AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
 @buttonDecisions(reject,enter,'Send the revised Budget Proposal for Review');
 
 //--- Automotive Proposal initialization ---
