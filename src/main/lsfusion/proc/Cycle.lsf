@@ -61,8 +61,7 @@ FORM assignments 'Assignments'
     PROPERTIES () nameStage
 
     OBJECTS s = Assign GRID
-    PROPERTIES(s) READONLY dateTimeStart, dateLine, desc BACKGROUND color(s) , sum// nameStage, 
-    PROPERTIES(s) exec GRID
+    PROPERTIES(s) ON CHANGE exec(s) dateTimeStart, desc BACKGROUND color(s) , sum //, dateLine
     ORDER dateTimeStart(s)
     FILTERS in(currentUser(), s),
             stage(s) == stage() OR NOT stage()
@@ -77,10 +76,6 @@ DESIGN assignments {
     }
     BOX(s) {
         PROPERTY(sum(s)) { valueWidth = 20; }
-        MOVE PROPERTY(exec(s)) {
-            width = 10;            
-            fontStyle = 'bold';
-        }
     }
 }
 
