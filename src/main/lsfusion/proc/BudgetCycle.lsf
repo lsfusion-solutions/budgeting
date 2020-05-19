@@ -30,7 +30,7 @@ attachment = DATA FILE(BudgetPortion);
 sbj = ABSTRACT BudgetPortion (Assign) MATERIALIZED;
 part = DATA BudgetPortion (BudgetDetail); // Budget Proposal may include multiple items, each is named BudgetDetail
 
-planned 'Planned, USD' (BudgetPortion b) = GROUP SUM planned(BudgetDetail d) IF  part(d) == b;
+planned 'Planned, USD' (BudgetPortion b) = GROUP SUM NUMERIC[16,2](planned(BudgetDetail d)) IF  part(d) == b;
 numberCostCenter 'Number by Cost Center' (BudgetPortion b, CostCenter c) = GROUP SUM 1 IF  part(BudgetDetail d) == b AND costCenter(d) == c;
 numberEmployee 'Number by Employee' (BudgetPortion b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF access(c,e); 
 access 'Access' (BudgetPortion b, Employee e) = TRUE IF numberEmployee(b,e) > 0; 

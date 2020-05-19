@@ -41,7 +41,7 @@ colorOwn 'Color' = ABSTRACT COLOR (Assign) MATERIALIZED;
 color 'Background Color' (Assign s)= OVERRIDE colorOwn(s),color(stage(s));
 
 desc 'Description' = ABSTRACT ISTRING(Assign) MATERIALIZED CHARWIDTH 50;
-sum 'Sum, USD' = ABSTRACT NUMERIC[16,3](Assign) MATERIALIZED CHARWIDTH 50;
+sum 'Sum, USD' = ABSTRACT NUMERIC[16,2](Assign) MATERIALIZED CHARWIDTH 50;
 exec 'Execute'  ABSTRACT (Assign);
 
 dateTimeStart 'Date/Time start' = ABSTRACT DATETIME (Assign) MATERIALIZED CHARWIDTH 20;

@@ -83,7 +83,7 @@ EXTEND CLASS Step
     enter 'Entered',
     review 'Reviewed',
     approve 'Approved',
-    reject 'Rejected',
+    reject 'Revising',
     update 'Update',
     pay 'Paid'
 }
@@ -209,10 +209,6 @@ FORM purchaseOrder 'Edit single Purchase Order'
 ;
 @extendPurchaseOrder(purchaseOrder);
 passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
-hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = CASE EXCLUSIVE 
-            WHEN stepIn(l) == Step.enter AND passThreshold(sbj(l)) AND stepOut == Step.review THEN TRUE 
-            WHEN stepIn(l) == Step.enter AND NOT passThreshold(sbj(l)) AND stepOut == Step.approve THEN TRUE
-            ELSE NULL;
 
 newPart '+ Add' ()  { 
     NEWSESSION {
@@ -231,7 +227,6 @@ FORM purchaseOrders 'Purchase Orders' OBJECTS o = PurchaseOrder;
 @defineAssignment(PurchaseOrder, po, update, 'Complete Purchase Order editing',planned);
 @extendPurchaseOrder(update);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;
-@buttonDecisions(update,enter,'Send the Purchase Order for Approval');
 
 // Pass threshold logic
 //CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.review AND passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Automated approval';
@@ -242,19 +237,15 @@ assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 @defineAssignment(PurchaseOrder, po, enter, 'Product Owner Purchase order Approval',planned);
 @extendPurchaseOrder(enter);
 assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND access(sbj(a),e) AND a IS AssignEnter;
-@buttonDecisions(enter,reject,'Send the Purchase Order back for revising');
-@buttonDecisions(enter,review,'Approve and send the Purchase Order to AFG');
-@buttonDecisions(enter,approve,'Approve the Purchase Order (passed limits)');
 
 //--- Procedure: Approve Step ---
 
 @defineAssignment(PurchaseOrder, po, review, 'AFG Purchase order Approval',planned);
 @extendPurchaseOrder(review);
 assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS AssignReview;
-@buttonDecisions(review,reject,'Send the Purchase Order back for revising');
-@buttonDecisions(review,approve,'Approve the Purchase Order');
 
 isApproved (PurchaseOrder po) = step(po) == Step.approve AND afg(currentUser());
+isRevoke (PurchaseOrder po) = NOT (step(po) == Step.pay) AND author(po) == currentUser();
 dropApproval 'Revoke Purchase order' (PurchaseOrder o) {
     stepOut(stepLog(o)) <- Step.reject;
     APPLY;
@@ -266,8 +257,6 @@ EXTEND FORM purchaseOrders PROPERTIES(o) dropApproval; //SHOWIF isApproved(o)
 @defineAssignment(PurchaseOrder, po, approve, 'Pay Purchase order',planned);
 @extendPurchaseOrder(approve);
 assigned(Employee e,AssignApprove a) += TRUE IF (afg(e) OR hasApprove(e)) AND a IS AssignApprove;
-@buttonDecisions(approve,reject,'Reject and send the Purchase Order back for revising');
-@buttonDecisions(approve,pay,'Invoice by the Purchase Order was paid');
 
 isPayed (PurchaseOrder po) = step(po) == Step.pay;
 WHEN SET(isPayed (PurchaseOrder po)) DO {
@@ -281,7 +270,37 @@ WHEN SET(isPayed (PurchaseOrder po)) DO {
 @defineAssignment(PurchaseOrder, po, reject, 'Revising Purchase Order',planned);
 @extendPurchaseOrder(reject);
 assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject;
+
+//--- Procedure buttons ---
+
+hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = CASE EXCLUSIVE 
+            WHEN stepIn(l) == Step.enter  AND passThreshold(sbj(l))     AND stepOut == Step.review                                                          THEN TRUE 
+            WHEN stepIn(l) == Step.enter  AND NOT passThreshold(sbj(l)) AND stepOut == Step.approve                                                         THEN TRUE
+            WHEN stepIn(l) == Step.update AND                           NOT hasEnter(currentUser()) AND (stepOut == Step.approve OR stepOut == Step.review) THEN TRUE
+            WHEN stepIn(l) == Step.update AND passThreshold(sbj(l))     AND hasEnter(currentUser()) AND (stepOut == Step.review  OR stepOut == Step.enter)  THEN TRUE
+            WHEN stepIn(l) == Step.update AND NOT passThreshold(sbj(l)) AND hasEnter(currentUser()) AND (stepOut == Step.approve OR stepOut == Step.enter)  THEN TRUE
+            WHEN stepIn(l) == Step.reject AND                           NOT hasEnter(currentUser()) AND (stepOut == Step.approve OR stepOut == Step.review) THEN TRUE
+            WHEN stepIn(l) == Step.reject AND passThreshold(sbj(l))     AND hasEnter(currentUser()) AND (stepOut == Step.review  OR stepOut == Step.enter)  THEN TRUE
+            WHEN stepIn(l) == Step.reject AND NOT passThreshold(sbj(l)) AND hasEnter(currentUser()) AND (stepOut == Step.approve OR stepOut == Step.enter)  THEN TRUE
+            ELSE NULL;
+
+@buttonDecisions(update,enter,'Send the Purchase Order for Approval');
+@buttonDecisions(update,review,'Approve and send the Purchase Order to AFG');
+@buttonDecisions(update,approve,'Approve the Purchase Order (passed limits)');
+
+@buttonDecisions(enter,reject,'Send the Purchase Order back for revising');
+@buttonDecisions(enter,review,'Approve and send the Purchase Order to AFG');
+@buttonDecisions(enter,approve,'Approve the Purchase Order (passed limits)');
+
+@buttonDecisions(review,reject,'Send the Purchase Order back for revising');
+@buttonDecisions(review,approve,'Approve the Purchase Order');
+
+@buttonDecisions(approve,reject,'Reject and send the Purchase Order back for revising');
+@buttonDecisions(approve,pay,'Invoice by the Purchase Order was paid');
+
 @buttonDecisions(reject,enter,'Send the revised Purchase Order for Approval');
+@buttonDecisions(reject,review,'Approve and send the Purchase Order to AFG');
+@buttonDecisions(reject,approve,'Approve the Purchase Order (passed limits)');
 
 //--- Automotive Purchase Order initialization ---
 
@@ -298,7 +317,9 @@ WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
             datePlan(p) <- DATE(OVERRIDE sumDay(DATETIME(date(b)),30),sumDay(currentDateTime(),30));
             //IF passThreshold(b) THEN step(p) <- Step.approve;
             //ELSE 
-                step(p) <- Step.enter;
+            IF hasEnter(currentUser()) AND passThreshold(p) THEN step(p) <- Step.approve;
+            ELSE IF hasEnter(currentUser()) THEN step(p) <- Step.review;
+                 ELSE step(p) <- Step.enter;
         }
     IF contractor(b) THEN supply(b) <- TRUE;
     IF NOT nameSupplier(b) THEN nameSupplier(b) <- 'Search needed';
