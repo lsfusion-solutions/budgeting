@@ -84,6 +84,9 @@ addPO 'Add Invoice' (PurchaseOrder o) {
         SHOW invoiceLoad OBJECTS i = i FLOAT;
     }
 } TOOLBAR;
+editPO 'Edit Invoice' (Invoice i) {
+    SHOW invoiceLoad OBJECTS i = i FLOAT;
+} TOOLBAR;
 
 META extendPurchaseOrder (form)
     EXTEND FORM ##form
@@ -91,12 +94,12 @@ META extendPurchaseOrder (form)
         PROPERTIES(o) datePlan
         
         OBJECTS d = Invoice
-        PROPERTIES(d) READONLY urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail 
-        PROPERTIES (d) READONLY costItemName, planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold , new=NEW, delete=DELETE
-        PROPERTIES(d) READONLY PANEL supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d), text
-        PROPERTIES (d) PANEL load, open SHOWIF hasFile(d)
-        PROPERTIES (o) TOOLBAR NEWSESSION addPO DRAW d
-        PROPERTIES (d) TOOLBAR NEWSESSION EDIT, DELETE SHOWIF afg(currentUser())
+        PROPERTIES(d) ON CHANGE editPO(d)  urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail
+        PROPERTIES (d) ON CHANGE editPO(d) costItemName, planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold 
+        PROPERTIES(d) READONLY PANEL supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d), text, nameSupplier SHOWIF NOT supply(d)
+        PROPERTIES (d) PANEL load, open SHOWIF hasFile(d),  loadPayment SHOWIF afg(currentUser()), openPayment SHOWIF hasPayment(d)
+        PROPERTIES (o) TOOLBAR addPO DRAW d
+        PROPERTIES (d) DELETE SHOWIF afg(currentUser()) // TOOLBAR NEWSESSION EDIT,
         FILTERS part(d) == o
     ;
 
@@ -127,13 +130,14 @@ META extendPurchaseOrder (form)
                         //width = 400;
                         alignment = STRETCH;
                         type = CONTAINERV;
-                        MOVE PROPERTY (supply(d));
                         NEW contractor {
-                            type = CONTAINERV;
+                            type = COLUMNS;
                             alignment = STRETCH;
-                            caption = 'Select known Supplier';
-                            MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; panelCaptionAbove = TRUE;}
-                            MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; panelCaptionAbove = TRUE;}
+                            caption = 'Supplier details';
+                            MOVE PROPERTY (supply(d));
+                            MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                            MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
+                            MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
                             
                         }
                         NEW files {
@@ -142,6 +146,8 @@ META extendPurchaseOrder (form)
                             caption = 'Attachment file';
                             MOVE PROPERTY (load(d)) { height = 40;}
                             MOVE PROPERTY (open(d)) { height = 40;}
+                            MOVE PROPERTY (loadPayment(d)) { height = 40;}
+                            MOVE PROPERTY (openPayment(d)) { height = 40;}  
                         }
                         MOVE PROPERTY (text(d)) {
                             fill = 1;
@@ -153,10 +159,10 @@ META extendPurchaseOrder (form)
                 }
             }
         }
-        TOOLBAR {
-            MOVE PROPERTY(new);
-            MOVE PROPERTY(delete);
-        }
+        //TOOLBAR {
+        //    MOVE PROPERTY(new);
+        //    MOVE PROPERTY(delete);
+        //}
     }    
 END
 
@@ -212,7 +218,7 @@ assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 
 @defineAssignment(PurchaseOrder, po, enter, 'Product Owner Purchase order Approval',planned);
 @extendPurchaseOrder(enter);
-assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND a IS AssignEnter;
+assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND access(sbj(a),e) AND a IS AssignEnter;
 @buttonDecisions(enter,reject,'Send the Purchase Order back for revising');
 @buttonDecisions(enter,review,'Approve and send the Purchase Order to AFG');
 @buttonDecisions(enter,approve,'Approve the Purchase Order (passed limits)');
