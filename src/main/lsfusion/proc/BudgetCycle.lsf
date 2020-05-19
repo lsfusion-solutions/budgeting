@@ -525,11 +525,15 @@ nameFilterCostCenter 'CostCenter' () = name(filterCostCenter());
 filterQuarter = DATA LOCAL NESTED Budget ();
 nameFilterQuarter 'Quarter' () = quarterName(quarterNumber(filterQuarter()));
 
+currentLimit 'Limit for the quarter' = DATA NUMERIC[16,3] (CostCenter, Budget);
+CONSTRAINT freeCostCenter(CostCenter c) AND currentLimit(c,Budget bm) AND quarterPlanned(c, quarterNumber(bm)) > currentLimit(c,bm)
+    CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter budget is exceeded';
+
 FORM budgetPortionsOverview 'Quarter Budgets'
     PROPERTIES () nameFilterCostCenter, nameFilterQuarter
 
     OBJECTS qc=(q = INTEGER, c = CostCenter)
-    PROPERTIES(q) quarterName, VALUE//SHOWIF NULL 
+    PROPERTIES(q) quarterName // VALUE SHOWIF NULL 
     PROPERTIES(c) name
     PROPERTIES (c,q) quarterProposal, quarterPlanned, quarterSpent
     ORDER quarterName(q) DESC

@@ -170,7 +170,9 @@ DESIGN costCenterBudget {
 // Monthly
 
 spentLevel 'Spent, USD' (Budget b, CostItem i, CostCenter c) = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), i) AND NOT skip(l) BY budget(l), costCenter(l);
-readonlyProc (BudgetDetail d, CostCenter c) = isProcessing(d) OR readonly(d, c);
+freeCostCenter 'Free budget' = DATA BOOLEAN (CostCenter);
+EXTEND FORM costCenter PROPERTIES freeCostCenter(c);
+readonlyProc (BudgetDetail d, CostCenter c) = (isProcessing(d) OR readonly(d, c)) AND NOT freeCostCenter(c);
 
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
