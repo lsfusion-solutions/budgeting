@@ -27,7 +27,7 @@ sbj = ABSTRACT PurchaseOrder (Assign) MATERIALIZED;
 part = DATA PurchaseOrder (Invoice); // Purchase order may include multiple items, each is named Invoice
 countInvoices 'Number of Invoices in Purchase Order' = GROUP SUM 1 BY part(Invoice i);
 
-planned 'Planned, USD' (PurchaseOrder b) = NUMERIC[16,3](GROUP SUM invoiced(Invoice d) IF part(d) == b);
+planned 'Planned, USD' (PurchaseOrder b) = NUMERIC[16,2](GROUP SUM invoiced(Invoice d) IF part(d) == b);
 numberCostCenter 'Number by Cost Center' (PurchaseOrder b, CostCenter c) = GROUP SUM 1 IF  part(Invoice d) == b AND costCenter(d) == c;
 numberEmployee 'Number by Employee' (PurchaseOrder b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF access(c,e); 
 access 'Access' (PurchaseOrder b, Employee e) = TRUE IF numberEmployee(b,e) > 0; 
@@ -255,15 +255,15 @@ assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS
 @buttonDecisions(review,approve,'Approve the Purchase Order');
 
 isApproved (PurchaseOrder po) = step(po) == Step.approve AND afg(currentUser());
-dropApproval 'Drop Approval' (PurchaseOrder o) {
+dropApproval 'Revoke Purchase order' (PurchaseOrder o) {
     stepOut(stepLog(o)) <- Step.reject;
     APPLY;
 } TOOLBAR;
-EXTEND FORM purchaseOrders PROPERTIES(o) dropApproval SHOWIF isApproved(o);
+EXTEND FORM purchaseOrders PROPERTIES(o) dropApproval; //SHOWIF isApproved(o)
 
 //--- Procedure: Payment Step ---
 
-@defineAssignment(PurchaseOrder, po, approve, 'Payment by Purchase order approval',planned);
+@defineAssignment(PurchaseOrder, po, approve, 'Pay Purchase order',planned);
 @extendPurchaseOrder(approve);
 assigned(Employee e,AssignApprove a) += TRUE IF (afg(e) OR hasApprove(e)) AND a IS AssignApprove;
 @buttonDecisions(approve,reject,'Reject and send the Purchase Order back for revising');
