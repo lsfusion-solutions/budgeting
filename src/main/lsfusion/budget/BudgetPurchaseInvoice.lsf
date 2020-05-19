@@ -80,8 +80,8 @@ DESIGN invoices {
     }
 }
 
-invoiced 'Invoiced, USD' (Invoice i) = round0(amount(i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate())));
-invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM round0(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate()))) BY budgetDetail(i); 
+invoiced 'Invoiced, USD' (Invoice i) = NUMERIC[14,2](round0(amount(i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate()))));
+invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM NUMERIC[14,2](round0(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate())))) BY budgetDetail(i); 
 invoiced 'Invoiced, USD' (Budget b, CostCenter cp) = GROUP SUM invoiced(BudgetDetail d) BY budget(d), costCenter(d);
 //EXTEND FORM budgetDetails PROPERTIES(d) READONLY invoiced;
 

@@ -290,9 +290,9 @@ META buttonDecisions(makeStep,variant,nameCaption)
     
     EXTEND FORM complete###makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
     DESIGN complete###makeStep {  decisionButtons { 
-            MOVE PROPERTY(button###makeStep###variant(l)) FIRST {caption = ##nameCaption; alignment = STRETCH; } } }
+            MOVE PROPERTY(button###makeStep###variant(l)) FIRST {caption = ##nameCaption; alignment = STRETCH; fontStyle = 'bold'; } } }
             
     EXTEND FORM ##makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
     DESIGN ##makeStep {  decisionButtons { 
-            MOVE PROPERTY(button###makeStep###variant(l)) FIRST {caption = ##nameCaption; alignment = STRETCH; } } }
+            MOVE PROPERTY(button###makeStep###variant(l)) FIRST {caption = ##nameCaption; alignment = STRETCH; fontStyle = 'bold'; } } }
 END

@@ -74,6 +74,22 @@ EXTEND FORM costCenter PROPERTIES (c) limit;
 EXTEND FORM costItems PROPERTIES (c) limit;
 EXTEND FORM costItem PROPERTIES (c) limit;
 
+//--- Initialize Procedure ---
+
+@defineStep(po,'Purchasing cycle',PurchaseOrder);
+@defineNotification(po,'Purchasing cycle',PurchaseOrder,author);
+EXTEND CLASS Step
+{
+    enter 'Entered',
+    review 'Reviewed',
+    approve 'Approved',
+    reject 'Rejected',
+    update 'Update',
+    pay 'Paid'
+}
+
+//--- Execution forms ---
+
 FORM invoiceLoad 'Load Purchase invoice'
     OBJECTS i = Invoice PANEL
     EDIT Invoice OBJECT i
@@ -95,12 +111,17 @@ META extendPurchaseOrder (form)
         
         OBJECTS d = Invoice
         PROPERTIES(d) ON CHANGE editPO(d)  urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail
-        PROPERTIES (d) ON CHANGE editPO(d) costItemName, planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold 
-        PROPERTIES(d) READONLY PANEL supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d), text, nameSupplier SHOWIF NOT supply(d)
+        PROPERTIES (d) ON CHANGE editPO(d) planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold 
+        PROPERTIES(d) READONLY PANEL costItemName, supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d), text, nameSupplier SHOWIF NOT supply(d)
         PROPERTIES (d) PANEL load, open SHOWIF hasFile(d),  loadPayment SHOWIF afg(currentUser()), openPayment SHOWIF hasPayment(d)
         PROPERTIES (o) TOOLBAR addPO DRAW d
         PROPERTIES (d) DELETE SHOWIF afg(currentUser()) // TOOLBAR NEWSESSION EDIT,
         FILTERS part(d) == o
+        
+        OBJECTS log = StepLog
+        PROPERTIES (log) userNameOut, dateTimeOut, nameOut
+        ORDER dateTimeOut(log) DESC
+        FILTERS sbj(log) == o
     ;
 
     DESIGN ##form {
@@ -125,35 +146,51 @@ META extendPurchaseOrder (form)
                         fill = 4;
                         alignment = STRETCH;
                     }
-                    NEW details {
-                        fill = 1;
-                        //width = 400;
+                    NEW detailsPanel {
+                        type = CONTAINERH;
                         alignment = STRETCH;
-                        type = CONTAINERV;
-                        NEW contractor {
-                            type = COLUMNS;
-                            alignment = STRETCH;
-                            caption = 'Supplier details';
-                            MOVE PROPERTY (supply(d));
-                            MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
-                            MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
-                            MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
-                            
-                        }
-                        NEW files {
-                            type = CONTAINERH;
-                            alignment = STRETCH;
-                            caption = 'Attachment file';
-                            MOVE PROPERTY (load(d)) { height = 40;}
-                            MOVE PROPERTY (open(d)) { height = 40;}
-                            MOVE PROPERTY (loadPayment(d)) { height = 40;}
-                            MOVE PROPERTY (openPayment(d)) { height = 40;}  
-                        }
-                        MOVE PROPERTY (text(d)) {
+                        fill = 1;
+                        NEW details {
                             fill = 1;
+                            //width = 400;
                             alignment = STRETCH;
-                            panelCaptionAbove = TRUE;
-                            caption = 'Text comment';
+                            type = CONTAINERV;
+                            MOVE PROPERTY (costItemName(d)) {alignment = STRETCH;}
+                            NEW contractor {
+                                type = COLUMNS;
+                                alignment = STRETCH;
+                                caption = 'Supplier details';
+                                MOVE PROPERTY (supply(d));
+                                MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                                MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
+                                MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
+                            }
+                            NEW files {
+                                type = CONTAINERH;
+                                alignment = STRETCH;
+                                caption = 'Attachment file';
+                                MOVE PROPERTY (load(d));// { height = 40;}
+                                MOVE PROPERTY (open(d));// { height = 40;}
+                            }
+                            NEW filePayment {
+                                type = CONTAINERH;
+                                alignment = STRETCH;
+                                caption = 'Payment Confirmation';
+                                MOVE PROPERTY (loadPayment(d));// { height = 40;}
+                                MOVE PROPERTY (openPayment(d));// { height = 40;}  
+                            }
+                            MOVE PROPERTY (text(d)) {
+                                fill = 1;
+                                alignment = STRETCH;
+                                panelCaptionAbove = TRUE;
+                                caption = 'Text comment';
+                            }
+                        }
+                        MOVE BOX(log) { 
+                            caption = 'Approval steps'; 
+                            width = 400;
+                            PROPERTY (userNameOut(log)) { caption = 'Executed by'; }
+                            PROPERTY (dateTimeOut(log)) { caption = 'Date/Time'; }
                         }
                     }
                 }
@@ -171,20 +208,6 @@ FORM purchaseOrder 'Edit single Purchase Order'
     EDIT PurchaseOrder OBJECT o
 ;
 @extendPurchaseOrder(purchaseOrder);
-
-//--- Initialize Procedure ---
-
-@defineStep(po,'Purchasing cycle',PurchaseOrder);
-@defineNotification(po,'Purchasing cycle',PurchaseOrder,author);
-EXTEND CLASS Step
-{
-    enter 'Entered',
-    review 'Reviewed',
-    approve 'Approved',
-    reject 'Rejected',
-    update 'Update',
-    pay 'Payed'
-}
 passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
 hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = CASE EXCLUSIVE 
             WHEN stepIn(l) == Step.enter AND passThreshold(sbj(l)) AND stepOut == Step.review THEN TRUE 
@@ -244,15 +267,7 @@ EXTEND FORM purchaseOrders PROPERTIES(o) dropApproval SHOWIF isApproved(o);
 @extendPurchaseOrder(approve);
 assigned(Employee e,AssignApprove a) += TRUE IF (afg(e) OR hasApprove(e)) AND a IS AssignApprove;
 @buttonDecisions(approve,reject,'Reject and send the Purchase Order back for revising');
-@buttonDecisions(approve,pay,'Invoice by the Purchase Order was payed');
-
-EXTEND FORM approve
-    OBJECTS log = StepLog
-    PROPERTIES (log) userNameOut, dateTimeOut, nameOut
-    ORDER dateTimeOut(log) DESC
-    FILTERS sbj(log) == o
-;
-DESIGN approve { commentsArea { height = 150; MOVE BOX(log) { caption = 'Approval steps'; } } }
+@buttonDecisions(approve,pay,'Invoice by the Purchase Order was paid');
 
 isPayed (PurchaseOrder po) = step(po) == Step.pay;
 WHEN SET(isPayed (PurchaseOrder po)) DO {
@@ -301,7 +316,8 @@ EXTEND FORM purchaseOrders
     FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
     
     OBJECTS d = Invoice
-    PROPERTIES (d) READONLY urgent, budgetDetailName, nameCostCenter, costItemName, nameSupplier, amountName, passThreshold, text PANEL
+    PROPERTIES (d) READONLY urgent, nameCostCenter, budgetDetailName, amountName, passThreshold
+    PROPERTIES (d) READONLY PANEL costItemName, text, supply, nameSupplier SHOWIF NOT supply(d), nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d)
     PROPERTIES (d) PANEL open SHOWIF hasFile(d), load,  openPayment SHOWIF hasPayment(d), loadPayment SHOWIF afg(currentUser()) //SHOWIF NOT hasFile(d)
     FILTERS part(d) == o
     
@@ -344,8 +360,18 @@ DESIGN purchaseOrders {
                 NEW itemDetails {
                     type = CONTAINERV;
                     caption = 'Details for purchase invoice';
-                    width = 300;
+                    width = 400;
                     alignment = STRETCH;
+                    MOVE PROPERTY (costItemName(d)) {alignment = STRETCH; panelCaptionAbove = TRUE;}
+                    NEW contractor {
+                        type = CONTAINERV;
+                        alignment = STRETCH;
+                        caption = 'Supplier details';
+                        MOVE PROPERTY (supply(d));
+                        MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                        MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
+                        MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
+                    }
                     NEW files {
                         type = CONTAINERH;
                         alignment = START;
