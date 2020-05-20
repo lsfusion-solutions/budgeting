@@ -46,7 +46,7 @@ EXTEND FORM budgets
     OBJECTS i = CostItem
     PROPERTIES(i) READONLY canonicalName
     PROPERTIES planned(bi, i) COLUMNS (bi) HEADER name(bi) ON CHANGE changePlanned(bi, i) ON CHANGEWYS changePlanned(bi, i) BACKGROUND changedPlanned(bi, i)
-    ORDER canonicalName(i)
+    ORDERS canonicalName(i)
     FILTERS level(i, ip)
 
     OBJECTS id = BudgetDetail

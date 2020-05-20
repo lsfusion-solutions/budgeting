@@ -164,7 +164,7 @@ EXTEND FORM expenses
     FILTERS date(ie) >= dFrom AND date(ie) <= dTo,
             currency(ie) == c,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(ie)) OR NOT hideSensitive(mainRole(currentUser())) 
-    ORDER date(ie), nameGLAccount(ie)
+    ORDERS date(ie), nameGLAccount(ie)
     
     FILTERGROUP toReconcile
         FILTER 'To reconcile' CHANGED(toReconcile(ie)) OR toReconcile(ie)

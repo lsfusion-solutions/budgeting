@@ -77,7 +77,7 @@ FORM shipment 'Отгрузка'
         
     TREE treeGroups g = SkuGroup PARENT parent(g)
     PROPERTIES READONLY order(g), id(g) SHOWIF showIDs(), name(g)
-    ORDER order(g), name(g)
+    ORDERS order(g), name(g)
     
     OBJECTS sk = Sku
     PROPERTIES (sk) READONLY id SHOWIF showIDs(), name, canonicalNameSkuGroup

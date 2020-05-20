@@ -38,7 +38,7 @@ FORM skuGroups 'Группы товаров'
     TREE treeGroups g = SkuGroup PARENT parent(g)
     PROPERTIES READONLYIF isReadonly() order(g), id(g) SHOWIF showIDs(), name(g), canonicalName(g)
     PROPERTIES(g) NEWSESSION NEW, EDIT, deleteg=DELETE 
-    ORDER order(g), canonicalName(g)
+    ORDERS order(g), canonicalName(g)
 ;
 
 NAVIGATOR {

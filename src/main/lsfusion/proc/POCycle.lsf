@@ -120,7 +120,7 @@ META extendPurchaseOrder (form)
         
         OBJECTS log = StepLog
         PROPERTIES (log) userNameOut, dateTimeOut, nameOut
-        ORDER dateTimeOut(log) DESC
+        ORDERS dateTimeOut(log) DESC
         FILTERS sbj(log) == o
     ;
 
@@ -333,7 +333,7 @@ EXTEND FORM purchaseOrders
     PROPERTIES(o) READONLY nameExplain, datePlan, planned, nameStep, passThreshold, searchSupply, dateTime, authorName
     PROPERTIES newPart() 
     PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
-    ORDER datePlan(o)
+    ORDERS datePlan(o)
     FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
     
     OBJECTS d = Invoice

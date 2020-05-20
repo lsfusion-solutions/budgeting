@@ -368,7 +368,7 @@ META extendBudgetPortion (form)
     PROPERTIES () nameFilterBudget , nameFilterCostItem
     //TREE costItems t = CostItem PARENT parent(t)
     //PROPERTIES(t) READONLY order SHOWIF NULL, name
-    //ORDER order(t) 
+    //ORDERS order(t) 
         
     OBJECTS d = BudgetDetail
     PROPERTIES (d) READONLYIF readonlyRun(o,d) nameBudget, canonicalNameCostItem
@@ -377,7 +377,7 @@ META extendBudgetPortion (form)
     PROPERTIES (d) PANEL newComment, addComment
     PROPERTIES TOOLBAR pushBudgetDetail(o,d) SHOWIF readonlyRun(o,d), addBudgetDetail(o), DELETE (d)
     PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
-    ORDER dateSorting DESC , planned(d) DESC
+    ORDERS dateSorting DESC , planned(d) DESC
     FILTERS costCenter(d) == costCenter(o),
             //isParent(costItem(d),t),
             budget(d) == filterBudget() OR NOT filterBudget(),
@@ -388,7 +388,7 @@ META extendBudgetPortion (form)
         
     OBJECTS m = Message
     PROPERTIES(m) READONLY BACKGROUND backgroundMessage(m) textPrint, nameAuthorShort, dateTime SHOWIF NULL
-    ORDER dateTime(m) DESC
+    ORDERS dateTime(m) DESC
     FILTERS budgetDetail(m) == d
     
     EVENTS ON APPLY AFTER seekLastMessageInFullChat()
@@ -536,7 +536,7 @@ FORM budgetPortionsOverview 'Quarter Budgets'
     PROPERTIES(q) quarterName // VALUE SHOWIF NULL 
     PROPERTIES(c) name
     PROPERTIES (c,q) quarterProposal, quarterPlanned, quarterSpent
-    ORDER quarterName(q) DESC
+    ORDERS quarterName(q) DESC
     FILTERS quarterPlanned(c,q) > 0,
             c == filterCostCenter() OR NOT filterCostCenter(),
             q == quarterNumber(filterQuarter()) OR NOT filterQuarter()
@@ -547,7 +547,7 @@ FORM budgetPortionsOverview 'Quarter Budgets'
     OBJECTS d = BudgetDetail
     PROPERTIES (d) READONLY nameBudget, canonicalNameCostItem, name, planned
     PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
-    ORDER dateSorting DESC , planned(d) DESC
+    ORDERS dateSorting DESC , planned(d) DESC
     FILTERS costCenter(d) == c,
             q == quarterNumber(budget(d)),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))

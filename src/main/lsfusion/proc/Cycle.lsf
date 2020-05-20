@@ -62,7 +62,7 @@ FORM assignments 'Assignments'
 
     OBJECTS s = Assign GRID
     PROPERTIES(s) ON CHANGE exec(s) dateTimeStart, desc BACKGROUND color(s) , sum //, dateLine
-    ORDER dateTimeStart(s)
+    ORDERS dateTimeStart(s)
     FILTERS in(currentUser(), s),
             stage(s) == stage() OR NOT stage()
     

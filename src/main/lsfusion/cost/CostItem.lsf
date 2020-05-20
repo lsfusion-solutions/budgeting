@@ -61,13 +61,13 @@ FORM costItems 'Cost types'
     TREE costItems c = CostItem PARENT parent(c)
     PROPERTIES(c) READONLY order, name
     PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE
-    ORDER order(c)
+    ORDERS order(c)
 ;
 
 FORM listCostItems 'Select cost type'
     TREE costItems c = CostItem PARENT parent(c)
     PROPERTIES(c) READONLY order, name
-    ORDER order(c)
+    ORDERS order(c)
 
     LIST CostItem OBJECT c
 ;
@@ -79,7 +79,7 @@ DESIGN listCostItems {
 FORM plainCostItems 'Select cost type'
     OBJECTS c = CostItem
     PROPERTIES(c) READONLY canonicalName
-    ORDER canonicalName(c)
+    ORDERS canonicalName(c)
 ;
 
 NAVIGATOR {

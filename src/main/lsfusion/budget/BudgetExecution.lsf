@@ -22,7 +22,7 @@ FORM budgetExecution 'Budget execution'
     
     TREE costItems c = CostItem PARENT parent(c)
     PROPERTIES(c) READONLY order, name, cap, costCenterCap, planned, childSpent
-    ORDER order(c)
+    ORDERS order(c)
     
     OBJECTS bd = BudgetDetail // By Cost type -> Detials
     PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
@@ -37,7 +37,7 @@ FORM budgetExecution 'Budget execution'
             NOT skip(e),
             level(costItem(e), c),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser()))
-    ORDER amountUSD(e) DESC
+    ORDERS amountUSD(e) DESC
             
     OBJECTS p = Period
     PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate, nameOwner, submitted, approved, totalChildCap, planned, spentPercent, spent, spentCap BACKGROUND backgroundSpentCap(p)
@@ -45,7 +45,7 @@ FORM budgetExecution 'Budget execution'
     TREE periodCostItems pc = CostItem PARENT parent(pc)
     PROPERTIES(pc) READONLY order, name
     PROPERTIES(p, pc) READONLY totalChildCap, childPlanned, childSpentPercent, childSpent, spentCap BACKGROUND backgroundSpentCap(p, pc)
-    ORDER order(pc)
+    ORDERS order(pc)
 
     OBJECTS pbd = BudgetDetail // By period -> Period
     PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
@@ -62,7 +62,7 @@ FORM budgetExecution 'Budget execution'
             level(costItem(pe), pc),
             costCenter(pe) = costCenter(p),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pe)) OR NOT hideSensitive(mainRole(currentUser())) 
-    ORDER amountUSD(pe) DESC
+    ORDERS amountUSD(pe) DESC
     
     OBJECTS cm = CostCenter PANEL 
     PROPERTIES (cm) name SELECTOR 
@@ -75,7 +75,7 @@ FORM budgetExecution 'Budget execution'
     TREE periodCostItemsM pcm = CostItem PARENT parent(pcm)
     PROPERTIES(pcm) READONLY order, name
     PROPERTIES(bm, pcm, cm) READONLY averageCap, childPlanned, childSpent BACKGROUND backgroundSpent(bm, pcm, cm)
-    ORDER order(pcm)
+    ORDERS order(pcm)
 
     OBJECTS bdm = BudgetDetail // By period -> Monthly
     PROPERTIES(bdm) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
@@ -92,14 +92,14 @@ FORM budgetExecution 'Budget execution'
             costCenter(em) = cm,
             budget(em) == bm,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(em)) OR NOT hideSensitive(mainRole(currentUser())) 
-    ORDER amountUSD(em) DESC
+    ORDERS amountUSD(em) DESC
     
     OBJECTS dates = (bf = Budget, bt = Budget) PANEL
     PROPERTIES 'Budget from' = name(bf) SELECTOR, 'Budget to' = name(bt) SELECTOR
     OBJECTS bc = Budget
     OBJECTS cc = CostItem
     PROPERTIES orderLevel(cc), orderName(cc), capAverage(cc, bc) COLUMNS (bc) HEADER name(bc)
-    ORDER orderLevel(cc)
+    ORDERS orderLevel(cc)
     FILTERS fromDate(bc) >= fromDate(bf) AND toDate(bc) <= toDate(bt)
 ;
 

@@ -13,7 +13,7 @@ order 'Порядок' = DATA INTEGER (CostItemGroup) CHARWIDTH 2;
 FORM costItemGroup 'Cost type group'
     OBJECTS o = CostItemGroup PANEL
     PROPERTIES(o) order, name
-    ORDER order(o)
+    ORDERS order(o)
     
     EDIT CostItemGroup OBJECT o
 ;
@@ -22,13 +22,13 @@ FORM costItemGroups 'Cost type group'
     OBJECTS o = CostItemGroup
     PROPERTIES(o) READONLY order, name
     PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
-    ORDER order(o)
+    ORDERS order(o)
 ;
 
 FORM dialogCostItemGroups 'Cost type group'
     OBJECTS o = CostItemGroup
     PROPERTIES(o) READONLY order, name
-    ORDER order(o)
+    ORDERS order(o)
     
     LIST CostItemGroup OBJECT o
 ;

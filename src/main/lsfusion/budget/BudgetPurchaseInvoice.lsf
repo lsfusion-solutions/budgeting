@@ -38,14 +38,14 @@ FORM invoices 'Purchase Invoices'
     
     TREE costItems t = CostItem PARENT parent(t)
     PROPERTIES(t) READONLY order SHOWIF NULL, name
-    ORDER order(t) 
+    ORDERS order(t) 
 
     OBJECTS i = Invoice
     PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount //, approved, dateTimeApproved, nameUserApproved, note
     PROPERTIES(i) TOOLBAR open SHOWIF hasFile(i), copy
     PROPERTIES(i) READONLY nameCostCenter, completeNameBudgetDetail
     PROPERTIES(i) NEWSESSION EDIT, DELETE
-    ORDER date(i) DESC 
+    ORDERS date(i) DESC 
     FILTERS costCenter(budgetDetail(i)) == filterCostCenter() OR NOT filterCostCenter(),
             budget(budgetDetail(i)) == filterBudget() OR NOT filterBudget(),
             isParent(costItem(budgetDetail(i)),t) OR NOT budgetDetail(i)

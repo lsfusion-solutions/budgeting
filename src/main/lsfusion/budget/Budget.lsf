@@ -121,7 +121,7 @@ FORM budget 'Budget'
     TREE costItems ci = CostItem PARENT parent(ci)
     PROPERTIES(ci) READONLY order, name
     PROPERTIES READONLY planned(b, ci), childSpent(b, ci)
-    ORDER order(ci) 
+    ORDERS order(ci) 
     
     OBJECTS d = BudgetDetail
     PROPERTIES(d) READONLYIF isProcessing(d) nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
@@ -234,12 +234,12 @@ FORM budgetDetails 'Budget details'
     
     TREE costItems t = CostItem PARENT parent(t)
     PROPERTIES(t) READONLY order SHOWIF NULL, name
-    ORDER order(t) 
+    ORDERS order(t) 
     
     OBJECTS d = BudgetDetail
     PROPERTIES(d) READONLY nameBudget, name, planned, spent, canonicalNameCostItem
     PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
-    ORDER dateSorting DESC 
+    ORDERS dateSorting DESC 
     FILTERS costCenter(d) == c,
             isParent(costItem(d),t),
             budget(d) == filterBudget() OR NOT filterBudget(),
