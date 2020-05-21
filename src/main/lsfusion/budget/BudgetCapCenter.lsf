@@ -101,7 +101,7 @@ FORM costCenterBudget 'Project budget'
     PROPERTIES(p, ci) overTotalChildCap READONLYIF readonly(p, ci) BACKGROUND backgroundCap(p, ci)
     PROPERTIES(p, ci) READONLY childPlanned, spent
 //    FILTERS NOT hideProjectBudet(ci)
-    ORDER order(ci)
+    ORDERS order(ci)
 
     OBJECTS pbd = BudgetDetail
     PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
@@ -118,7 +118,7 @@ FORM costCenterBudget 'Project budget'
             NOT skip(pe),
             level(costItem(pe), ci),
             costCenter(pe) = costCenter(p)  
-    ORDER amountUSD(pe) DESC
+    ORDERS amountUSD(pe) DESC
 ;
 
 DESIGN costCenterBudget {
@@ -193,7 +193,7 @@ EXTEND FORM costCenterBudget
     PROPERTIES(cim) READONLY order, name
     PROPERTIES(bm, cim, c) READONLY spentLevel
 //    FILTERS NOT hideProjectBudet(cim)
-    ORDER order(cim)
+    ORDERS order(cim)
     
     OBJECTS pem = ExpenseLedger
     PROPERTIES(pem) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
@@ -202,7 +202,7 @@ EXTEND FORM costCenterBudget
             costCenter(pem) = c,
             budget(pem) == bm,
             level(costItem(pem), cim)
-    ORDER amountUSD(pem) DESC
+    ORDERS amountUSD(pem) DESC
 ;
 
 DESIGN costCenterBudget {

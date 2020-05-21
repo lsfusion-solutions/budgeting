@@ -55,19 +55,19 @@ FORM stockBalance 'Остаток по складам'
     
     TREE treeGroups g = SkuGroup PARENT parent(g)
     PROPERTIES READONLY order(g), id(g) SHOWIF showIDs(), name(g)
-    ORDER order(g), name(g)
+    ORDERS order(g), name(g)
 
     OBJECTS ss = (sk = Sku, st = Stock)
     PROPERTIES READONLY 'Товар' = name(sk), 'Склад' = name(st)
     PROPERTIES (sk, st) READONLY currentBalance, currentSum, currentPrice
-    ORDER name(sk), name(st)
+    ORDERS name(sk), name(st)
     FILTERS filterStock() == st OR NOT filterStock()
     FILTERGROUP balance FILTER 'С остатком' currentBalance(sk, st) DEFAULT
     
     OBJECTS d = SkuLedger
     PROPERTIES (d) READONLY date, description, note, quantity, price, sum
     FILTERS sku(d) == sk, stock(d) == st, isParent(skuGroup(sk), g)
-    ORDER date(d)
+    ORDERS date(d)
 ;
 
 DESIGN stockBalance {

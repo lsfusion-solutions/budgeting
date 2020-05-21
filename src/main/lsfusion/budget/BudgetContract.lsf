@@ -37,7 +37,7 @@ prevMonthPercentComplete 'Complete (prev month), %' (Contract c, Budget b) =
 FORM dialogContracts 'Contracts'
     OBJECTS c = Contract
     PROPERTIES (c) READONLY number, date, validity, note, nameCurrency, amount, amountUSD
-    ORDER date(c)
+    ORDERS date(c)
     
     LIST Contract OBJECT c
 ;
