@@ -152,7 +152,7 @@ FORM periodApproval 'Project approval'
     PROPERTIES(ci) READONLY order, name
     PROPERTIES(p, ci) READONLY totalChildCap BACKGROUND backgroundCap(p, ci)
     PROPERTIES(p, ci) READONLY childPlanned
-    ORDER order(ci)
+    ORDERS order(ci)
 ;
 
 DESIGN periodApproval {
