@@ -125,16 +125,20 @@ nameStage 'Procurement Stage' (Notification n) = name(stage(n));
 
 header 'Email header' = DATA STRING (Notification);
 text 'Notification text' = DATA TEXT (Notification);
+details 'Notification details' = DATA TEXT (Notification);
 enabled 'Enabled' = DATA BOOLEAN (Notification);
 
 FORM notification
-    OBJECTS r = TEXT PANEL SUBREPORT
+    PROPERTIES logicsLogo()
+    OBJECTS r = TEXT PANEL
     PROPERTIES(r) notification = VALUE
+    OBJECTS d = TEXT PANEL
+    PROPERTIES(d) details = VALUE
 ;
 
-sendNotificationFile 'Send Notification' (STRING header, TEXT text, STRING[400] email, FILE attachment, STRING filename)  { 
+sendNotificationFile 'Send Notification' (STRING header, TEXT text, TEXT details, STRING[400] email, FILE attachment, STRING filename)  { 
     LOCAL bodyFile = FILE ();
-    PRINT notification OBJECTS r = text HTML TO bodyFile;
+    PRINT notification OBJECTS r = text, d = details HTML TO bodyFile;
     EMAIL
         SUBJECT header
         TO email
@@ -142,9 +146,9 @@ sendNotificationFile 'Send Notification' (STRING header, TEXT text, STRING[400] 
         ATTACH attachment NAME filename+'.'+getExtension(attachment);
 }
 
-sendNotification 'Send Notification' (STRING header, TEXT text, STRING[400] email)  { 
+sendNotification 'Send Notification' (STRING header, TEXT text, TEXT details, STRING[400] email)  { 
     LOCAL bodyFile = FILE ();
-    PRINT notification OBJECTS r = text HTML TO bodyFile;
+    PRINT notification OBJECTS r = text, d = details HTML TO bodyFile;
     EMAIL
         SUBJECT header
         TO email

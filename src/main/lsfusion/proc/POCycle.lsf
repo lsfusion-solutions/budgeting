@@ -19,7 +19,7 @@ CLASS PurchaseOrder 'Purchase Order';
 TABLE purorder (PurchaseOrder);
 
 author 'Author' = DATA Employee (PurchaseOrder);
-authorName 'Author' (PurchaseOrder b) = name(author(b)) CHARWIDTH 20;
+nameAuthor 'Author' (PurchaseOrder b) = name(author(b)) CHARWIDTH 20;
 dateTime 'Created' = DATA DATETIME (PurchaseOrder) CHARWIDTH 20;
 datePlan 'Date plan' = DATA DATE (PurchaseOrder) CHARWIDTH 10;
 
@@ -69,6 +69,7 @@ limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostItem);
 paid 'Paid' = DATA BOOLEAN (Invoice);
 passThreshold 'Limit' (Invoice i) = invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
+passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
 EXTEND FORM costCenters PROPERTIES (c) limit;
 EXTEND FORM costCenter PROPERTIES (c) limit;
 EXTEND FORM costItems PROPERTIES (c) limit;
@@ -77,7 +78,6 @@ EXTEND FORM costItem PROPERTIES (c) limit;
 //--- Initialize Procedure ---
 
 @defineStep(po,'Purchasing cycle',PurchaseOrder);
-@defineNotification(po,'Purchasing cycle',PurchaseOrder,author);
 EXTEND CLASS Step
 {
     enter 'Entered',
@@ -87,6 +87,14 @@ EXTEND CLASS Step
     update 'Update',
     pay 'Paid'
 }
+
+budgetItem 'Budget detail full name' (Invoice i) = CONCAT ':\n',nameCostCenter(i),nameBudget(i),costItemName(i),budgetDetailName(i);
+budgetItems 'Budget details involved' (PurchaseOrder o) = GROUP CONCAT TEXT(budgetItem(Invoice i) + ': ' + amountName(i)),'\n\n' BY part(i);
+generateDetails (PurchaseOrder s) = STRING(replace(replace(details(notification(step(s))),
+                                                                               'budgetItems(s)', budgetItems(s)),
+                                                                               'passThreshold(s)', (IF passThreshold(s) THEN 'Passed Limits automatically' ELSE 'Over automatical limits') ));
+@defineNotification(po,'Purchasing cycle',PurchaseOrder,author);
+
 
 //--- Execution forms ---
 
@@ -106,7 +114,7 @@ editPO 'Edit Invoice' (Invoice i) {
 
 META extendPurchaseOrder (form)
     EXTEND FORM ##form
-        PROPERTIES(o) READONLY authorName, planned, dateTime
+        PROPERTIES(o) READONLY nameAuthor, planned, dateTime
         PROPERTIES(o) datePlan
         
         OBJECTS d = Invoice
@@ -135,7 +143,7 @@ META extendPurchaseOrder (form)
                     type = CONTAINERH;
                     MOVE PROPERTY(datePlan(o)) {notNull = TRUE;}
                     MOVE PROPERTY(planned(o));
-                    MOVE PROPERTY(authorName(o)) { alignment = CENTER; }
+                    MOVE PROPERTY(nameAuthor(o)) { alignment = CENTER; }
                     MOVE PROPERTY(dateTime(o));
                 }
                 NEW proposal {
@@ -208,7 +216,6 @@ FORM purchaseOrder 'Edit single Purchase Order'
     EDIT PurchaseOrder OBJECT o
 ;
 @extendPurchaseOrder(purchaseOrder);
-passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
 
 newPart '+ Add' ()  { 
     NEWSESSION {
@@ -330,7 +337,7 @@ WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
 //--- Main Form ---
 
 EXTEND FORM purchaseOrders
-    PROPERTIES(o) READONLY nameExplain, datePlan, planned, nameStep, passThreshold, searchSupply, dateTime, authorName
+    PROPERTIES(o) READONLY nameExplain, datePlan, planned, nameStep, passThreshold, searchSupply, dateTime, nameAuthor
     PROPERTIES newPart() 
     PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
     ORDER datePlan(o)
@@ -418,7 +425,7 @@ DESIGN purchaseOrders {
 
 //--- Logging Procedure ---
 
-authorName 'Order Author' (StepLog s) = authorName(sbj(s)) CHARWIDTH 20;
+authorName 'Order Author' (StepLog s) = nameAuthor(sbj(s)) CHARWIDTH 20;
 dateTime 'Order Created' (StepLog s) = dateTime(sbj(s)) CHARWIDTH 20;
 planned 'Planned, USD' = DATA NUMERIC[16,3](StepLog);
 

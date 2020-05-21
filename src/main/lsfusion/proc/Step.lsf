@@ -68,27 +68,28 @@ META defineStep (id,capName,ClassName)
         PROPERTIES showVariants(sIn,sOut) COLUMNS (sOut) HEADER name(sOut)
     ; 
     NAVIGATOR { masterData { cycles { NEW steps###id; } } }
+    
+    toNotify 'Notify' = DATA BOOLEAN (Notification, Step);
+    notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n);
 END
 
 META defineNotification (id,capName,ClassName,Category)
-    toNotify 'Notify' = DATA BOOLEAN (Notification, Step);
-    notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n);
     generateHeader (##ClassName s) = STRING(replace(replace(header(notification(step(s))),
-                                                                                   'costCenter(s)', name(##Category(s))),
+                                                                                   ##Category##'(s)', name###Category(s)),
                                                                                    'planned(s)', STRING(INTEGER(planned(s)))));
     generateNotification (##ClassName s) = TEXT(replace(replace(replace(text(notification(step(s))),
-                                                                                   'costCenter(s)', name(##Category(s))),
+                                                                                   ##Category##'(s)', name###Category(s)),
                                                                                    'date(s)', toDateDDMMYY(currentDate())), 
                                                                                    'planned(s)', STRING(INTEGER(planned(s)))));
     sendNotification 'Send Notification' (##ClassName s, Employee e) {
         IF notification(step(s)) THEN {
-            IF attachment(s) THEN sendNotificationFile(generateHeader(s),generateNotification(s),email(e),attachment(s),attachmentName(s));
-            ELSE sendNotification(generateHeader(s),generateNotification(s),email(e));
+            IF attachment(s) THEN sendNotificationFile(generateHeader(s),generateNotification(s),generateDetails(s),email(e),attachment(s),attachmentName(s));
+            ELSE sendNotification(generateHeader(s),generateNotification(s),generateDetails(s),email(e));
         }
     } 
     EXTEND FORM notificationsForms
         OBJECTS note###id = Notification
-        PROPERTIES (note###id) header, enabled, text PANEL, NEW, DELETE TOOLBAR
+        PROPERTIES (note###id) header, enabled, text PANEL, details PANEL, NEW, DELETE TOOLBAR
         FILTERS stage(note###id) == Stage.##id
         
         OBJECTS step###id = Step
@@ -109,7 +110,12 @@ META defineNotification (id,capName,ClassName,Category)
                     MOVE BOX (step###id) {fill = 1;}
                 }
                 MOVE PROPERTY(text(note###id)) {
-                    fill = 2;
+                    fill = 1;
+                    alignment = STRETCH;
+                    panelCaptionAbove = TRUE;
+                }
+                MOVE PROPERTY(details(note###id)) {
+                    fill = 1;
                     alignment = STRETCH;
                     panelCaptionAbove = TRUE;
                 }

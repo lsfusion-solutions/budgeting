@@ -55,7 +55,6 @@ budgetDetail 'Budget Detail' = DATA BudgetDetail(Message);
 //--- Initialize Procedure ---
 
 @defineStep(budgeting,'Budgeting cycle',BudgetPortion);
-@defineNotification(budgeting,'Budgeting cycle',BudgetPortion,costCenter);
 EXTEND CLASS Step
 {
     enter 'Entered',
@@ -64,6 +63,12 @@ EXTEND CLASS Step
     reject 'Revising',
     update 'Update'
 }
+
+generateDetails (BudgetPortion s) = STRING(replace(replace(details(notification(step(s))),
+                                                                               'author(s)', authorName(s)),
+                                                                               'dateTime(s)', STRING(dateTime(s))));
+@defineNotification(budgeting,'Budgeting cycle',BudgetPortion,costCenter);
+
 hideVariant 'Logics for hiding variant buttons' = DATA BOOLEAN (Step,Step);
 hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = hideVariant (stepIn(l),stepOut);
 EXTEND FORM stepsBudgeting PROPERTIES hideVariant(sIn,sOut) BACKGROUND backgroundFill() COLUMNS (sOut) HEADER name(sOut);
