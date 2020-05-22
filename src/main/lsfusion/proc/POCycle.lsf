@@ -88,12 +88,23 @@ EXTEND CLASS Step
     pay 'Paid'
 }
 
-budgetItem 'Budget detail full name' (Invoice i) = CONCAT ':\n',nameCostCenter(i),nameBudget(i),costItemName(i),budgetDetailName(i);
-budgetItems 'Budget details involved' (PurchaseOrder o) = GROUP CONCAT TEXT(budgetItem(Invoice i) + ': ' + amountName(i)),'\n\n' BY part(i);
+budgetItem 'Budget detail full name' (Invoice i) = CONCAT '<br>',nameCostCenter(i),costItemName(i),budgetDetailName(i);
+budgetItems 'Budget details involved' (PurchaseOrder o) = GROUP CONCAT TEXT(budgetItem(Invoice i) + ': <b>' + amountName(i)),'</b><br><br>' BY part(i);
 generateDetails (PurchaseOrder s) = STRING(replace(replace(details(notification(step(s))),
                                                                                'budgetItems(s)', budgetItems(s)),
                                                                                'passThreshold(s)', (IF passThreshold(s) THEN 'Passed Limits automatically' ELSE 'Over automatical limits') ));
 @defineNotification(po,'Purchasing cycle',PurchaseOrder,author);
+
+FORM selectPO
+    OBJECTS o = PurchaseOrder
+    PROPERTIES(o) READONLY nameAuthor, nameStep, planned
+;
+testNotification 'Test Notification' () {
+    DIALOG selectPO OBJECTS o INPUT DO {
+        PRINT notification OBJECTS r = generateNotification(o), d = generateDetails(o);
+    }
+} TOOLBAR;
+EXTEND FORM notificationsForms PROPERTIES testNotification() DRAW notePo;
 
 
 //--- Execution forms ---
@@ -598,7 +609,7 @@ DESIGN invoiceLoad {
     }
 }
 
-loadPO 'Load Invoice' () {
+loadPO 'Upload Invoice' () {
     NEW i = Invoice {
         SHOW invoiceLoad OBJECTS i = i FLOAT;
     }
