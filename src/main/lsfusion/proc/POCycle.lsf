@@ -98,6 +98,7 @@ generateDetails (PurchaseOrder s) = STRING(replace(replace(details(notification(
 FORM selectPO
     OBJECTS o = PurchaseOrder
     PROPERTIES(o) READONLY nameAuthor, nameStep, planned
+    FILTERS generateNotification(o) AND generateDetails(o)
 ;
 testNotification 'Test Notification' () {
     DIALOG selectPO OBJECTS o INPUT DO {
