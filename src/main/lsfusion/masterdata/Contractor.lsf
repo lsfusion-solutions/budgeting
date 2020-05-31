@@ -5,7 +5,15 @@ REQUIRE MasterData, Currency, CostItem;
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
 
-name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 30;
+name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 30 NONULL;
+regID 'Registration ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
+taxID 'Tax ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
+
+CONSTRAINT regID(Contractor c) AND NOT onlyDigits(regID(c)) CHECKED BY regID[Contractor] MESSAGE 'Registration ID must contain only digits';
+CONSTRAINT taxID(Contractor c) AND NOT onlyDigits(taxID(c)) CHECKED BY taxID[Contractor] MESSAGE 'Tax ID must contain only digits';
+// @ToDo TaxID viewer depending on its format 
+contractorReg 'Contractor' = GROUP AGGR Contractor c BY regID(c);
+contractorTax 'Contractor' = GROUP AGGR Contractor c BY taxID(c);
 
 // Type
 CLASS Type {
@@ -46,24 +54,68 @@ rate 'Rate, per hour' = DATA NUMERIC[10,2] (Contractor);
 
 FORM contractor 'Contractor'
     OBJECTS c = Contractor PANEL
-    PROPERTIES(c) name, nameType, nameCostItem ON CHANGE changeCostItem(c), nameCurrency, rate
+    PROPERTIES(c) name, regID, taxID, nameType, nameCostItem ON CHANGE changeCostItem(c), nameCurrency, rate
 
     EDIT Contractor OBJECT c
 ;
 
+DESIGN contractor {
+    size = (800, 480);
+    OBJECTS {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        fill = 1;
+        MOVE PROPERTY (name(c)) { notNull = TRUE; }
+        NEW id {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY (regID(c));
+            MOVE PROPERTY (taxID(c));
+        }
+        MOVE PROPERTY (nameType(c)) { notNull = TRUE; }
+        MOVE PROPERTY (nameCostItem(c));
+        NEW rate {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY (nameCurrency(c));
+            MOVE PROPERTY (rate(c));
+        }
+    }
+}
+
 FORM contractors 'Contractors'
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLY name, nameType, nameCostItem, nameCurrency, rate
+    PROPERTIES(c) READONLY name, regID, taxID, nameType, nameCostItem, nameCurrency, rate
 
     PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE 
 ;
 
+filterContractor 'Search' = DATA LOCAL NESTED ISTRING ();
+
 FORM dialogContractor 'Select contractor'
+    PROPERTIES () filterContractor 
+    
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLY name, nameType
+    PROPERTIES(c) READONLY name, nameType, taxID
+    FILTERS isSubstring(lower(name(c)), lower(filterContractor())) OR isSubstring(taxID(c), filterContractor()) OR isSubstring(regID(c), filterContractor()) OR NOT filterContractor()
     
     LIST Contractor OBJECT c
 ;
+
+DESIGN dialogContractor { OBJECTS { alignment = STRETCH; PROPERTY(filterContractor()) { alignment = STRETCH; } }}
+
+addContractor 'New' () {
+    NEW c = Contractor {
+        SHOW contractor OBJECTS c = c FLOAT;
+        SEEK dialogContractor.c = c;
+    }
+} TOOLBAR;
+
+editContractor 'Edit' (Contractor c) {
+    SHOW contractor OBJECTS c = c FLOAT;
+} TOOLBAR;
+
+EXTEND FORM dialogContractor PROPERTIES addContractor() DRAW c,editContractor(c);
 
 NAVIGATOR {
     NEW contractors; 
