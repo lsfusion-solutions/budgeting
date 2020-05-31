@@ -202,18 +202,29 @@ META extendPurchaseOrder (form)
                                 MOVE PROPERTY (loadPayment(d));// { height = 40;}
                                 MOVE PROPERTY (openPayment(d));// { height = 40;}  
                             }
-                            MOVE PROPERTY (text(d)) {
-                                fill = 1;
-                                alignment = STRETCH;
-                                panelCaptionAbove = TRUE;
-                                caption = 'Text comment';
-                            }
                         }
-                        MOVE BOX(log) { 
-                            caption = 'Approval steps'; 
-                            width = 400;
-                            PROPERTY (userNameOut(log)) { caption = 'Executed by'; }
-                            PROPERTY (dateTimeOut(log)) { caption = 'Date/Time'; }
+                        NEW detailTabs {
+                            type = TABBED;
+                            width  = 600;
+                            height = 250;
+                            alignment = STRETCH;
+                            NEW commentTab {
+                                caption = 'Comment'; 
+                                MOVE PROPERTY (text(d)) {
+                                    fill = 1;
+                                    alignment = STRETCH;
+                                    //panelCaptionAbove = TRUE;
+                                    caption = '';
+                                }
+                            }
+                            NEW historyTab {
+                                caption = 'Approval steps'; 
+                                fill = 1;
+                                MOVE BOX(log) { 
+                                    PROPERTY (userNameOut(log)) { caption = 'Executed by'; }
+                                    PROPERTY (dateTimeOut(log)) { caption = 'Date/Time'; }
+                                }
+                            }
                         }
                     }
                 }
