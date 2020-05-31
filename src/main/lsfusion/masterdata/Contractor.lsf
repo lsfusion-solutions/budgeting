@@ -102,7 +102,15 @@ FORM dialogContractor 'Select contractor'
     LIST Contractor OBJECT c
 ;
 
-DESIGN dialogContractor { OBJECTS { alignment = STRETCH; PROPERTY(filterContractor()) { alignment = STRETCH; } }}
+DESIGN dialogContractor { 
+    OBJECTS { 
+        alignment = STRETCH; 
+        fill = 1; 
+        type = CONTAINERV;
+        MOVE PROPERTY(filterContractor()) { alignment = STRETCH; } 
+        MOVE BOX (c);
+    }
+}
 
 addContractor 'New' () {
     NEW c = Contractor {

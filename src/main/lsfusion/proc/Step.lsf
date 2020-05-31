@@ -244,6 +244,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     dateTimeStart (Assign###makeStep a) += currentDateTime() IF a IS Assign###makeStep;
     desc (Assign###makeStep a) += header + ': ' + nameExplain(sbj(a)) IF a IS Assign###makeStep;
     sum (Assign###makeStep a) += ##summator(sbj(a)) IF a IS Assign###makeStep;
+    currency (Assign###makeStep a) += GROUP LAST currency(sbj(a)) IF a IS Assign###makeStep;
     colorOwn (Assign###makeStep a) += color(sbj(a)) IF a IS Assign###makeStep;
     
     stage (Assign###makeStep a) += Stage.staging IF a IS Assign###makeStep;

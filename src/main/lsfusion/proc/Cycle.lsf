@@ -1,6 +1,6 @@
 MODULE Cycle;
 
-REQUIRE Authentication, Time, Security, Country, Employee;
+REQUIRE Authentication, Time, Security, Country, Employee, Currency;
 
 disableEvents = DATA LOCAL BOOLEAN ();
 backgroundFill = RGB(255, 255, 224);
@@ -42,6 +42,7 @@ color 'Background Color' (Assign s)= OVERRIDE colorOwn(s),color(stage(s));
 
 desc 'Description' = ABSTRACT ISTRING(Assign) MATERIALIZED CHARWIDTH 50;
 sum 'Sum, USD' = ABSTRACT NUMERIC[16,2](Assign) MATERIALIZED CHARWIDTH 50;
+currency 'Currency' = ABSTRACT Currency(Assign) MATERIALIZED;
 exec 'Execute'  ABSTRACT (Assign);
 
 dateTimeStart 'Date/Time start' = ABSTRACT DATETIME (Assign) MATERIALIZED CHARWIDTH 20;
@@ -56,15 +57,18 @@ in (Employee e, Assign s) = assigned(e, s) AND NOT skip(e, s);// MATERIALIZED;
 
 stage = DATA LOCAL Stage ();
 nameStage 'Select Stage' = name (stage());
+currency = DATA LOCAL Currency ();
+nameCurrency 'Select by Currency' = name (currency());
 
 FORM assignments 'Assignments'
-    PROPERTIES () nameStage
+    PROPERTIES () nameStage, nameCurrency
 
     OBJECTS s = Assign GRID
     PROPERTIES(s) ON CHANGE exec(s) dateTimeStart, desc BACKGROUND color(s) , sum //, dateLine
     ORDERS dateTimeStart(s)
     FILTERS in(currentUser(), s),
-            stage(s) == stage() OR NOT stage()
+            stage(s) == stage() OR NOT stage(),
+            currency(s) == currency() OR NOT currency()
     
     FILTERGROUP overdue
         FILTER 'Overdue' overdue(s) 
@@ -72,7 +76,9 @@ FORM assignments 'Assignments'
 
 DESIGN assignments {
     NEW filters FIRST {
+        type = CONTAINERH;
         MOVE PROPERTY(nameStage());
+        MOVE PROPERTY(nameCurrency());
     }
     BOX(s) {
         PROPERTY(sum(s)) { valueWidth = 20; }
