@@ -81,9 +81,9 @@ EXTEND FORM costItem PROPERTIES (c) limit;
 EXTEND CLASS Step
 {
     enter 'Entered',
-    review 'Reviewed',
-    approve 'Approved',
-    reject 'Revising',
+    review 'Approved',
+    approve 'AFG Checked',
+    reject 'Rejected',
     update 'Update',
     pay 'Paid'
 }
@@ -267,7 +267,7 @@ assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS
 
 isApproved (PurchaseOrder po) = step(po) == Step.approve AND afg(currentUser());
 isRevoke (PurchaseOrder po) = NOT (step(po) == Step.pay) AND author(po) == currentUser();
-dropApproval 'Revoke Purchase order' (PurchaseOrder o) {
+dropApproval 'Cancel Purchase order' (PurchaseOrder o) {
     IF NOT paid(o) THEN {
         stepOut(stepLog(o)) <- Step.reject;
         APPLY;
