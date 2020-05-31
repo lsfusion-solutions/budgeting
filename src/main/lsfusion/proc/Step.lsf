@@ -82,7 +82,7 @@ META defineNotification (id,capName,ClassName,Category)
                                                                                    'date(s)', toDateDDMMYY(currentDate())), 
                                                                                    'planned(s)', STRING(INTEGER(planned(s)))));
     sendNotification 'Send Notification' (##ClassName s, Employee e) {
-        IF notification(step(s)) AND email(e) THEN {
+        IF notification(step(s)) AND email(e) AND NOT disableNotification() THEN {
             IF attachment(s) THEN sendNotificationFile(generateHeader(s),generateNotification(s),generateDetails(s),email(e),attachment(s),attachmentName(s));
             ELSE sendNotification(generateHeader(s),generateNotification(s),generateDetails(s),email(e));
         }
@@ -257,7 +257,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     //assigned (Employee e, Assign###makeStep s) += has###makeStep(e) AND s IS Assign###makeStep; 
     
     WHEN SET(Assign###makeStep s IS Assign###makeStep) DO {
-        FOR assigned(Employee e, s) DO {
+        FOR assigned(Employee e, s) AND email(e) != email(currentUser()) DO {
             sendNotification(sbj(s), e);
         }
     }

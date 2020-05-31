@@ -120,6 +120,8 @@ FORM assignLog 'Assignments Log'
 CLASS Notification;
 TABLE notification(Notification);
 
+disableNotification = DATA LOCAL BOOLEAN ();
+
 stage 'Procurement Stage' = DATA Stage(Notification);
 nameStage 'Procurement Stage' (Notification n) = name(stage(n));
 
