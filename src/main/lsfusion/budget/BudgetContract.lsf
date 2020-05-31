@@ -19,6 +19,16 @@ readFile 'Open Contract' (Contract c) {open(fileLink(c));} TOOLBAR ;
 
 note 'Note' = DATA STRING[500] (Contract) CHARWIDTH 30;
 
+// Type
+CLASS Regular {
+    month 'Monthly',
+    quarter 'Quarterly',
+    year 'Yearly'
+}
+name 'Name' (Regular t) = staticCaption(t) IF t IS Regular CHARWIDTH 10;
+regular 'Regularity' = DATA Regular (Contract);
+regularity 'Regularity' (Contract c) = name(regular(c));
+
 currency 'Currency' = DATA Currency (Contract);
 nameCurrency 'Currency' (Contract c) = name(currency(c));
 
@@ -46,8 +56,9 @@ enableEdit 'Edit contracts' = DATA LOCAL BOOLEAN ();
 
 EXTEND FORM contractor
     OBJECTS ct = Contract
-    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, note PANEL , nameCurrency, amount, amountUSD, fileLink
-    PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
+    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, validity, regularity, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) READONLYIF NOT enableEdit() PANEL note
+    PROPERTIES (ct) TOOLBAR SHOWIF enableEdit() NEW, DELETE
     PROPERTIES (ct) readFile SHOWIF fileLink(ct)
     FILTERS contractor(ct) == c
     
@@ -76,7 +87,7 @@ EXTEND FORM contractors
     PROPERTIES enableEdit() TOOLBAR
     
     OBJECTS ct = Contract
-    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, nameContractor, note, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, validity, nameContractor, note, regularity, nameCurrency, amount, amountUSD, fileLink
     PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
     PROPERTIES (ct) readFile SHOWIF fileLink(ct)
 ;
