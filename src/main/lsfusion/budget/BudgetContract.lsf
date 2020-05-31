@@ -42,7 +42,35 @@ FORM dialogContracts 'Contracts'
     LIST Contract OBJECT c
 ;
 
-enableEdit 'Eneble Edit rows' = DATA LOCAL BOOLEAN ();
+enableEdit 'Edit contracts' = DATA LOCAL BOOLEAN ();
+
+EXTEND FORM contractor
+    OBJECTS ct = Contract
+    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, note PANEL , nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
+    PROPERTIES (ct) readFile SHOWIF fileLink(ct)
+    FILTERS contractor(ct) == c
+    
+    PROPERTIES enableEdit() TOOLBAR DRAW ct
+;
+
+DESIGN contractor {
+    OBJECTS {
+        MOVE BOX (ct) { 
+            fill = 1;
+            alignment = STRETCH;
+            TOOLBAR(ct) {
+                MOVE PROPERTY (enableEdit());
+            } 
+        }
+        MOVE PROPERTY (note(ct)) { 
+            alignment = STRETCH;
+            panelCaptionAbove = TRUE;
+            caption = 'Notes for the contract';
+            height = 80;
+        }
+    }
+}
 
 EXTEND FORM contractors
     PROPERTIES enableEdit() TOOLBAR
@@ -51,7 +79,6 @@ EXTEND FORM contractors
     PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, nameContractor, note, nameCurrency, amount, amountUSD, fileLink
     PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
     PROPERTIES (ct) readFile SHOWIF fileLink(ct)
-    
 ;
 
 DESIGN contractors {
