@@ -64,6 +64,7 @@ DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Rema
 // Attachment
 attachmentName (PurchaseOrder p) = IF countInvoices(p) == 1 THEN 'Invoice' ELSE 'InvoicesArchive';
 attachment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST file(Invoice i) BY part(i)](p) ELSE NULL;
+attachmentPayment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST payment(Invoice i) BY part(i)](p) ELSE NULL;
 
 // Threshold prepare
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
@@ -296,7 +297,9 @@ assigned(Employee e,AssignApprove a) += TRUE IF (afg(e) OR hasApprove(e)) AND a 
 isPayed (PurchaseOrder po) = step(po) == Step.pay;
 WHEN SET(isPayed (PurchaseOrder po)) DO {
     FOR Employee e AND (author(po) == e OR access(po,e)) DO {
-        sendNotification(po, e);
+        IF notification(Step.pay) AND email(e) AND NOT disableNotification() THEN {
+            sendNotificationFile(generateHeader(po),generateNotification(po),generateDetails(po),email(e),attachmentPayment(po),'Payment Confirmation');
+        }
     }
 }
 
@@ -361,6 +364,24 @@ WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
     IF NOT number(b) THEN number(b) <- 'Plan';
     IF NOT date(b) THEN date(b) <- datePlan(part(b));
 }
+
+completeUpdate 'Complete draft and send Purchase Order' = DATA BOOLEAN (PurchaseOrder);
+autoSendPurchaseOrder (PurchaseOrder p) {
+    IF completeUpdate(p) AND (stepIn(stepLog(p)) == Step.update OR stepIn(stepLog(p)) == Step.reject) THEN {
+        IF hasEnter(currentUser()) AND passThreshold(p) THEN stepOut(stepLog(p)) <- Step.approve;
+        ELSE IF hasEnter(currentUser()) THEN stepOut(stepLog(p)) <- Step.review;
+             ELSE stepOut(stepLog(p)) <- Step.enter;
+        completeUpdate(p) <- NULL;
+        APPLY;
+    }
+}
+
+showCompletion 'Show completeUpdate' (PurchaseOrder o) = TRUE IF step(o) == Step.update OR step(o) == Step.reject;
+EXTEND FORM purchaseOrder 
+    PROPERTIES completeUpdate(o) SHOWIF showCompletion(o)
+    EVENTS ON APPLY AFTER autoSendPurchaseOrder(o)
+;
+DESIGN purchaseOrder { TOOLBAR { MOVE PROPERTY(completeUpdate(o)); } }
 
 //--- Main Form ---
 
