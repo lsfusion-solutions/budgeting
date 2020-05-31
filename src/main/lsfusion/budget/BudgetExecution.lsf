@@ -29,7 +29,8 @@ FORM budgetExecution 'Budget execution'
     FILTERS selected(budget(bd)),
             level(costItem(bd), c),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bd)) OR NOT hideSensitive(mainRole(currentUser())),
-            NOT hidden(bd)
+            NOT hidden(bd),
+            NOT costCenter(bd)
 
     OBJECTS e = ExpenseLedger
     PROPERTIES(e) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount

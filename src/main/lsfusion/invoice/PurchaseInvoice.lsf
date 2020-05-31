@@ -26,7 +26,7 @@ approved 'Approved' = DATA BOOLEAN (Invoice);
 dateTimeApproved 'Date/time of approve' = DATA DATETIME (Invoice);
 nameUserApproved 'Approved by' = DATA STRING[200](Invoice) CHARWIDTH 20;
 
-file = DATA FILE (Invoice);
+file 'Attachment' = DATA FILE (Invoice) NONULL;
 hasFile (Invoice i) = TRUE IF file(i); 
 open 'Open Attachment' (Invoice i)  { open(file(i)); }
 load 'Load Attachment' (Invoice i)  { INPUT =file(i) CHANGE; }
