@@ -67,7 +67,7 @@ attachment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST file(In
 // Threshold prepare
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostItem);
-paid 'Paid' = DATA BOOLEAN (Invoice);
+paidCash 'Paid' = DATA BOOLEAN (Invoice);
 passThreshold 'Limit' (Invoice i) = invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
 passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
 EXTEND FORM costCenters PROPERTIES (c) limit;
@@ -107,6 +107,8 @@ testNotification 'Test Notification' () {
 } TOOLBAR;
 EXTEND FORM notificationsForms PROPERTIES testNotification() DRAW notePo;
 
+paid 'Paid' (PurchaseOrder o) = TRUE IF step(o) == Step.pay;
+paid 'Paid' (Invoice i) = paid(part(i));
 
 //--- Execution forms ---
 
@@ -130,11 +132,11 @@ META extendPurchaseOrder (form)
         PROPERTIES(o) datePlan
         
         OBJECTS d = Invoice
-        PROPERTIES(d) ON CHANGE editPO(d)  urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail
+        PROPERTIES (d) ON CHANGE editPO(d)  urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail
         PROPERTIES (d) ON CHANGE editPO(d) planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold 
-        PROPERTIES(d) READONLY PANEL costItemName, supply, nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d), text, nameSupplier SHOWIF NOT supply(d)
-        PROPERTIES (d) PANEL load, open SHOWIF hasFile(d),  loadPayment SHOWIF afg(currentUser()), openPayment SHOWIF hasPayment(d)
-        PROPERTIES (o) TOOLBAR addPO DRAW d
+        PROPERTIES (d) READONLYIF paid(d) PANEL costItemName, nameContractor, nameContract, text//, nameSupplier SHOWIF NOT supply(d)
+        PROPERTIES (d) PANEL load READONLYIF paid(d), open SHOWIF hasFile(d),  loadPayment SHOWIF afg(currentUser()), openPayment SHOWIF hasPayment(d)
+        PROPERTIES (o) TOOLBAR addPO DRAW d SHOWIF NOT paid(o)
         PROPERTIES (d) DELETE SHOWIF afg(currentUser()) // TOOLBAR NEWSESSION EDIT,
         FILTERS part(d) == o
         
@@ -180,8 +182,8 @@ META extendPurchaseOrder (form)
                                 type = COLUMNS;
                                 alignment = STRETCH;
                                 caption = 'Supplier details';
-                                MOVE PROPERTY (supply(d));
-                                MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                                //MOVE PROPERTY (supply(d));
+                                //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
                                 MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
                                 MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
                             }
@@ -266,10 +268,12 @@ assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS
 isApproved (PurchaseOrder po) = step(po) == Step.approve AND afg(currentUser());
 isRevoke (PurchaseOrder po) = NOT (step(po) == Step.pay) AND author(po) == currentUser();
 dropApproval 'Revoke Purchase order' (PurchaseOrder o) {
-    stepOut(stepLog(o)) <- Step.reject;
-    APPLY;
+    IF NOT paid(o) THEN {
+        stepOut(stepLog(o)) <- Step.reject;
+        APPLY;
+    }
 } TOOLBAR;
-EXTEND FORM purchaseOrders PROPERTIES(o) dropApproval; //SHOWIF isApproved(o)
+EXTEND FORM purchaseOrders PROPERTIES(o) dropApproval SHOWIF NOT paid(o); //SHOWIF isApproved(o)
 
 //--- Procedure: Payment Step ---
 
@@ -357,7 +361,7 @@ EXTEND FORM purchaseOrders
     
     OBJECTS d = Invoice
     PROPERTIES (d) READONLY urgent, nameCostCenter, budgetDetailName, amountName, passThreshold
-    PROPERTIES (d) READONLY PANEL costItemName, text, supply, nameSupplier SHOWIF NOT supply(d), nameContractor SHOWIF supply(d), nameContract SHOWIF supply(d)
+    PROPERTIES (d) READONLY PANEL costItemName, text, nameContractor, nameContract //, supply, nameSupplier SHOWIF NOT supply(d)
     PROPERTIES (d) PANEL open SHOWIF hasFile(d), load,  openPayment SHOWIF hasPayment(d), loadPayment SHOWIF afg(currentUser()) //SHOWIF NOT hasFile(d)
     FILTERS part(d) == o
     
@@ -407,8 +411,8 @@ DESIGN purchaseOrders {
                         type = CONTAINERV;
                         alignment = STRETCH;
                         caption = 'Supplier details';
-                        MOVE PROPERTY (supply(d));
-                        MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                        //MOVE PROPERTY (supply(d));
+                        //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
                         MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
                         MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
                     }
@@ -534,11 +538,12 @@ NAVIGATOR {
 // Load Invoices one-by-one
 
 EXTEND FORM invoiceLoad
-    PROPERTIES(i) urgent,date, number, nameCurrency, amount, text, paid
-    PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
-    PROPERTIES (i) BACKGROUND backgroundFill() longBudgetDetailName
-    PROPERTIES (i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
-    PROPERTIES(i) open SHOWIF hasFile(i), load, openPayment SHOWIF hasPayment(i), loadPayment SHOWIF afg(currentUser())
+    PROPERTIES(i) READONLYIF paid(i) urgent,date, number, nameCurrency, amount, text, paidCash
+    //PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
+    PROPERTIES (i) READONLYIF paid(i) nameContractor, nameContract
+    PROPERTIES (i) READONLYIF paid(i) BACKGROUND backgroundFill() longBudgetDetailName
+    PROPERTIES (i) READONLYIF paid(i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
+    PROPERTIES(i) open SHOWIF hasFile(i), load READONLYIF paid(i), openPayment SHOWIF hasPayment(i), loadPayment SHOWIF afg(currentUser())
 ;
 DESIGN invoiceLoad {
     size = (800, 480);
@@ -559,7 +564,7 @@ DESIGN invoiceLoad {
                 MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 4;}
                 MOVE PROPERTY(amount(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 1;}
                 MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 1;}
-                MOVE PROPERTY (paid(i)) { panelCaptionAbove = TRUE; }
+                MOVE PROPERTY (paidCash(i)) { panelCaptionAbove = TRUE; }
             }
             NEW budget {
                 alignment = STRETCH;
@@ -590,8 +595,8 @@ DESIGN invoiceLoad {
                 caption = 'Supplier';
                 type = CONTAINERH;
                 alignment = STRETCH;
-                MOVE PROPERTY (supply(i)) {caption = 'Known Supplier'; panelCaptionAbove = TRUE; }
-                MOVE PROPERTY (nameSupplier(i)) {caption = 'Name of new Supplier if it is not known'; alignment = STRETCH;  panelCaptionAbove = TRUE;}
+                //MOVE PROPERTY (supply(i)) {caption = 'Known Supplier'; panelCaptionAbove = TRUE; }
+                //MOVE PROPERTY (nameSupplier(i)) {caption = 'Name of new Supplier if it is not known'; alignment = STRETCH;  panelCaptionAbove = TRUE;}
                 MOVE PROPERTY (nameContractor(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
                 MOVE PROPERTY (nameContract(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
             }
