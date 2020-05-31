@@ -143,8 +143,8 @@ META extendPurchaseOrder (form)
         FILTERS part(d) == o
         
         OBJECTS log = StepLog
-        PROPERTIES (log) userNameOut, dateTimeOut, nameOut
-        ORDERS dateTimeOut(log) DESC
+        PROPERTIES (log) userNameIn, dateTimeIn, nameIn
+        ORDERS dateTimeIn(log) DESC
         FILTERS sbj(log) == o
     ;
 
@@ -222,8 +222,8 @@ META extendPurchaseOrder (form)
                                 caption = 'Approval steps'; 
                                 fill = 1;
                                 MOVE BOX(log) { 
-                                    PROPERTY (userNameOut(log)) { caption = 'Executed by'; }
-                                    PROPERTY (dateTimeOut(log)) { caption = 'Date/Time'; }
+                                    PROPERTY (userNameIn(log)) { caption = 'Executed by'; }
+                                    PROPERTY (dateTimeIn(log)) { caption = 'Date/Time'; }
                                 }
                             }
                         }
