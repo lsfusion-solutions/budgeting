@@ -593,34 +593,30 @@ DESIGN invoiceLoad {
                 caption = 'Parameters';
                 type = CONTAINERH;
                 MOVE PROPERTY(urgent(i)) { panelCaptionAbove = TRUE; fontStyle = 'bold';}
-                MOVE PROPERTY(date(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 2;}
-                MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 4;}
-                MOVE PROPERTY(amount(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 1;}
-                MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; panelCaptionAbove = TRUE; fill = 1;}
+                MOVE PROPERTY(date(i)) { notNull = TRUE; panelCaptionAbove = TRUE; flex = 2;}
+                MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionAbove = TRUE; flex = 4;}
+                MOVE PROPERTY(amount(i)) { notNull = TRUE; panelCaptionAbove = TRUE; flex = 1;}
+                MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; panelCaptionAbove = TRUE; flex = 1;}
                 MOVE PROPERTY (paidCash(i)) { panelCaptionAbove = TRUE; }
             }
             NEW budget {
                 alignment = STRETCH;
                 height = 85;
-                type = CONTAINERV;
                 NEW budgetItemLine {
                     type = CONTAINERH;
                     fill = 1;
-                    alignment = STRETCH;
                     MOVE PROPERTY (longBudgetDetailName(i)) {
-                        alignment = STRETCH;
-                        fill = 6;
+                        flex = 6;
                         panelCaptionAbove = TRUE;
                         fontStyle = 'bold';
                     }
-                    MOVE PROPERTY (balance(i)) {panelCaptionAbove = TRUE; fill = 1;}
+                    MOVE PROPERTY (balance(i)) {panelCaptionAbove = TRUE; flex = 1;}
                 }
                 NEW budgetItemDetails {
                     type = CONTAINERH;
                     fill = 1;
-                    alignment = STRETCH;
-                    MOVE PROPERTY (nameCostCenter(i)) {panelCaptionAbove = TRUE; alignment = STRETCH;  fill = 1;}
-                    MOVE PROPERTY (costItemName(i)) {panelCaptionAbove = TRUE; alignment = STRETCH;  fill = 1;}
+                    MOVE PROPERTY (nameCostCenter(i)) {panelCaptionAbove = TRUE; flex = 1;}
+                    MOVE PROPERTY (costItemName(i)) {panelCaptionAbove = TRUE; flex = 1;}
                 }
             }
             NEW contract {
@@ -642,7 +638,7 @@ DESIGN invoiceLoad {
                 MOVE PROPERTY(loadPayment(i)) { fill = 1; height = 40; }
                 MOVE PROPERTY(openPayment(i)) { fill = 1; height = 40; }
             }
-            MOVE PROPERTY (text(i)) { caption = 'Comment'; alignment = STRETCH; fill = 1; panelCaptionAbove = TRUE; }
+            MOVE PROPERTY (text(i)) { caption = 'Comment'; flex = 1; panelCaptionAbove = TRUE; }
         }
 
     }
