@@ -119,13 +119,17 @@ FORM invoiceLoad 'Load Purchase invoice'
     EDIT Invoice OBJECT i
 ;
 addPO 'Add Invoice' (PurchaseOrder o) {
-    NEW i = Invoice {
-        part(i) <- o;
-        SHOW invoiceLoad OBJECTS i = i FLOAT;
+    NEWSESSION {
+        NEW i = Invoice {
+            part(i) <- o;
+            SHOW invoiceLoad OBJECTS i = i FLOAT WAIT;
+        }
     }
 } TOOLBAR;
 editPO 'Edit Invoice' (Invoice i) {
-    SHOW invoiceLoad OBJECTS i = i FLOAT;
+    NEWSESSION {
+        SHOW invoiceLoad OBJECTS i = i FLOAT WAIT;
+    }
 } TOOLBAR;
 
 META extendPurchaseOrder (form)
@@ -645,13 +649,15 @@ DESIGN invoiceLoad {
 }
 
 loadPO 'Upload Invoice' () {
-    NEW i = Invoice {
-        SHOW invoiceLoad OBJECTS i = i FLOAT;
+    NEWSESSION {
+        NEW i = Invoice {
+            SHOW invoiceLoad OBJECTS i = i FLOAT WAIT; // NOWAIT by default would move the window into DOCKED tab
+        }
     }
 } TOOLBAR;
 
-EXTEND FORM invoices PROPERTIES NEWSESSION loadPO();
-EXTEND FORM costCenterBudget PROPERTIES NEWSESSION loadPO();
+EXTEND FORM invoices PROPERTIES loadPO();
+EXTEND FORM costCenterBudget PROPERTIES loadPO();
 
 NAVIGATOR {
     NEW loadPO BEFORE masterData;

@@ -97,6 +97,7 @@ FORM dialogContractor 'Select contractor'
     
     OBJECTS c = Contractor
     PROPERTIES(c) READONLY name, nameType, taxID
+    ORDERS name(c)
     FILTERS isSubstring(lower(name(c)), lower(filterContractor())) OR isSubstring(taxID(c), filterContractor()) OR isSubstring(regID(c), filterContractor()) OR NOT filterContractor()
     
     LIST Contractor OBJECT c
@@ -112,15 +113,19 @@ DESIGN dialogContractor {
     }
 }
 
-addContractor 'New' () {
-    NEW c = Contractor {
-        SHOW contractor OBJECTS c = c FLOAT;
-        SEEK dialogContractor.c = c;
+addContractor '+ Add' () {
+    NEWSESSION {    
+        NEW c = Contractor {
+            SHOW contractor OBJECTS c = c FLOAT WAIT;
+            SEEK dialogContractor.c = c;
+        }
     }
 } TOOLBAR;
 
 editContractor 'Edit' (Contractor c) {
-    SHOW contractor OBJECTS c = c FLOAT;
+    NEWSESSION {
+        SHOW contractor OBJECTS c = c FLOAT WAIT;
+    }
 } TOOLBAR;
 
 EXTEND FORM dialogContractor PROPERTIES addContractor() DRAW c,editContractor(c);
