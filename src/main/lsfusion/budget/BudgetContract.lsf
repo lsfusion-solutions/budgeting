@@ -53,16 +53,18 @@ FORM dialogContracts 'Contracts'
 ;
 
 enableEdit 'Edit contracts' = DATA LOCAL BOOLEAN ();
+WHEN LOCAL SET (hideContracts()) DO enableEdit() <- NULL;
+WHEN LOCAL SET (NOT hideContracts()) DO enableEdit() <- TRUE;
 
 EXTEND FORM contractor
     OBJECTS ct = Contract
-    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, validity, regularity, nameCurrency, amount, amountUSD, fileLink
-    PROPERTIES (ct) READONLYIF NOT enableEdit() PANEL note
-    PROPERTIES (ct) TOOLBAR SHOWIF enableEdit() NEW, DELETE
-    PROPERTIES (ct) readFile SHOWIF fileLink(ct)
+    PROPERTIES (ct) SHOWIF NOT hideContracts() READONLYIF NOT enableEdit() number, date, validity, regularity, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) SHOWIF NOT hideContracts() READONLYIF NOT enableEdit() PANEL note
+    PROPERTIES (ct) SHOWIF NOT hideContracts() TOOLBAR SHOWIF enableEdit() NEW, DELETE
+    PROPERTIES (ct) SHOWIF NOT hideContracts() readFile SHOWIF fileLink(ct)
     FILTERS contractor(ct) == c
     
-    PROPERTIES enableEdit() TOOLBAR DRAW ct
+    PROPERTIES SHOWIF NOT hideContracts() enableEdit() TOOLBAR DRAW ct
 ;
 
 DESIGN contractor {

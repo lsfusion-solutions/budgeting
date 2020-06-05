@@ -32,7 +32,8 @@ FORM types 'Contractor types'
 type 'Type' = DATA Type(Contractor) NONULL;
 nameType 'Type' (Contractor c) = name(type(c));
 
-costItem 'Cost type' = DATA CostItem (Contractor) NONULL;
+isRegular 'Regular Contractor (Monthly Labour)' = DATA BOOLEAN (Contractor);
+costItem 'Cost type' = DATA CostItem (Contractor); //NONULL;
 nameCostItem 'Cost type' (Contractor c) = canonicalName(costItem(c));
 
 contractor 'For other contractors' = DATA BOOLEAN (CostItem);
@@ -40,6 +41,7 @@ EXTEND FORM costItem
     PROPERTIES(c) contractor
 ;
 
+CONSTRAINT isRegular(Contractor c) AND NOT costItem(c) MESSAGE 'Please specify Cost type for the regular Contractor';
 CONSTRAINT costItem(Contractor c) AND NOT contractor(costItem(c)) CHECKED BY costItem[Contractor] MESSAGE 'Cost type for the contractor is not valid';
 
 changeCostItem (Contractor o)  { 
@@ -52,9 +54,12 @@ nameCurrency 'Currency' (Contractor c) = name(currency(c));
 rate 'Rate, per hour' = DATA NUMERIC[10,2] (Contractor);  
 // Формы
 
+hideContracts 'Hide contracts list' = DATA LOCAL BOOLEAN ();
+
 FORM contractor 'Contractor'
     OBJECTS c = Contractor PANEL
-    PROPERTIES(c) name, regID, taxID, nameType, nameCostItem ON CHANGE changeCostItem(c), nameCurrency, rate
+    PROPERTIES(c) name, regID, taxID, nameType, isRegular, nameCostItem ON CHANGE changeCostItem(c) SHOWIF isRegular(c), nameCurrency, rate
+    PROPERTIES hideContracts()
 
     EDIT Contractor OBJECT c
 ;
@@ -66,14 +71,19 @@ DESIGN contractor {
         alignment = STRETCH;
         fill = 1;
         MOVE PROPERTY (name(c)) { notNull = TRUE; }
+        MOVE PROPERTY (nameType(c)) { notNull = TRUE; }
         NEW id {
             type = CONTAINERH;
             alignment = STRETCH;
             MOVE PROPERTY (regID(c));
             MOVE PROPERTY (taxID(c));
         }
-        MOVE PROPERTY (nameType(c)) { notNull = TRUE; }
-        MOVE PROPERTY (nameCostItem(c));
+        NEW regular {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY (isRegular(c));
+            MOVE PROPERTY (nameCostItem(c)) { notNull = TRUE; }
+        }
         NEW rate {
             type = CONTAINERH;
             alignment = STRETCH;
@@ -81,13 +91,20 @@ DESIGN contractor {
             MOVE PROPERTY (rate(c));
         }
     }
+    TOOLBAR {
+        MOVE PROPERTY (hideContracts());
+    }
 }
+
+enableEditContract 'Edit Contractors' = DATA LOCAL BOOLEAN ();
 
 FORM contractors 'Contractors'
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLY name, regID, taxID, nameType, nameCostItem, nameCurrency, rate
+    PROPERTIES(c) READONLYIF NOT enableEditContract() name, regID, taxID, nameType, isRegular, nameCostItem, nameCurrency, rate
 
-    PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE 
+    PROPERTIES(c) TOOLBAR SHOWIF enableEditContract() NEW, EDIT, DELETE 
+    
+    PROPERTIES enableEditContract() TOOLBAR DRAW c
 ;
 
 filterContractor 'Search' = DATA LOCAL NESTED ISTRING ();
@@ -114,7 +131,8 @@ DESIGN dialogContractor {
 }
 
 addContractor '+ Add' () {
-    NEWSESSION {    
+    NEWSESSION {
+        hideContracts() <- TRUE;
         NEW c = Contractor {
             SHOW contractor OBJECTS c = c FLOAT WAIT;
             SEEK dialogContractor.c = c;
