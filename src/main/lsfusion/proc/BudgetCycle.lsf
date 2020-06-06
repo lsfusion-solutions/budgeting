@@ -49,6 +49,53 @@ quarterNumber 'Quarter ID' (Budget b) = extractYear(fromDate(b))*10 + floor( DOU
 getQuarter 'Quarter from date' (DATE d) = extractYear(d)*10 + floor( DOUBLE (extractMonthNumber(d) - 1) / 3) + 1;
 quarter = GROUP AGGR Budget b BY quarterNumber(b); 
 
+quarterPlanned 'Planned, USD' (CostCenter c, Budget q) = GROUP SUM planned(BudgetDetail d) IF quarterNumber(q) == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterPlanned 'Planned, USD' (Budget q) = GROUP SUM quarterPlanned(CostCenter c, q);
+quarterPlanned 'Planned, USD' (INTEGER q) = GROUP SUM quarterPlanned(CostCenter c, q);
+quarterSpent 'Spent, USD' (CostCenter c, INTEGER q) = GROUP SUM spent(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+
+// Limits
+capBudget 'Month Cap for Company, USD' = DATA NUMERIC[16,3] (Budget);
+capCostCenter 'Month Cap for Cost Center, USD' = DATA NUMERIC[16,3] (Budget,CostCenter);
+
+quarterLimitCompany 'Quarter Limit for Company' = DATA NUMERIC[16,3] (INTEGER);
+//quarterLimitCompanyGet 'Quarter Limit for Company, USD' (Budget b) = GROUP LAST quarterLimitCompany(Budget q) IF quarterNumber(q) == quarterNumber(b);
+//quarterLimitCompanyShow 'Quarter Limit for Company, USD' (Budget b) = OVERRIDE quarterLimitCompanyGet(b),quarterLimitCompany(b);
+
+quarterLimitCostCenter 'Quarter Limit for Cost Center, USD' = DATA NUMERIC[16,3] (INTEGER,CostCenter);
+//quarterLimitCostCenterGet 'Quarter Limit for Cost Center, USD' (Budget b, CostCenter c) = GROUP LAST quarterLimitCostCenter(Budget q, c) IF quarterNumber(q) == quarterNumber(b);
+//uarterLimitCostCenterShow 'Quarter Limit for Cost Center, USD' (Budget b, CostCenter c) = OVERRIDE quarterLimitCostCenterGet(b,c),quarterLimitCostCenter(b,c);
+
+currentLimit 'Limit for the quarter' = DATA NUMERIC[16,3] (CostCenter, Budget);
+
+limit 'Limit, USD' (CostCenter c, Budget b) = CASE
+        WHEN capCostCenter(b,c) > 0 THEN capCostCenter(b,c) - planned(b,c)
+            WHEN quarterLimitCostCenter(quarterNumber(b),c) > 0 THEN quarterLimitCostCenter(quarterNumber(b),c) - quarterPlanned(c,b)
+                 WHEN capBudget(b) > 0 THEN capBudget(b) - planned(b)
+                      WHEN quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) - quarterPlanned(b);
+
+//limitCaption 'Limit caption' (CostCenter c, Budget b) = CASE
+//        WHEN capCostCenter(b,c) THEN 'Remaining Cost Center limit for the Month'
+//            WHEN quarterLimitCostCenterGet(b,c) THEN 'Remaining Cost Center limit for the Quater'
+//                 WHEN capBudget(b) THEN 'Remaining Company limit for the Month'
+//                      WHEN quarterLimitCompanyGet(b) THEN 'Remaining Company limit for the Quater';
+
+//limitDesc 'Limit description, USD'  (CostCenter c, Budget b) = CONCAT ': ', limitCaption(c,b), INTEGER (limit(c,b));
+
+//CONSTRAINT planned(BudgetDetail d) AND limit(costCenter(d), budget(d)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Limit is exceeded';
+
+CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
+
+CONSTRAINT capBudget(Budget b) > 0 AND (capBudget(b) - planned(b)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit of Company is exceeded';
+
+CONSTRAINT quarterLimitCostCenter(INTEGER q, CostCenter c) > 0 AND (quarterLimitCostCenter(q,c) - quarterPlanned(c,q)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter Limit for the Cost Center is exceeded';
+
+CONSTRAINT quarterLimitCompany(INTEGER q) > 0 AND (quarterLimitCompany(q) - quarterPlanned(q)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter Limit of Company is exceeded';
+
+CONSTRAINT freeCostCenter(CostCenter c) AND currentLimit(c,Budget bm) AND quarterPlanned(c, quarterNumber(bm)) > currentLimit(c,bm)
+    CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter budget is exceeded';
+
 // Enable Chat
 newComment 'New Comment' = DATA LOCAL TEXT (BudgetDetail);
 budgetDetail 'Budget Detail' = DATA BudgetDetail(Message);
@@ -522,18 +569,13 @@ EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FI
 
 quarterName 'Quarter' (INTEGER q) =  STRING[4](floor(q/10)) + ' \'Q' + STRING[1] (q - floor(q/10)*10);
 
-quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
-quarterSpent 'Spent, USD' (CostCenter c, INTEGER q) = GROUP SUM spent(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
 quarterProposal 'Budgeting status' (CostCenter c, INTEGER q) = GROUP LAST nameStep(part(BudgetDetail d)) IF q == quarterNumber(budget(d)) AND c == costCenter(d) ORDER dateTime(part(d)) CHARWIDTH 10;
 
 filterCostCenter = DATA LOCAL NESTED CostCenter();
 nameFilterCostCenter 'CostCenter' () = name(filterCostCenter());
 filterQuarter = DATA LOCAL NESTED Budget ();
 nameFilterQuarter 'Quarter' () = quarterName(quarterNumber(filterQuarter()));
-
-currentLimit 'Limit for the quarter' = DATA NUMERIC[16,3] (CostCenter, Budget);
-CONSTRAINT freeCostCenter(CostCenter c) AND currentLimit(c,Budget bm) AND quarterPlanned(c, quarterNumber(bm)) > currentLimit(c,bm)
-    CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter budget is exceeded';
+realQuarter 'The Integer fits quarter' = GROUP SUM 1 BY quarterNumber(Budget b);
 
 FORM budgetPortionsOverview 'Quarter Budgets'
     PROPERTIES () nameFilterCostCenter, nameFilterQuarter
@@ -557,25 +599,73 @@ FORM budgetPortionsOverview 'Quarter Budgets'
     FILTERS costCenter(d) == c,
             q == quarterNumber(budget(d)),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
+
+    OBJECTS qq = INTEGER
+    PROPERTIES(qq) quarterName, quarterLimitCompany, quarterPlanned BACKGROUND RGB(204,255,255)
+    ORDERS quarterName(qq) DESC
+    FILTERS realQuarter(qq) > 0
+    
+    OBJECTS b = Budget
+    PROPERTIES (b) name READONLY, capBudget, planned BACKGROUND RGB(204,255,255)
+    FILTERS qq == quarterNumber(b)
+    
+    OBJECTS cq = CostCenter
+    PROPERTIES name(cq) READONLY, quarterLimitCostCenter(qq,cq), quarterPlanned(cq,qq) BACKGROUND RGB(204,255,255)
+    PROPERTIES capCostCenter(b,cq) COLUMNS (b) HEADER name(b)
+    FILTERS NOT archive(cq)
+    
+    EVENTS ON INIT {
+        SEEK budgetPortionsOverview.qq = 1 + extractYear(currentDate())*10 + floor( DOUBLE (extractMonthNumber(currentDate()) - 1) / 3) + 1;
+    }
 ;
 
 DESIGN budgetPortionsOverview {
     OBJECTS {
-        type = CONTAINERV ;
-        alignment = STRETCH;
-        fill = 1;
-        NEW filters {
-            type = CONTAINERH;
-            alignment = STRETCH;
-            MOVE PROPERTY (nameFilterQuarter()) {caption = 'Autofilter by Quarter';}
-            MOVE PROPERTY (nameFilterCostCenter()) {alignment = STRETCH; caption = 'Autofilter by CostCenter';}
-        }
-        NEW quarters {
-            type = SPLITH;
-            alignment = STRETCH;
+        NEW tabpane {
             fill = 1;
-            MOVE BOX (qc);
-            MOVE BOX (d);
+            alignment = STRETCH;
+            type = TABBED;
+            NEW monitor {
+                caption = 'Monitor';
+                type = CONTAINERV ;
+                alignment = STRETCH;
+                fill = 1;
+                NEW filters {
+                    type = CONTAINERH;
+                    alignment = STRETCH;
+                    MOVE PROPERTY (nameFilterQuarter()) {caption = 'Autofilter by Quarter';}
+                    MOVE PROPERTY (nameFilterCostCenter()) {alignment = STRETCH; caption = 'Autofilter by CostCenter';}
+                }
+                NEW quarters {
+                    type = SPLITH;
+                    alignment = STRETCH;
+                    fill = 1;
+                    MOVE BOX (qc);
+                    MOVE BOX (d);
+                }
+            }
+            NEW limit {
+                caption = 'Limits';
+                type = CONTAINERH ;
+                alignment = STRETCH;
+                fill = 1;
+                NEW quarterlimit {
+                    width = 400;
+                    alignment = STRETCH;
+                    MOVE BOX (qq) { caption = 'Quarters'; }
+                }
+                NEW limitBudget {
+                    type = CONTAINERV ;
+                    alignment = STRETCH;
+                    fill = 1;
+                    NEW months {
+                        height = 150;  
+                        alignment = STRETCH;
+                        MOVE BOX (b) { REMOVE TOOLBARLEFT(b);}
+                    }
+                    MOVE BOX (cq);
+                }
+            }
         }
     }
 }
