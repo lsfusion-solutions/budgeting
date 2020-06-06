@@ -217,7 +217,11 @@ DESIGN costCenterBudget {
                 NEW monthlyTabPane {
                     type = TABBED;
                     fill = 3;
-                    MOVE BOX(bmd);
+                    NEW budgetDetail {
+                        caption = 'Budget Items';
+                        alignment = STRETCH;
+                        MOVE BOX(bmd);
+                    }
                     NEW monthlyExpense {
                         type = SPLITH;
                         caption = 'Expense Ledger';

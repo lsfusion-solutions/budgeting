@@ -20,11 +20,13 @@ FORM costCenters 'Cost centers'
     OBJECTS c = CostCenter
     PROPERTIES(c) READONLY name,archive
     PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE
+    ORDERS name(c)
 ;
 
 FORM listCostCenters 'Select cost center'
     OBJECTS c = CostCenter
     PROPERTIES(c) READONLY name
+    ORDERS name(c)
 
     FILTERGROUP archive
         FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT

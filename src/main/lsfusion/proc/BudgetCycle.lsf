@@ -71,19 +71,19 @@ currentLimit 'Limit for the quarter' = DATA NUMERIC[16,3] (CostCenter, Budget);
 
 limit 'Limit, USD' (CostCenter c, Budget b) = CASE
         WHEN capCostCenter(b,c) > 0 THEN capCostCenter(b,c) - planned(b,c)
-            WHEN quarterLimitCostCenter(quarterNumber(b),c) > 0 THEN quarterLimitCostCenter(quarterNumber(b),c) - quarterPlanned(c,b)
-                 WHEN capBudget(b) > 0 THEN capBudget(b) - planned(b)
-                      WHEN quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) - quarterPlanned(b);
+        WHEN quarterLimitCostCenter(quarterNumber(b),c) > 0 THEN quarterLimitCostCenter(quarterNumber(b),c) - quarterPlanned(c,b)
+        WHEN capBudget(b) > 0 THEN capBudget(b) - planned(b)
+        WHEN quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) - quarterPlanned(b);
 
-//limitCaption 'Limit caption' (CostCenter c, Budget b) = CASE
-//        WHEN capCostCenter(b,c) THEN 'Remaining Cost Center limit for the Month'
-//            WHEN quarterLimitCostCenterGet(b,c) THEN 'Remaining Cost Center limit for the Quater'
-//                 WHEN capBudget(b) THEN 'Remaining Company limit for the Month'
-//                      WHEN quarterLimitCompanyGet(b) THEN 'Remaining Company limit for the Quater';
+limitCaption 'Limit caption' (CostCenter c, Budget b) = CASE
+        WHEN capCostCenter(b,c) THEN 'Remaining Cost Center limit for the Month'
+        WHEN quarterLimitCostCenter(quarterNumber(b),c) THEN 'Remaining Cost Center limit for the Quater'
+        WHEN capBudget(b) THEN 'Remaining Company limit for the Month'
+        WHEN quarterLimitCompany(quarterNumber(b)) THEN 'Remaining Company limit for the Quater';
 
-//limitDesc 'Limit description, USD'  (CostCenter c, Budget b) = CONCAT ': ', limitCaption(c,b), INTEGER (limit(c,b));
-
-//CONSTRAINT planned(BudgetDetail d) AND limit(costCenter(d), budget(d)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Limit is exceeded';
+limitDesc 'Limit, USD'  (CostCenter c, Budget b) = CONCAT ' ', limitCaption(c,b), INTEGER (limit(c,b)), 'USD';
+EXTEND FORM costCenterBudget PROPERTIES PANEL limitDesc(c,bm) BACKGROUND RGB(204,255,255) SHOWIF limitDesc(c,bm);
+DESIGN costCenterBudget { budgetDetail { MOVE PROPERTY (limitDesc(c,bm)) FIRST { alignment = STRETCH; caption = '';} }}
 
 CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
 
@@ -610,7 +610,7 @@ FORM budgetPortionsOverview 'Quarter Budgets'
     FILTERS qq == quarterNumber(b)
     
     OBJECTS cq = CostCenter
-    PROPERTIES name(cq) READONLY, quarterLimitCostCenter(qq,cq), quarterPlanned(cq,qq) BACKGROUND RGB(204,255,255)
+    PROPERTIES name(cq) READONLY, quarterLimitCostCenter(qq,cq), quarterPlanned(cq,qq) BACKGROUND RGB(204,255,255) // limitDesc(cq,b), 
     PROPERTIES capCostCenter(b,cq) COLUMNS (b) HEADER name(b)
     FILTERS NOT archive(cq)
     
