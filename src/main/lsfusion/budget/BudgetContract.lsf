@@ -14,6 +14,7 @@ number 'Number' = DATA STRING[30] (Contract) CHARWIDTH 10;
 date 'Date' = DATA DATE (Contract);
 validity 'Validity' = DATA DATE (Contract);
 nameContractor 'Contractor' (Contract c) = name(contractor(c));
+taxIDcontractor 'Contractor' (Contract c) = taxID(contractor(c));
 fileLink 'Agreement Link' = DATA LINK(Contract);
 readFile 'Open Contract' (Contract c) {open(fileLink(c));} TOOLBAR ;
 
@@ -89,7 +90,7 @@ EXTEND FORM contractors
     PROPERTIES enableEdit() TOOLBAR
     
     OBJECTS ct = Contract
-    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, validity, nameContractor, note, regularity, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, validity, nameContractor, taxIDcontractor, note, regularity, nameCurrency, amount, amountUSD, fileLink
     PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
     PROPERTIES (ct) readFile SHOWIF fileLink(ct)
 ;
