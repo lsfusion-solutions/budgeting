@@ -73,16 +73,18 @@ limit 'Limit, USD' (CostCenter c, Budget b) = CASE
         WHEN capCostCenter(b,c) > 0 THEN capCostCenter(b,c) - planned(b,c)
         WHEN quarterLimitCostCenter(quarterNumber(b),c) > 0 THEN quarterLimitCostCenter(quarterNumber(b),c) - quarterPlanned(c,b)
         WHEN capBudget(b) > 0 THEN capBudget(b) - planned(b)
-        WHEN quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) - quarterPlanned(b);
+        WHEN quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) - quarterPlanned(b)
+        ELSE NULL;
 
 limitCaption 'Limit caption' (CostCenter c, Budget b) = CASE
         WHEN capCostCenter(b,c) THEN 'Remaining Cost Center limit for the Month'
         WHEN quarterLimitCostCenter(quarterNumber(b),c) THEN 'Remaining Cost Center limit for the Quater'
         WHEN capBudget(b) THEN 'Remaining Company limit for the Month'
-        WHEN quarterLimitCompany(quarterNumber(b)) THEN 'Remaining Company limit for the Quater';
+        WHEN quarterLimitCompany(quarterNumber(b)) THEN 'Remaining Company limit for the Quater'
+        ELSE '';
 
 limitDesc 'Limit, USD'  (CostCenter c, Budget b) = CONCAT ' ', limitCaption(c,b), INTEGER (limit(c,b)), 'USD';
-EXTEND FORM costCenterBudget PROPERTIES PANEL limitDesc(c,bm) BACKGROUND RGB(204,255,255) SHOWIF limitDesc(c,bm);
+EXTEND FORM costCenterBudget PROPERTIES PANEL limitDesc(c,bm) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm);
 DESIGN costCenterBudget { budgetDetail { MOVE PROPERTY (limitDesc(c,bm)) FIRST { alignment = STRETCH; caption = '';} }}
 
 CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
