@@ -275,7 +275,7 @@ assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 
 @defineAssignment(PurchaseOrder, po, enter, 'Product Owner Purchase order Approval',planned);
 @extendPurchaseOrder(enter);
-assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND access(sbj(a),e) AND a IS AssignEnter;
+assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND access(sbj(a),e) AND NOT afg(e) AND a IS AssignEnter;
 
 //--- Procedure: Approve Step ---
 
@@ -301,7 +301,7 @@ assigned(Employee e,AssignApprove a) += TRUE IF (afg(e) OR hasApprove(e)) AND a 
 
 isPayed (PurchaseOrder po) = step(po) == Step.pay;
 WHEN SET(isPayed (PurchaseOrder po)) DO {
-    FOR Employee e AND (author(po) == e OR (hasEnter(e) AND access(po,e))) DO {
+    FOR Employee e AND (author(po) == e OR (hasEnter(e) AND access(po,e))) AND NOT afg(e) DO {
         IF notification(Step.pay) AND email(e) AND NOT disableNotification() THEN {
             sendNotificationFile(generateHeader(po),generateNotification(po),generateDetails(po),email(e),attachmentPayment(po),'Payment Confirmation');
         }
