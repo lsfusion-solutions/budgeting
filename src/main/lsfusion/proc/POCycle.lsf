@@ -85,7 +85,7 @@ EXTEND CLASS Step
 {
     enter 'Entered',
     review 'Approved',
-    approve 'AFG Checked',
+    approve 'AFG Passed',
     reject 'Rejected',
     update 'Update',
     pay 'Paid'

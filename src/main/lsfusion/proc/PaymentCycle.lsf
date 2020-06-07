@@ -20,11 +20,19 @@ CLASS Payment 'Payment'; // bank transaction before reconcile
 TABLE payment (Payment);
 
 datePlan 'Planned Date' = DATA DATE(Payment);
+planned 'Planned payment' = DATA NUMERIC[16,2](Payment);
 
 sbj = ABSTRACT Payment (Assign) MATERIALIZED;
 part = DATA Payment(ExpensePayment); // Payment may contain multiple bank transactions
 
-invoice = DATA Invoice(Payment);
+// Payment initialization
+
+invoiceBudgetExtend 'Invoice Budget' = DATA BOOLEAN (Invoice, BudgetDetail);
+invoiceBudget 'Invoice Budget' (Invoice i, BudgetDetail d) = TRUE IF budgetDetail(i) == d OR invoiceBudgetExtend(i,d);
+invoicePayment = AGGR Payment WHERE invoiceBudget(Invoice invoice, BudgetDetail budgetDetail) MATERIALIZED INDEXED;
+datePlan(Payment p) <- currentDate() WHEN SET (p IS Payment);
+planned(Payment p) <- amount(invoice(p)) WHEN SET (p IS Payment);
+
 nameInvoice 'Invoice' (Payment p) = fullName(invoice(p));
 nameExplain 'Invoice' (Payment p) = nameInvoice(p);
 color 'Color' (Payment o) = RGB(250,200,200) IF urgent(invoice(o));
@@ -33,7 +41,6 @@ plannedAmount 'Total Planned by invoice' (Payment p) = amountName(invoice(p));
 currency 'Currency' (Payment p) = currency(invoice(p));
 nameCurrency 'Currency' (Payment p) = name(currency(p)) IN id;
 
-budgetDetail = DATA BudgetDetail(Payment);
 nameBudget 'Budget' (Payment p) = name(budget(budgetDetail(p))) IN id;
 nameBudgetDetail 'Budget Item' (Payment p) = name(budgetDetail(p)) IN id;
 nameCostItem 'Cost type' (Payment p) = canonicalName(costItem(budgetDetail(p))) IN id;
@@ -47,8 +54,6 @@ countExpenses  'Number of Transactions for Payment' = GROUP SUM 1 BY part(Expens
 countReconcile 'Number of Reconciled Transactions'  = GROUP SUM 1 BY part(Expense i);
 countPayments 'Number of Payments by Invoice' = GROUP SUM 1 BY invoice(Payment i);
 
-planned 'Planned payment' = DATA NUMERIC[16,2](Payment);
-
 // Attachment
 attachmentName (Payment p) = IF countExpenses(p) == 1 THEN 'Payment Confirmation' ELSE 'InvoicesArchive';
 attachment (Payment p) = IF countExpenses(p) == 1 THEN [GROUP LAST file(ExpensePayment i) BY part(i)](p) ELSE NULL;
@@ -58,6 +63,7 @@ attachment (Payment p) = IF countExpenses(p) == 1 THEN [GROUP LAST file(ExpenseP
 @defineStep(payment,'Payment cycle',Payment);
 EXTEND CLASS Step
 {
+    enter 'Entered',
     pause 'Paused',
     reject 'Rejected',
     wait 'Wait',
@@ -70,6 +76,19 @@ generateDetails (Payment s) = STRING(replace(replace(details(notification(step(s
                                                                            'passThreshold(s)', STRING (INTEGER (planned(s))) ));
 @defineNotification(payment,'Payment cycle',Payment,invoice);
 
+// First procedure step initialization
+
+WHEN SET (invoicePayment(Invoice i, BudgetDetail d)) DO {
+    FOR Payment p == invoicePayment(i,d) DO { IF step(part(invoice(p))) == Purchase.Step.approve THEN step(p) <- Step.wait;
+                                                                                                 ELSE step(p) <- Step.enter; }
+}
+WHEN SET (Purchase.stepApprove(PurchaseOrder o)) DO {
+    FOR Payment p IF part(invoice(p)) == o AND stepIn(stepLog(p)) == Step.enter OR stepIn(stepLog(p)) == Step.reject DO stepOut(stepLog(p)) <- Step.wait;
+}
+WHEN SET (Purchase.stepReject(PurchaseOrder o)) DO {
+    FOR Payment p IF part(invoice(p)) == o DO stepOut(stepLog(p)) <- Step.reject;
+}
+
 // Paid definition 
 
 paid 'Paid' (Payment o) = TRUE IF step(o) == Step.pay;
@@ -81,7 +100,6 @@ paidSumReconcile 'Paid sum by Reconcile' = GROUP SUM amount(Expense e) BY purcha
 isPaid 'Paid' (Invoice i) = TRUE IF paid(i) OR paidCash(i) OR paidSumPayment(i) >= amount(i) OR paidSumReconcile(i) >= amount(i);
 EXTEND FORM purchaseOrders PROPERTIES (d) isPaid;
 
-// Payment initialization
 
 //--- execution Forms ---
 
