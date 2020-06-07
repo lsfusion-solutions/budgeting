@@ -6,10 +6,10 @@ NAMESPACE Payment;
 
 EXTEND CLASS Stage 
 {
-    invoice 'Invoice Payment'
+    payment 'Payment'
 }
 onStarted() + { 
-    color(Stage s) <- RGB(240, 255, 225) WHERE s == Stage.invoice; 
+    color(Stage s) <- RGB(240, 255, 225) WHERE s == Stage.payment; 
 }
 
 GROUP rolePayment 'Payment';
@@ -19,29 +19,35 @@ GROUP rolePayment 'Payment';
 CLASS Payment 'Payment'; // bank transaction before reconcile
 TABLE payment (Payment);
 
+datePlan 'Planned Date' = DATA DATE(Payment);
+
 sbj = ABSTRACT Payment (Assign) MATERIALIZED;
 part = DATA Payment(ExpensePayment); // Payment may contain multiple bank transactions
 
 invoice = DATA Invoice(Payment);
 nameInvoice 'Invoice' (Payment p) = fullName(invoice(p));
+nameExplain 'Invoice' (Payment p) = nameInvoice(p);
+color 'Color' (Payment o) = RGB(250,200,200) IF urgent(invoice(o));
+plannedFull 'Planned invoice' (Payment p) = amount(invoice(p));
+plannedAmount 'Total Planned by invoice' (Payment p) = amountName(invoice(p));
+currency 'Currency' (Payment p) = currency(invoice(p));
+nameCurrency 'Currency' (Payment p) = name(currency(p)) IN id;
+
+budgetDetail = DATA BudgetDetail(Payment);
+nameBudget 'Budget' (Payment p) = name(budget(budgetDetail(p))) IN id;
+nameBudgetDetail 'Budget Item' (Payment p) = name(budgetDetail(p)) IN id;
+nameCostItem 'Cost type' (Payment p) = canonicalName(costItem(budgetDetail(p))) IN id;
+nameCostCenter 'Cost Center' (Payment p) = name(costCenter(budgetDetail(p))) IN id;
 
 // Extend basic items
-costItemPayment (ExpensePayment p) = costItem(budgetDetail(invoice(part(p))));
-nameCostItemPayment 'Cost type' (ExpensePayment l) = canonicalName(costItemPayment(l)) IN id;
-
-costCenterPayment (ExpensePayment p) = costCenter(budgetDetail(invoice(part(p))));
-nameCostCenterPayment 'Cost Center' (ExpensePayment l) = name(costCenterPayment(l)) IN id;
-
-currencyPayment (ExpensePayment p) = currency(invoice(part(p)));
-nameCurrencyPayment 'Currency' (ExpensePayment e) = name(currencyPayment(e));
-amountUSDproc 'Amount, USD' (ExpensePayment i) = NUMERIC[16,2](round2(amountProc(i) / defaultRateOn(currencyPayment(i), (OVERRIDE dateProc(i),currentDate()))));
+amountUSDproc 'Amount, USD' (ExpensePayment i) = NUMERIC[16,2](round2(amountProc(i) / defaultRateOn(currency(part(i)), (OVERRIDE dateProc(i),currentDate()))));
+reconcile 'Reconciled' (ExpensePayment e) = TRUE IF e IS Expense;
 
 countExpenses  'Number of Transactions for Payment' = GROUP SUM 1 BY part(ExpensePayment i);
 countReconcile 'Number of Reconciled Transactions'  = GROUP SUM 1 BY part(Expense i);
 countPayments 'Number of Payments by Invoice' = GROUP SUM 1 BY invoice(Payment i);
 
 planned 'Planned payment' = DATA NUMERIC[16,2](Payment);
-plannedFull 'Planned invoice' (Payment p) = amount(invoice(p));
 
 // Attachment
 attachmentName (Payment p) = IF countExpenses(p) == 1 THEN 'Payment Confirmation' ELSE 'InvoicesArchive';
@@ -49,7 +55,7 @@ attachment (Payment p) = IF countExpenses(p) == 1 THEN [GROUP LAST file(ExpenseP
 
 //--- Initialize Procedure ---
 
-@defineStep(invoice,'Payment cycle',Payment);
+@defineStep(payment,'Payment cycle',Payment);
 EXTEND CLASS Step
 {
     pause 'Paused',
@@ -62,7 +68,7 @@ EXTEND CLASS Step
 generateDetails (Payment s) = STRING(replace(replace(details(notification(step(s))),
                                                                            'invoice(s)', nameInvoice(s)),
                                                                            'passThreshold(s)', STRING (INTEGER (planned(s))) ));
-@defineNotification(invoice,'Payment cycle',Payment,invoice);
+@defineNotification(payment,'Payment cycle',Payment,invoice);
 
 // Paid definition 
 
@@ -73,8 +79,135 @@ paidSum 'Paid Sum' (Payment p) = paidSumExpense(p) (+) paidSumReconcile(p);
 paidSumPayment   'Paid sum by Payments' (Invoice p) = GROUP SUM paidSum(Payment e) BY invoice(e);
 paidSumReconcile 'Paid sum by Reconcile' = GROUP SUM amount(Expense e) BY purchaseInvoice(e);
 isPaid 'Paid' (Invoice i) = TRUE IF paid(i) OR paidCash(i) OR paidSumPayment(i) >= amount(i) OR paidSumReconcile(i) >= amount(i);
+EXTEND FORM purchaseOrders PROPERTIES (d) isPaid;
 
 // Payment initialization
 
-//--- Initialize Procedure ---
+//--- execution Forms ---
 
+META extendPayment (form)
+    EXTEND FORM ##form
+        PROPERTIES(o) READONLY nameInvoice, plannedAmount
+        PROPERTIES(o) nameBudget, nameBudgetDetail, nameCostItem, nameCostCenter, datePlan, planned
+        
+        OBJECTS e = ExpensePayment
+        PROPERTIES (e) dateProc, amountProc BACKGROUND RGB(200,250,200), reconcile
+        PROPERTIES (e) PANEL loadPayment, openPayment SHOWIF hasPayment(e)
+        PROPERTIES (e) NEW, DELETE
+        FILTERS part(e) == o
+        
+        OBJECTS d = Invoice PANEL
+        PROPERTIES (d) nameContractor, nameContract, open
+        FILTERS d == invoice(o)
+        
+        OBJECTS log = Purchase.StepLog
+        PROPERTIES (log) userNameIn, dateTimeIn, nameIn
+        ORDERS dateTimeIn(log) DESC
+        FILTERS sbj(log) == part(invoice(o))
+    ;
+
+    DESIGN ##form {
+        OBJECTS {
+            NEW pane FIRST {
+                fill = 1;
+                alignment = STRETCH;
+                type = CONTAINERV;
+                NEW payment {
+                    type = CONTAINERH;
+                    fill = 1;
+                    alignment = STRETCH;
+                    NEW headerPart {
+                        alignment = STRETCH;
+                        type = CONTAINERV;
+                        MOVE PROPERTY(nameInvoice(o));
+                        MOVE PROPERTY(plannedAmount(o));
+                        MOVE PROPERTY(planned(o));
+                        MOVE PROPERTY(datePlan(o));
+                        MOVE PROPERTY(nameBudget(o));
+                        MOVE PROPERTY(nameBudgetDetail(o));
+                        MOVE PROPERTY(nameCostItem(o));
+                        MOVE PROPERTY(nameCostCenter(o));
+                    }
+                    NEW expense {
+                        width = 400;
+                        alignment = STRETCH;
+                        MOVE BOX (e);
+                        NEW filePayment {
+                            type = CONTAINERH;
+                            alignment = STRETCH;
+                            caption = 'Payment Confirmation';
+                            MOVE PROPERTY (loadPayment(e));// { height = 40;}
+                            MOVE PROPERTY (openPayment(e));// { height = 40;}  
+                        }
+                    }
+                }
+                NEW proposal {
+                    type = CONTAINERV;
+                    fill = 1;
+                    alignment = STRETCH;
+                    NEW detailsPanel {
+                        type = CONTAINERH;
+                        alignment = STRETCH;
+                        fill = 1;
+                        NEW details {
+                            fill = 1;
+                            //width = 400;
+                            alignment = STRETCH;
+                            type = CONTAINERV;
+                            //MOVE PROPERTY (costItemName(d)) {alignment = STRETCH;}
+                            NEW contractor {
+                                type = COLUMNS;
+                                alignment = STRETCH;
+                                caption = 'Supplier details';
+                                //MOVE PROPERTY (supply(d));
+                                //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                                MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
+                                MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
+                            }
+                            NEW files {
+                                type = CONTAINERH;
+                                alignment = STRETCH;
+                                caption = 'Attachment file';
+                                //MOVE PROPERTY (load(d));// { height = 40;}
+                                MOVE PROPERTY (open(d));// { height = 40;}
+                            }
+                        }
+                        NEW historyTab {
+                            type = CONTAINERV;
+                            width  = 600;
+                            height = 250;
+                            caption = 'Approval steps'; 
+                            fill = 1;
+                            alignment = STRETCH;
+                            MOVE BOX(log) { 
+                                PROPERTY (userNameIn(log)) { caption = 'Executed by'; }
+                                PROPERTY (dateTimeIn(log)) { caption = 'Date/Time'; }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //TOOLBAR {
+        //    MOVE PROPERTY(new);
+        //    MOVE PROPERTY(delete);
+        //}
+    }    
+END
+
+//--- Procedure: Transaction Step ---
+
+@defineAssignment(Payment, payment, wait, 'Pay by approved Invoice',planned);
+@extendPayment(wait);
+assigned(Employee e,AssignWait a) += TRUE IF hasWait(e) AND a IS AssignWait;
+
+
+//--- Procedure buttons ---
+
+hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = CASE EXCLUSIVE 
+            WHEN stepIn(l) == Step.wait AND stepOut == Step.reconcile THEN TRUE 
+            ELSE NULL;
+
+@buttonDecisions(wait,reject,'Reject payment');
+@buttonDecisions(wait,pause,'Postpone payment');
+@buttonDecisions(wait,pay,'The payment was done');

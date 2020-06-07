@@ -8,7 +8,8 @@ CLASS ExpensePayment 'Payment'; // bank transaction before reconcile
 TABLE expensepayment (ExpensePayment);
 
 dateProc 'Date' = DATA DATE (ExpensePayment) IN id NONULL;
-dateProc(ExpensePayment p) <- currentDate() WHEN SET(p IS ExpensePayment); 
+//dateProc(ExpensePayment p) <- currentDate() WHEN SET (p IS ExpensePayment);
+WHEN LOCAL SET (ExpensePayment p IS ExpensePayment) DO dateProc(p) <- currentDate();
 
 amountProc 'Amount' = DATA NUMERIC[16,2] (ExpensePayment) IN id NONULL;
 
