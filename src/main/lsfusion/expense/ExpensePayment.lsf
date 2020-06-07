@@ -1,0 +1,20 @@
+MODULE ExpensePayment;
+
+REQUIRE ExpenseLedger, POCycle, Time;
+
+NAMESPACE Payment;
+
+CLASS ExpensePayment 'Payment'; // bank transaction before reconcile
+TABLE expensepayment (ExpensePayment);
+
+dateProc 'Date' = DATA DATE (ExpensePayment) IN id NONULL;
+dateProc(ExpensePayment p) <- currentDate() WHEN SET(p IS ExpensePayment); 
+
+amountProc 'Amount' = DATA NUMERIC[16,2] (ExpensePayment) IN id NONULL;
+
+file = DATA FILE (ExpensePayment);
+hasPayment (ExpensePayment i) = TRUE IF file(i); 
+openPayment 'Open Payment Confirmation' (ExpensePayment i)  { open(file(i)); }
+loadPayment 'Load Payment Confirmation' (ExpensePayment i)  { INPUT =file(i) CHANGE; }
+
+EXTEND CLASS Expense : ExpensePayment;

@@ -52,6 +52,7 @@ balance 'Balance Remain, USD' (BudgetDetail d, DATE date) = IF date IS DATE THEN
 balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),(OVERRIDE date(d),currentDate())) CHARWIDTH 10;
 CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
 amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
+fullName 'Invoice name' (Invoice i) = CONCAT ' ',number(i),'dated',date(i),'for',amountName(i);
 
 quarterInvoiced 'Invoiced, USD' (CostCenter c, INTEGER q) = GROUP SUM invoiced(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
 quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balance(BudgetDetail d, currentDate()) IF q == quarterNumber(budget(d)) AND c == costCenter(d);

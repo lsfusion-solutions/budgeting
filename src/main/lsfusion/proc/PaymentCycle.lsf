@@ -1,8 +1,8 @@
 MODULE PaymentCycle;
 
-REQUIRE Step, Expense;
+REQUIRE POCycle, BudgetExpenseReconcile, ExpensePayment;
 
-NAMESPACE Expense;
+NAMESPACE Payment;
 
 EXTEND CLASS Stage 
 {
@@ -11,3 +11,70 @@ EXTEND CLASS Stage
 onStarted() + { 
     color(Stage s) <- RGB(240, 255, 225) WHERE s == Stage.invoice; 
 }
+
+GROUP rolePayment 'Payment';
+
+//--- Objects --
+
+CLASS Payment 'Payment'; // bank transaction before reconcile
+TABLE payment (Payment);
+
+sbj = ABSTRACT Payment (Assign) MATERIALIZED;
+part = DATA Payment(ExpensePayment); // Payment may contain multiple bank transactions
+
+invoice = DATA Invoice(Payment);
+nameInvoice 'Invoice' (Payment p) = fullName(invoice(p));
+
+// Extend basic items
+costItemPayment (ExpensePayment p) = costItem(budgetDetail(invoice(part(p))));
+nameCostItemPayment 'Cost type' (ExpensePayment l) = canonicalName(costItemPayment(l)) IN id;
+
+costCenterPayment (ExpensePayment p) = costCenter(budgetDetail(invoice(part(p))));
+nameCostCenterPayment 'Cost Center' (ExpensePayment l) = name(costCenterPayment(l)) IN id;
+
+currencyPayment (ExpensePayment p) = currency(invoice(part(p)));
+nameCurrencyPayment 'Currency' (ExpensePayment e) = name(currencyPayment(e));
+amountUSDproc 'Amount, USD' (ExpensePayment i) = NUMERIC[16,2](round2(amountProc(i) / defaultRateOn(currencyPayment(i), (OVERRIDE dateProc(i),currentDate()))));
+
+countExpenses  'Number of Transactions for Payment' = GROUP SUM 1 BY part(ExpensePayment i);
+countReconcile 'Number of Reconciled Transactions'  = GROUP SUM 1 BY part(Expense i);
+countPayments 'Number of Payments by Invoice' = GROUP SUM 1 BY invoice(Payment i);
+
+planned 'Planned payment' = DATA NUMERIC[16,2](Payment);
+plannedFull 'Planned invoice' (Payment p) = amount(invoice(p));
+
+// Attachment
+attachmentName (Payment p) = IF countExpenses(p) == 1 THEN 'Payment Confirmation' ELSE 'InvoicesArchive';
+attachment (Payment p) = IF countExpenses(p) == 1 THEN [GROUP LAST file(ExpensePayment i) BY part(i)](p) ELSE NULL;
+
+//--- Initialize Procedure ---
+
+@defineStep(invoice,'Payment cycle',Payment);
+EXTEND CLASS Step
+{
+    pause 'Paused',
+    reject 'Rejected',
+    wait 'Wait',
+    pay 'Paid',
+    reconcile 'Reconciled'
+}
+
+generateDetails (Payment s) = STRING(replace(replace(details(notification(step(s))),
+                                                                           'invoice(s)', nameInvoice(s)),
+                                                                           'passThreshold(s)', STRING (INTEGER (planned(s))) ));
+@defineNotification(invoice,'Payment cycle',Payment,invoice);
+
+// Paid definition 
+
+paid 'Paid' (Payment o) = TRUE IF step(o) == Step.pay;
+paidSumExpense   = GROUP SUM amountProc(ExpensePayment e) IF paid(part(e)) BY part(e);
+paidSumReconcile = GROUP SUM amount(Expense e) BY part(e);
+paidSum 'Paid Sum' (Payment p) = paidSumExpense(p) (+) paidSumReconcile(p);
+paidSumPayment   'Paid sum by Payments' (Invoice p) = GROUP SUM paidSum(Payment e) BY invoice(e);
+paidSumReconcile 'Paid sum by Reconcile' = GROUP SUM amount(Expense e) BY purchaseInvoice(e);
+isPaid 'Paid' (Invoice i) = TRUE IF paid(i) OR paidCash(i) OR paidSumPayment(i) >= amount(i) OR paidSumReconcile(i) >= amount(i);
+
+// Payment initialization
+
+//--- Initialize Procedure ---
+
