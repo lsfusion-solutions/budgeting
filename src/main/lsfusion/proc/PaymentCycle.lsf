@@ -30,8 +30,6 @@ part = DATA Payment(ExpensePayment); // Payment may contain multiple bank transa
 invoiceBudgetExtend 'Invoice Budget' = DATA BOOLEAN (Invoice, BudgetDetail);
 invoiceBudget 'Invoice Budget' (Invoice i, BudgetDetail d) = TRUE IF budgetDetail(i) == d OR invoiceBudgetExtend(i,d);
 invoicePayment = AGGR Payment WHERE invoiceBudget(Invoice invoice, BudgetDetail budgetDetail) MATERIALIZED INDEXED;
-datePlan(Payment p) <- currentDate() WHEN SET (p IS Payment);
-planned(Payment p) <- amount(invoice(p)) WHEN SET (p IS Payment);
 
 nameInvoice 'Invoice' (Payment p) = fullName(invoice(p));
 nameExplain 'Invoice' (Payment p) = nameInvoice(p);
@@ -40,6 +38,7 @@ plannedFull 'Planned invoice' (Payment p) = amount(invoice(p));
 plannedAmount 'Total Planned by invoice' (Payment p) = amountName(invoice(p));
 currency 'Currency' (Payment p) = currency(invoice(p));
 nameCurrency 'Currency' (Payment p) = name(currency(p)) IN id;
+plannedUSD 'Planned payment, USD' (Payment i) = NUMERIC[16,2](round2(planned(i) / defaultRateOn(currency(i), (OVERRIDE datePlan(i),currentDate()))));;
 
 nameBudget 'Budget' (Payment p) = name(budget(budgetDetail(p))) IN id;
 nameBudgetDetail 'Budget Item' (Payment p) = name(budgetDetail(p)) IN id;
@@ -51,8 +50,17 @@ amountUSDproc 'Amount, USD' (ExpensePayment i) = NUMERIC[16,2](round2(amountProc
 reconcile 'Reconciled' (ExpensePayment e) = TRUE IF e IS Expense;
 
 countExpenses  'Number of Transactions for Payment' = GROUP SUM 1 BY part(ExpensePayment i);
+sumExpenses 'Sum of Transactions by Payment' =  GROUP SUM amountProc(ExpensePayment p) BY part(p);
 countReconcile 'Number of Reconciled Transactions'  = GROUP SUM 1 BY part(Expense i);
-countPayments 'Number of Payments by Invoice' = GROUP SUM 1 BY invoice(Payment i);
+countPayments 'Number of Payments by Invoice' =       GROUP SUM 1 BY invoice(Payment i);
+multiplePayments 'Multiple Payments' (Invoice i) = TRUE IF countPayments(i) > 1;
+sumPayments 'Sum of Payments by Invoice' =      GROUP SUM planned(Payment p) BY invoice(p);
+
+payments 'Reserved, USD' = GROUP SUM plannedUSD(Payment p) IF NOT (budgetDetail(invoice(p)) == budgetDetail(p)) BY budgetDetail(p);
+EXTEND FORM costCenterBudget PROPERTIES (bmd) payments SHOWIF afg(currentUser()) AFTER invoiced(bmd);
+
+CONSTRAINT sumExpenses(Payment i) > planned(i) CHECKED BY amountProc[ExpensePayment] MESSAGE 'Transaction amount exceeds the Payment sum';
+CONSTRAINT sumPayments(Invoice i) > amount(i)  CHECKED BY planned[Payment]           MESSAGE 'Planned Payment exceeds sum by the Invoice';
 
 // Attachment
 attachmentName (Payment p) = IF countExpenses(p) == 1 THEN 'Payment Confirmation' ELSE 'InvoicesArchive';
@@ -76,18 +84,97 @@ generateDetails (Payment s) = STRING(replace(replace(details(notification(step(s
                                                                            'passThreshold(s)', STRING (INTEGER (planned(s))) ));
 @defineNotification(payment,'Payment cycle',Payment,invoice);
 
-// First procedure step initialization
+// Procedure steps initialization
 
 WHEN SET (invoicePayment(Invoice i, BudgetDetail d)) DO {
-    FOR Payment p == invoicePayment(i,d) DO { IF step(part(invoice(p))) == Purchase.Step.approve THEN step(p) <- Step.wait;
-                                                                                                 ELSE step(p) <- Step.enter; }
+    FOR Payment p == invoicePayment(i,d) DO {
+        IF budgetDetail(i) == d THEN {  // set by author
+            planned(p) <- amount(invoice(p));
+            IF step(part(invoice(p))) == Purchase.Step.approve THEN { // passed limits automotically
+                step(p) <- Step.wait; 
+                datePlan(p) <- currentDate();
+            }
+            ELSE {
+                step(p) <- Step.enter;
+                planned(p) <- amount(i);
+            }
+        }
+        ELSE { // set by AFG
+            step(p) <- Step.pause;
+            datePlan(p) <- fromDate(budget(d));
+            planned(p) <- amount(i) - sumPayments(i);
+        }
+    }
 }
 WHEN SET (Purchase.stepApprove(PurchaseOrder o)) DO {
-    FOR Payment p IF part(invoice(p)) == o AND stepIn(stepLog(p)) == Step.enter OR stepIn(stepLog(p)) == Step.reject DO stepOut(stepLog(p)) <- Step.wait;
+    FOR Payment p IF part(invoice(p)) == o AND stepIn(stepLog(p)) == Step.enter OR stepIn(stepLog(p)) == Step.reject DO {
+        IF datePlan(p) > currentDate() THEN stepOut(stepLog(p)) <- Step.pause;
+        ELSE stepOut(stepLog(p)) <- Step.wait;
+        IF NOT datePlan(p) THEN datePlan(p) <- currentDate();
+    }
 }
 WHEN SET (Purchase.stepReject(PurchaseOrder o)) DO {
     FOR Payment p IF part(invoice(p)) == o DO stepOut(stepLog(p)) <- Step.reject;
 }
+schedulerPaymentUpdate 'Resume actual payments from pause mode' () {
+    FOR Payment p IF stepIn(stepLog(p)) == Step.pause AND currentDate() >= datePlan(p) DO stepOut(stepLog(p)) <- Step.wait;
+}
+
+// Split Invoice by payments
+
+inBudgetDetail = DATA LOCAL BOOLEAN (BudgetDetail);
+enableEditBudgetDetail 'Enable edit Budget Items' = DATA LOCAL BOOLEAN ();
+plannedPayment 'Planned sum for the split payment' = DATA LOCAL NUMERIC[16,2] ();
+FORM sortedBudgetDetails 'Budget Details'
+    OBJECTS c = CostCenter PANEL
+    PROPERTIES (c) READONLY name
+    
+    OBJECTS t = CostItem PANEL
+    PROPERTIES (t) READONLY canonicalName
+    
+    OBJECTS date = DATE PANEL 
+    
+    OBJECTS b = Budget
+    PROPERTIES (b) READONLY name, fromDate SHOWIF NULL 
+    ORDERS fromDate(b)
+    FILTERS fromDate(b) > date
+
+    OBJECTS d=BudgetDetail
+    PROPERTIES(d) inBudgetDetail
+    PROPERTIES(d) READONLYIF NOT enableEditBudgetDetail() name
+    //PROPERTIES(d) SHOWIF enableEditBudgetDetail() NEW, DELETE 
+    FILTERS costCenter(d) == c AND costItem(d) == t AND budget(d) == b,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
+    
+    PROPERTIES () plannedPayment BACKGROUND RGB(200,250,200), enableEditBudgetDetail TOOLBAR DRAW d
+;
+DESIGN sortedBudgetDetails {
+    size = (800, 480);
+    OBJECTS {
+        fill = 1;
+        alignment = STRETCH;
+        MOVE PROPERTY (name(c));
+        MOVE PROPERTY (canonicalName(t));
+        NEW budget {
+            fill = 1;
+            alignment = STRETCH;
+            type = CONTAINERH;
+            MOVE BOX (b) {fill = 1;}
+            MOVE BOX (d) {fill = 4;}
+        }
+        MOVE PROPERTY (plannedPayment());
+    }
+}
+
+addPayment 'Split Payment' (Payment p)  { 
+    inBudgetDetail(BudgetDetail d) <- NULL;
+    plannedPayment() <- 0;
+    DIALOG sortedBudgetDetails OBJECTS c = costCenter(budgetDetail(p)), t = costItem(budgetDetail(p)), date = toDate(budget(budgetDetail(p))) DO {
+        invoiceBudgetExtend(invoice(p), BudgetDetail d) <- TRUE WHERE inBudgetDetail(d);
+        planned(p) <- planned(p) - plannedPayment();
+    }
+    APPLY;
+} TOOLBAR;
 
 // Paid definition 
 
@@ -105,8 +192,15 @@ EXTEND FORM purchaseOrders PROPERTIES (d) isPaid;
 
 META extendPayment (form)
     EXTEND FORM ##form
-        PROPERTIES(o) READONLY nameInvoice, plannedAmount
-        PROPERTIES(o) nameBudget, nameBudgetDetail, nameCostItem, nameCostCenter, datePlan, planned
+        PROPERTIES (o) datePlan BACKGROUND RGB(200,250,200), planned
+        PROPERTIES (o) SHOWIF NOT multiplePayments(invoice(o)) addPayment PANEL
+        PROPERTIES (o) READONLY nameInvoice, plannedAmount, nameBudget, nameBudgetDetail, nameCostItem, nameCostCenter
+        
+        OBJECTS p = Payment
+        PROPERTIES (p) SHOWIF multiplePayments(invoice(o)) datePlan, planned
+        PROPERTIES (p) SHOWIF multiplePayments(invoice(o)) addPayment
+        PROPERTIES (p) SHOWIF multiplePayments(invoice(o)) READONLY nameBudget, nameBudgetDetail
+        FILTERS invoice(o) == invoice(p)
         
         OBJECTS e = ExpensePayment
         PROPERTIES (e) dateProc, amountProc BACKGROUND RGB(200,250,200), reconcile
@@ -137,6 +231,7 @@ META extendPayment (form)
                     NEW headerPart {
                         alignment = STRETCH;
                         type = CONTAINERV;
+                        fill = 1;
                         MOVE PROPERTY(nameInvoice(o));
                         MOVE PROPERTY(plannedAmount(o));
                         MOVE PROPERTY(planned(o));
@@ -145,10 +240,13 @@ META extendPayment (form)
                         MOVE PROPERTY(nameBudgetDetail(o));
                         MOVE PROPERTY(nameCostItem(o));
                         MOVE PROPERTY(nameCostCenter(o));
+                        MOVE PROPERTY(addPayment(o));
+                        MOVE BOX(p);
                     }
                     NEW expense {
                         width = 400;
                         alignment = STRETCH;
+                        caption = 'This Payment';
                         MOVE BOX (e);
                         NEW filePayment {
                             type = CONTAINERH;
@@ -218,7 +316,6 @@ END
 @defineAssignment(Payment, payment, wait, 'Pay by approved Invoice',planned);
 @extendPayment(wait);
 assigned(Employee e,AssignWait a) += TRUE IF hasWait(e) AND a IS AssignWait;
-
 
 //--- Procedure buttons ---
 
