@@ -86,6 +86,7 @@ readonly (BudgetDetail d, CostCenter c) = monthReadonlyDate() > toDate(budget(d)
 budget = ABSTRACT Budget (ExpenseLedger) MATERIALIZED INDEXED;
 budgetDetail = ABSTRACT BudgetDetail (ExpenseLedger) MATERIALIZED INDEXED;
 spent 'Spent, USD' (BudgetDetail d) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budgetDetail(l);
+spentInteger 'Spent, USD' (BudgetDetail d) = INTEGER (spent(d));
 
 planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d), costItem(d), costCenter(d) CHARWIDTH 8; 
 childPlanned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) AND NOT hidden(d) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
@@ -102,9 +103,12 @@ optimizedPlanned 'Optimized, USD'  (Budget b, CostCenter cp) = GROUP  SUM optimi
 optimized 'Optimized, %' (Budget b, CostCenter cp) = NUMERIC[16,2](100.0 - (optimizedPlanned(b, cp) * 100.0 / planned(b, cp)));
 insensitivePlanned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT sensitive(d) AND NOT hidden(d) BY budget(d), costCenter(d); 
 spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costCenter(l); 
+spentInteger 'Spent, USD' (Budget b,CostCenter c) = INTEGER (spent(b,c));
 
 planned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d); 
+plannedInteger 'Planned, USD' (Budget b) = INTEGER (planned(b));
 spent 'Spent, USD' (Budget b) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l); 
+spentInteger 'Spent, USD' (Budget b) = INTEGER (spent(b));
 
 FORM budget 'Budget'
     OBJECTS b = Budget PANEL
@@ -194,7 +198,7 @@ DESIGN budget {
 
 FORM budgets 'Budgets'
     OBJECTS b = Budget
-    PROPERTIES(b) READONLY name, fromDate, toDate, planned, spent
+    PROPERTIES(b) READONLY name, fromDate, toDate, plannedInteger, spent
     PROPERTIES(b) NEWSESSION NEW, EDIT, DELETE
 ;
 

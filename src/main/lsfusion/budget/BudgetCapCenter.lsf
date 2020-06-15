@@ -181,7 +181,7 @@ EXTEND FORM costCenterBudget
     FILTERS selected(bm, c)
     
     OBJECTS bmd = BudgetDetail
-    PROPERTIES(bmd) READONLYIF readonlyProc(bmd, c) canonicalNameCostItem, name, planned, invoiced, spent, description PANEL, sensitive, NEW, DELETE
+    PROPERTIES(bmd) READONLYIF readonlyProc(bmd, c) canonicalNameCostItem, name, planned, invoiced, spentInteger, description PANEL, sensitive, NEW, DELETE
     //PROPERTIES(bmd) optimizedPlanned AFTER spent(bmd)
     //PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
     FILTERS costCenter(bmd) == c,
@@ -274,11 +274,11 @@ backgroundSpent (Budget b, CostCenter c) = CASE WHEN spent(b, c) > averageBudget
 backgroundSpent (Budget b, CostItem i, CostCenter c) = CASE WHEN childSpent(b, i, c) > averageCap(b, i, c) THEN RGB (255,192,192)
                                                                      WHEN childSpent(b, i, c) < averageCap(b, i, c) THEN RGB (192,255,192);
 EXTEND FORM budgets
-    PROPERTIES(b) READONLY totalCap BEFORE planned(b)
+    PROPERTIES(b) READONLY totalCap BEFORE plannedInteger(b)
 ;
 
 EXTEND FORM costCenterBudget 
-    PROPERTIES(bm, c) spent BACKGROUND backgroundSpent(bm, c), averageCap; //  BEFORE planned(bm, c)
+    PROPERTIES(bm, c) spentInteger BACKGROUND backgroundSpent(bm, c);//, averageCap; //  BEFORE planned(bm, c)
 
 FORM dialogMoveBudget 'Budgets'
     OBJECTS d = BudgetDetail PANEL 

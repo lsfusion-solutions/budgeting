@@ -57,7 +57,7 @@ fullName 'Invoice name' (Invoice i) = CONCAT ' ',number(i),'dated',date(i),'for'
 quarterInvoiced 'Invoiced, USD' (CostCenter c, INTEGER q) = GROUP SUM invoiced(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
 quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balance(BudgetDetail d, currentDate()) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
 EXTEND FORM budgetPortionsOverview 
-PROPERTIES(c,q) AFTER quarterPlanned(c,q) quarterInvoiced, quarterBalance BACKGROUND RGB (200,250,200)
+PROPERTIES(c,q) AFTER quarterPlannedInteger(c,q) quarterInvoiced, quarterBalance BACKGROUND RGB (200,250,200)
 PROPERTIES invoiced(d), balanceItem=balance(d,currentDate()) DRAW d BACKGROUND RGB (200,250,200), spent(d)
 ; 
 DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Remain, USD'; }}

@@ -244,7 +244,7 @@ META extendPayment (form)
                         MOVE BOX(p);
                     }
                     NEW expense {
-                        width = 400;
+                        width = 500;
                         alignment = STRETCH;
                         caption = 'This Payment';
                         MOVE BOX (e);

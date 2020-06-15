@@ -51,9 +51,13 @@ quarter = GROUP AGGR Budget b BY quarterNumber(b);
 
 quarterPlanned 'Planned, USD' (CostCenter c, Budget q) = GROUP SUM planned(BudgetDetail d) IF quarterNumber(q) == quarterNumber(budget(d)) AND c == costCenter(d);
 quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterPlannedInteger 'Planned, USD' (CostCenter c, INTEGER q) = INTEGER (quarterPlanned(c,q));
 quarterPlanned 'Planned, USD' (Budget q) = GROUP SUM quarterPlanned(CostCenter c, q);
+quarterPlannedInteger 'Planned, USD' (Budget q) = INTEGER (quarterPlanned(q));
 quarterPlanned 'Planned, USD' (INTEGER q) = GROUP SUM quarterPlanned(CostCenter c, q);
-quarterSpent 'Spent, USD' (CostCenter c, INTEGER q) = GROUP SUM spent(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterPlannedInteger 'Planned, USD' (INTEGER q) = INTEGER (quarterPlanned(q));
+quarterSpent 'Spent, USD' = GROUP SUM spent(Budget d, CostCenter c) BY c,quarterNumber(d);
+quarterSpentInteger 'Spent, USD' (CostCenter c, INTEGER q) = INTEGER (quarterSpent(c,q));
 
 // Limits
 capBudget 'Month Cap for Company, USD' = DATA NUMERIC[16,3] (Budget);
@@ -235,7 +239,7 @@ DESIGN budgetPortions {
 //--- Procedure: Init and Update Steps ---
 
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal editing',planned);
-assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e OR (access(sbj(a),e) AND hasUpdate(e)) AND a IS AssignUpdate;// OR access(sbj(a),e);
+assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;// OR (access(sbj(a),e) AND hasUpdate(e)) // OR access(sbj(a),e);
 @buttonDecisions(update,enter,'Send the Budget Proposal for Review');
 
 userEntered 'Send all new records for Review' () { 
@@ -254,8 +258,8 @@ centerEntered 'Send all new records for Review' (CostCenter c) {
 } TOOLBAR;
 centerUpdated 'New proposals within this Cost Center exist' (CostCenter c) = // independent from the process status. Otherwise a stepIn/Out filter needed like commented below
             TRUE IF [GROUP SUM 1 IF sbj(StepLog l) == part(BudgetDetail d) BY costCenter(sbj(l))](c); // AND stepIn(l) = Step.update AND NOT stepOut(l)
-EXTEND FORM costCenterBudget PROPERTIES centerEntered(c) SHOWIF centerUpdated(c);
-DESIGN costCenterBudget { BOX (bm) {TOOLBAR {MOVE PROPERTY(centerEntered(c)); } } }
+//EXTEND FORM costCenterBudget PROPERTIES centerEntered(c) SHOWIF centerUpdated(c);
+//DESIGN costCenterBudget { BOX (bm) {TOOLBAR {MOVE PROPERTY(centerEntered(c)); } } }
 
 //--- Procedure: Review and Review Updated Steps ---
 
@@ -572,6 +576,8 @@ EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FI
 quarterName 'Quarter' (INTEGER q) =  STRING[4](floor(q/10)) + ' \'Q' + STRING[1] (q - floor(q/10)*10);
 
 quarterProposal 'Budgeting status' (CostCenter c, INTEGER q) = GROUP LAST nameStep(part(BudgetDetail d)) IF q == quarterNumber(budget(d)) AND c == costCenter(d) ORDER dateTime(part(d)) CHARWIDTH 10;
+spentLevel 'Spent, USD' = GROUP SUM spentLevel(Budget b, CostItem i, CostCenter c) BY quarterNumber(b),i,c;
+invoiced 'Invoiced, USD' = GROUP SUM invoiced(Budget b, CostCenter cp) BY cp,quarterNumber(b);
 
 filterCostCenter = DATA LOCAL NESTED CostCenter();
 nameFilterCostCenter 'CostCenter' () = name(filterCostCenter());
@@ -579,13 +585,92 @@ filterQuarter = DATA LOCAL NESTED Budget ();
 nameFilterQuarter 'Quarter' () = quarterName(quarterNumber(filterQuarter()));
 realQuarter 'The Integer fits quarter' = GROUP SUM 1 BY quarterNumber(Budget b);
 
+EXTEND FORM costCenterBudget
+    OBJECTS q = INTEGER
+    PROPERTIES(q) quarterName // VALUE SHOWIF NULL 
+    PROPERTIES (c,q) quarterPlannedInteger, invoiced, quarterSpentInteger
+    ORDERS quarterName(q) DESC
+    FILTERS quarterPlanned(c,q) > 0
+    
+    OBJECTS bqd = BudgetDetail
+    PROPERTIES(bqd) READONLY nameBudget, canonicalNameCostItem, name, planned, invoiced, spentInteger, description PANEL, sensitive
+    FILTERS costCenter(bqd) == c,
+            quarterNumber(budget(bqd)) == q,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))
+    ORDERS planned(bqd) DESC 
+            
+    TREE costItemsQ ciq = CostItem PARENT parent(ciq)
+    PROPERTIES(ciq) READONLY order, name
+    PROPERTIES(q, ciq, c) READONLY spentLevel
+    ORDERS order(ciq)
+    
+    OBJECTS peq = ExpenseLedger
+    PROPERTIES(peq) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS (hideSensitive(mainRole(currentUser())) AND NOT sensitive(peq)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT skip(peq),
+            costCenter(peq) = c,
+            quarterNumber(budget(peq)) == q,
+            level(costItem(peq), ciq)
+    ORDERS amountUSD(peq) DESC
+    
+    OBJECTS iq = Invoice
+    PROPERTIES(iq) READONLY date, number, nameSupplier, nameCurrency, amount, approved, dateTimeApproved, nameUserApproved, note
+    FILTERS budgetDetail(iq) = bqd
+;
+
+DESIGN costCenterBudget {
+    pane {
+        NEW quarterPane {
+            caption = 'Quarterly';
+            type = SPLITH;
+            MOVE BOX(q) {
+                caption = 'Quarters';
+            }
+            NEW quarterDetailPane {
+                fill = 3;
+                type = SPLITV;
+                NEW quarterTabPane {
+                    type = TABBED;
+                    fill = 3;
+                    NEW budgetDetailQ {
+                        caption = 'Budget Items';
+                        alignment = STRETCH;
+                        MOVE BOX(bqd);
+                    }
+                    NEW monthlyExpenseQ {
+                        type = SPLITH;
+                        caption = 'Expense Ledger';
+                        MOVE BOX (TREE costItemsQ);
+                        MOVE BOX (peq) { fill = 3; }
+                    }
+                }
+                NEW detailsQ {
+                    fill = 1;
+                    type = TABBED;
+                    NEW invoicesQ FIRST {
+                        caption = 'Invoices';
+                        MOVE BOX(iq) { caption = ''; }
+                    }
+                    NEW descriptionQ {
+                        caption = 'Description';
+                        MOVE PROPERTY(description(bqd)) {
+                            caption = '';
+                            fill = 1;
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
 FORM budgetPortionsOverview 'Quarter Budgets'
     PROPERTIES () nameFilterCostCenter, nameFilterQuarter
 
     OBJECTS qc=(q = INTEGER, c = CostCenter)
     PROPERTIES(q) quarterName // VALUE SHOWIF NULL 
     PROPERTIES(c) name
-    PROPERTIES (c,q) quarterProposal, quarterPlanned, quarterSpent
+    PROPERTIES (c,q) quarterProposal, quarterPlannedInteger, quarterSpentInteger
     ORDERS quarterName(q) DESC
     FILTERS quarterPlanned(c,q) > 0,
             c == filterCostCenter() OR NOT filterCostCenter(),
@@ -603,16 +688,16 @@ FORM budgetPortionsOverview 'Quarter Budgets'
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
 
     OBJECTS qq = INTEGER
-    PROPERTIES(qq) quarterName, quarterLimitCompany, quarterPlanned BACKGROUND RGB(204,255,255)
+    PROPERTIES(qq) quarterName, quarterLimitCompany, quarterPlannedInteger BACKGROUND RGB(204,255,255)
     ORDERS quarterName(qq) DESC
     FILTERS realQuarter(qq) > 0
     
     OBJECTS b = Budget
-    PROPERTIES (b) name READONLY, capBudget, planned BACKGROUND RGB(204,255,255)
+    PROPERTIES (b) name READONLY, capBudget, plannedInteger BACKGROUND RGB(204,255,255)
     FILTERS qq == quarterNumber(b)
     
     OBJECTS cq = CostCenter
-    PROPERTIES name(cq) READONLY, quarterLimitCostCenter(qq,cq), quarterPlanned(cq,qq) BACKGROUND RGB(204,255,255) // limitDesc(cq,b), 
+    PROPERTIES name(cq) READONLY, quarterLimitCostCenter(qq,cq), quarterPlannedInteger(cq,qq) BACKGROUND RGB(204,255,255) // limitDesc(cq,b), 
     PROPERTIES capCostCenter(b,cq) COLUMNS (b) HEADER name(b)
     FILTERS NOT archive(cq)
     
