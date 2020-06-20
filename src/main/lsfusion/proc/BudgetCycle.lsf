@@ -257,7 +257,7 @@ DESIGN budgetPortions {
 
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal editing',planned);
 assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;// OR (access(sbj(a),e) AND hasUpdate(e)) // OR access(sbj(a),e);
-@buttonDecisions(update,enter,'Send the Budget Proposal for Review');
+@buttonDecisions(update,enter,'Send the Budget for AFG Review');
 
 userEntered 'Send all new records for Review' () { 
         FOR StepLog l AND stepIn(l) = Step.update AND NOT stepOut(l) AND author(sbj(l)) == currentUser() DO {
@@ -280,14 +280,14 @@ centerUpdated 'New proposals within this Cost Center exist' (CostCenter c) = // 
 
 //--- Procedure: Review and Review Updated Steps ---
 
-@defineAssignment(BudgetPortion, budgeting, enter, 'Financial review',planned);
+@defineAssignment(BudgetPortion, budgeting, enter, 'AFG review',planned);
 assigned(Employee e,AssignEnter a) += TRUE IF (afg(e) OR hasEnter(e)) AND a IS AssignEnter;
 @buttonDecisions(enter,review,'Complete Review and send the Budget Proposal for Approval');
 @buttonDecisions(enter,reject,'Reject and send the Budget Proposal back for revising');
 
 //--- Procedure: Approve Step ---
 
-@defineAssignment(BudgetPortion, budgeting, review, 'Budget Approval',planned);
+@defineAssignment(BudgetPortion, budgeting, review, 'C-level Budget Approval',planned);
 assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR hasReview(e)) AND a IS AssignReview;
 @buttonDecisions(review,approve,'Approve the Budget');
 @buttonDecisions(review,reject,'Reject and send the Budget Proposal back for revising');
@@ -298,7 +298,12 @@ dropApproval 'Drop Approval' (BudgetPortion o) {
     stepOut(stepLog(o)) <- Step.reject;
     APPLY;
 } TOOLBAR;
-EXTEND FORM budgetPortions PROPERTIES(o) dropApproval SHOWIF isApprovedDrop(o);
+isRevokable (BudgetPortion s) = (step(s) == Step.enter OR step(s) == Step.review) AND (author(s) == currentUser() OR access(s,currentUser()));
+revokeBudget 'Revoke Budget' (BudgetPortion o) {
+    stepOut(stepLog(o)) <- Step.reject;
+    APPLY;
+} TOOLBAR;
+EXTEND FORM budgetPortions PROPERTIES(o) dropApproval SHOWIF isApprovedDrop(o), revokeBudget SHOWIF isRevokable(o);
 
 WHEN SET(isApproved (BudgetPortion o)) DO {
     FOR Employee e AND (author(o) == e OR access(o,e) OR afg(e)) DO {
@@ -308,9 +313,9 @@ WHEN SET(isApproved (BudgetPortion o)) DO {
 
 //--- Procedure: Updating information on Reject Step ---
 
-@defineAssignment(BudgetPortion, budgeting, reject, 'Revising Budgeting record',planned);
+@defineAssignment(BudgetPortion, budgeting, reject, 'Budget rejected',planned);
 assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e OR (access(sbj(a),e) AND hasReject(e)) AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
-@buttonDecisions(reject,enter,'Send the revised Budget Proposal for Review');
+@buttonDecisions(reject,enter,'Send the revised Budget for AFG Review');
 
 //--- Automotive Proposal initialization ---
 
@@ -460,7 +465,7 @@ META extendBudgetPortion (form)
             isParent(filterCostItem(),costItem(d)) OR NOT filterCostItem(),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser()))
     FILTERGROUP newAndOld
-        FILTER 'Show items from this proposal only' part(d) == o
+        FILTER 'Show items from this proposal only' part(d) == o DEFAULT
         
     OBJECTS m = Message
     PROPERTIES(m) READONLY BACKGROUND backgroundMessage(m) textPrint, nameAuthorShort, dateTime SHOWIF NULL
