@@ -49,6 +49,8 @@ quarterNumber 'Quarter ID' (Budget b) = extractYear(fromDate(b))*10 + floor( DOU
 getQuarter 'Quarter from date' (DATE d) = extractYear(d)*10 + floor( DOUBLE (extractMonthNumber(d) - 1) / 3) + 1;
 quarter = GROUP AGGR Budget b BY quarterNumber(b); 
 
+quarterName 'Quarter' (INTEGER q) =  STRING[4](floor(q/10)) + ' \'Q' + STRING[1] (q - floor(q/10)*10);
+
 quarterPlanned 'Planned, USD' (CostCenter c, Budget q) = GROUP SUM planned(BudgetDetail d) IF quarterNumber(q) == quarterNumber(budget(d)) AND c == costCenter(d);
 quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
 quarterPlannedInteger 'Planned, USD' (CostCenter c, INTEGER q) = INTEGER (quarterPlanned(c,q));
@@ -73,6 +75,21 @@ quarterLimitCostCenter 'Quarter Limit for Cost Center, USD' = DATA NUMERIC[16,3]
 
 currentLimit 'Limit for the quarter' = DATA NUMERIC[16,3] (CostCenter, Budget);
 
+FORM reviewCostCenters
+    OBJECTS q = INTEGER PANEL 
+    PROPERTIES quarterName(q)
+    
+    OBJECTS c = CostCenter
+    PROPERTIES READONLY name(c), quarterPlannedInteger(c,q)
+    FILTERS NOT archive(c)
+;
+
+DESIGN reviewCostCenters {size = (800,400);}
+
+reviewBudget(Budget b) {
+    SHOW reviewCostCenters OBJECTS q = quarterNumber(b) FLOAT WAIT;
+}
+
 limit 'Limit, USD' (CostCenter c, Budget b) = CASE
         WHEN capCostCenter(b,c) > 0 THEN capCostCenter(b,c) - planned(b,c)
         WHEN quarterLimitCostCenter(quarterNumber(b),c) > 0 THEN quarterLimitCostCenter(quarterNumber(b),c) - quarterPlanned(c,b)
@@ -88,8 +105,8 @@ limitCaption 'Limit caption' (CostCenter c, Budget b) = CASE
         ELSE '';
 
 limitDesc 'Limit, USD'  (CostCenter c, Budget b) = CONCAT ' ', limitCaption(c,b), INTEGER (limit(c,b)), 'USD';
-EXTEND FORM costCenterBudget PROPERTIES PANEL limitDesc(c,bm) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm);
-DESIGN costCenterBudget { budgetDetail { MOVE PROPERTY (limitDesc(c,bm)) FIRST { alignment = STRETCH; caption = '';} }}
+EXTEND FORM costCenterBudget PROPERTIES PANEL ON CHANGE reviewBudget(bm) limitDesc(c,bm) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm);
+DESIGN costCenterBudget { budgetDetail { MOVE PROPERTY (limitDesc(c,bm)) FIRST { alignment = STRETCH; caption = ''; fontStyle = 'bold'; fontSize = 16;} }}
 
 CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
 
@@ -572,8 +589,6 @@ EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FI
 @showStepAttributes(budgetPortions,out);
 
 // overview form 
-
-quarterName 'Quarter' (INTEGER q) =  STRING[4](floor(q/10)) + ' \'Q' + STRING[1] (q - floor(q/10)*10);
 
 quarterProposal 'Budgeting status' (CostCenter c, INTEGER q) = GROUP LAST nameStep(part(BudgetDetail d)) IF q == quarterNumber(budget(d)) AND c == costCenter(d) ORDER dateTime(part(d)) CHARWIDTH 10;
 spentLevel 'Spent, USD' = GROUP SUM spentLevel(Budget b, CostItem i, CostCenter c) BY quarterNumber(b),i,c;
