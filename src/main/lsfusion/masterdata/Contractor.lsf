@@ -5,7 +5,7 @@ REQUIRE MasterData, Currency, CostItem;
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
 
-name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 30 NONULL;
+name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 20 NONULL;
 regID 'Registration ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
 taxID 'Tax ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
 

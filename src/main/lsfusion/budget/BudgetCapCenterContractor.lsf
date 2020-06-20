@@ -1,6 +1,6 @@
 MODULE BudgetCapCenterContractor;
 
-REQUIRE BudgetCapCenter, Contractor, BudgetCapCenterApproval, Utils;
+REQUIRE BudgetCapCenter, Contractor, BudgetCapCenterApproval, Utils, BudgetCycle, BudgetCapCenterEmployee;
 
 NAMESPACE Budget;
 
@@ -9,7 +9,7 @@ sum 'Fixed amount' = DATA NUMERIC[10,2] (Period, Contractor);
 
 CONSTRAINT DROPPED(Contractor c IS Contractor) AND PREV(hours(Period p, c)) MESSAGE 'Cannot delete a contractor with assigned hours';
 
-contractors 'Total amount, USD' (Period p, Contractor e) = NUMERIC[16,3](round0((rate(e) * hours(p, e) (+) sum(p, e)) / defaultRateOn(currency(e), fromDate(p))));
+contractors 'Total quote, USD' (Period p, Contractor e) = NUMERIC[16,3](round0((rate(e) * hours(p, e) (+) sum(p, e)) / defaultRateOn(currency(e), fromDate(p))));
 
 contractors (Period p, CostItem i) = 
     GROUP SUM contractors(p, Contractor e) BY costItem(e) MATERIALIZED;
@@ -20,16 +20,31 @@ EXTEND CLASS ExtraCap {
 cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.contractors AND contractors(p, i) THEN contractors(p, i); 
 
 EXTEND FORM costCenterBudget
+    PROPERTIES () filterContractor
+    
     OBJECTS cc = Contractor
-    PROPERTIES(cc) READONLY name, nameType, nameCostItem, nameCurrency, rate
-    PROPERTIES(cc) NEWSESSION NEW, EDIT, DELETE
+    PROPERTIES(cc) ON CHANGE editContractor(cc) name, nameCostItem, nameType, rate, nameCurrency
     PROPERTIES hours(p, cc), sum(p, cc), contractors(p, cc)
+    ORDERS name(cc)
+    FILTERS isSubstring(lower(name(cc)), lower(filterContractor())) OR isSubstring(taxID(cc), filterContractor()) OR isSubstring(regID(cc), filterContractor()) OR NOT filterContractor()
 ;
 
+addContractorBudget '+ Add' () {
+    NEWSESSION {
+        hideContracts() <- TRUE;
+        NEW c = Contractor {
+            SHOW contractor OBJECTS c = c FLOAT WAIT;
+            SEEK costCenterBudget.cc = c;
+        }
+    }
+} TOOLBAR;
+EXTEND FORM costCenterBudget PROPERTIES addContractorBudget() DRAW cc;
+
 DESIGN costCenterBudget {
-    periodRightPane {
-        NEW contractorsPane {
+    monthlyTabPane {
+        NEW contractorsPane AFTER teamPane {
             caption = 'Contractors';
+            MOVE PROPERTY (filterContractor()) { alignment = STRETCH; }
             MOVE BOX(cc);
         }
     }
@@ -51,22 +66,25 @@ budgetDetail (CostCenter c, Budget b, Contractor cc) = GROUP LAST BudgetDetail d
 contractors 'Total amount, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY costCenter(d), budget(d), contractor(d);
 contractors 'Total amount (for month), USD' (Period p, Budget b, Contractor cc) = contractors(costCenter(p), b, cc); 
 
-monthlyContractors 'Total amount monthly, USD' (Period p, Contractor cc) = GROUP SUM contractors(costCenter(p), Budget b, cc) IF selected(p, b);
+monthlyContractors 'Total in Period, USD' (Period p, Contractor cc) = GROUP SUM contractors(costCenter(p), Budget b, cc) IF selected(p, b);
+monthlyContractorsQuarter 'Total in Period, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM contractors(c, Budget be, cc) IF quarterNumber(be) == quarterNumber(b);
 
 changeContractors (CostCenter c, Budget b, Contractor cc)  { 
-    INPUT q = NUMERIC[16,3] DO { // запрашиваем число
-        IF budgetDetail(c, b, cc) THEN { // проверяем, есть ли хоть одна строка
-            IF q THEN // ввели число
-                planned(BudgetDetail d) <- q IF d == budgetDetail(c, b, cc) WHERE costCenter(d) == c AND budget(d) == b AND contractor(d) == cc; // записываем количество в последнюю строку с такой книгой
-            ELSE // сбросили число - удаляем строку
+    INPUT q = NUMERIC[16,3] DO { // wait for user input of integer
+        IF budgetDetail(c, b, cc) THEN { // look up for existing budget item
+            IF q THEN // once number provider
+                planned(BudgetDetail d) <- q IF d == budgetDetail(c, b, cc) WHERE costCenter(d) == c AND budget(d) == b AND contractor(d) == cc; // update the linked budget item
+            ELSE // when number is empty aqain, then drop the budget details
                 DELETE BudgetDetail d WHERE costCenter(d) == c AND budget(d) == b AND contractor(d) == cc;   
         } ELSE
             IF q THEN
-                NEW d = BudgetDetail { // создаем новую строку
+                NEW d = BudgetDetail { // create connected Budget item
                     costCenter(d) <- c;
                     budget(d) <- b;
                     contractor(d) <- cc;
                     planned(d) <- q;
+                    name(d) <- name(cc);
+                    description(d) <- 'Created when added plan of involvement of ' + name(cc);
                 }
     }
 }
@@ -75,21 +93,19 @@ changeContractors (Period p, Budget b, Contractor cc)  {
     changeContractors(costCenter(p), b, cc);
 }
 EXTEND FORM costCenterBudget
-    PROPERTIES(p, cc) READONLY monthlyContractors
-    
     OBJECTS cb = Budget
-    PROPERTIES(cb) READONLY fromDate, toDate, name
-    PROPERTIES(p, cb, cc) READONLYIF readonly(cb, costCenter(p)) contractors ON CHANGE changeContractors(p, cb, cc)
-    FILTERS selected(p, cb)
+    FILTERS quarterNumber(cb) == quarterNumber(bm)
+    //PROPERTIES(cb) READONLY fromDate, toDate, name
+    PROPERTIES READONLYIF readonly(bm, c) contractors(c, bm, cc) ON CHANGE changeContractors(c, bm, cc) DRAW cc COLUMNS (cb) HEADER name(cb)
+    //FILTERS selected(p, cb)
+    
+    PROPERTIES(c, bm, cc) READONLY monthlyContractorsQuarter DRAW cc
     
     PROPERTIES(bmd) nameContractor
 ;
 
-DESIGN costCenterBudget {
-    contractorsPane {
-        MOVE BOX(cb);
-    }
-}
+//DESIGN costCenterBudget { contractorsPane { MOVE BOX(cb); } }
+
 // Period approval
 
 EXTEND FORM periodApproval

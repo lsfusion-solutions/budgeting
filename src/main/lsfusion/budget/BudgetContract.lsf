@@ -113,7 +113,7 @@ DESIGN contractors {
                 fill = 1;
                 alignment = STRETCH;
                 MOVE BOX (ct) {
-                    TOOLBAR {
+                    TOOLBAR(ct) {
                         MOVE PROPERTY (enableEdit());
                     }
                 }

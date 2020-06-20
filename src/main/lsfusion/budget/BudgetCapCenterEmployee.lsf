@@ -78,6 +78,7 @@ EXTEND FORM costCenterBudget
     PROPERTIES(ep,e) assigned
     PROPERTIES assigned(ep, eb, e) COLUMNS (eb) HEADER name(eb)
     PROPERTIES assignedQuarter(bm, e) BACKGROUND backgroundAssignedQuarter(bm, e) //, assigned(p, e)
+    ORDERS name(e)
     FILTERS isSubstring(lower(firstName(e)), lower(searchByName())) OR isSubstring(lower(lastName(e)), lower(searchByName())) OR isSubstring(lower(namePosition(e)), lower(searchByName())) OR NOT searchByName(),
             ep == period(c,bm)
             
@@ -87,7 +88,7 @@ EXTEND FORM costCenterBudget
 
 DESIGN costCenterBudget {
     monthlyTabPane {
-        NEW teamPane {
+        NEW teamPane AFTER budgetDetail {
             caption = 'Team';
             MOVE PROPERTY (searchByName()) { alignment = STRETCH; }
             MOVE BOX(epe);
