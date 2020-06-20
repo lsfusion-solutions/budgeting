@@ -18,6 +18,7 @@ selected 'Selected' = DATA BOOLEAN (Period, Budget);
 
 budgetCount 'Budget count' (Period p) = GROUP SUM 1 IF selected(p, Budget b); 
 
+// Budget of this Cost Center may be selected into period only once
 period (CostCenter c, Budget b) = GROUP AGGR Period p WHERE selected(p, b) BY costCenter(p); 
 
 fromDate 'From' = GROUP MIN fromDate(Budget b) IF selected(Period p, b) BY p; 
@@ -176,8 +177,9 @@ readonlyProc (BudgetDetail d, CostCenter c) = (isProcessing(d) OR readonly(d, c)
 
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
-    PROPERTIES(bm) READONLY name //fromDate, toDate, 
+    PROPERTIES(bm) READONLY name, fromDate SHOWIF NULL //, toDate, 
     PROPERTIES READONLY planned(bm, c), invoiced(bm,c) // , optimizedPlanned(bm, c), optimized(bm, c)
+    ORDERS fromDate(bm) DESC 
     FILTERS selected(bm, c)
     
     OBJECTS bmd = BudgetDetail

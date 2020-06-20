@@ -1,6 +1,6 @@
 MODULE BudgetCapCenterEmployee;
 
-REQUIRE BudgetCapCenter, CostCenterEmployee, CostItemEmployee, BudgetEmployee, BudgetEmployeeLocation, BudgetCapCenterApproval, Utils;
+REQUIRE BudgetCapCenter, CostCenterEmployee, CostItemEmployee, BudgetEmployee, BudgetEmployeeLocation, BudgetCapCenterApproval, Utils, BudgetCycle;
 
 NAMESPACE Budget;
 
@@ -13,29 +13,35 @@ WHEN LOCAL SETCHANGED(hiringDate(Employee e)) DO
 monthTo = DATA Budget(Employee);
 nameMonthTo 'Month of dismissal' (Employee e) = name(monthTo(e));
 
-assigned 'Assigned, %' = DATA NUMERIC[8,2] (Period, Employee);
+assigned 'Assigned whole Period, %' = DATA NUMERIC[8,2] (Period, Employee);
 
 TABLE periodBudgetEmployee (Period, Budget, Employee);
 dataAssigned 'Assigned, %' = DATA NUMERIC[8,2] (Period, Budget, Employee);
 
+// Employee may be assigned in the budget by two ways:
+//  - assigned to Period by specific percentage, which will be equal in every month (Budget, in general) selected in this Period
+//  - percentage may be specific for every month, overriding the first way
 assigned 'Assigned, %' (Period p, Budget b, Employee e) = (OVERRIDE dataAssigned(p, b, e), (assigned(p, e) IF selected(p, b))) 
     IF NOT fromDate(b) < fromDate(monthFrom(e)) AND NOT fromDate(b) > fromDate(monthTo(e)) MATERIALIZED; 
 
 CONSTRAINT dataAssigned(Period p, Budget b, Employee e) AND NOT selected(p, b)
     MESSAGE 'Employee is assigned to a month, that is not in selected period';
     
+// Connection of Employee to Cost Center is made via the Period.  The total involvement of Employee is calculated for all costcenters
 assigned 'Assigned (total), %' (Budget b, Employee e) = GROUP SUM assigned(Period p, b, e);
 
+// In general, more than one Period may by defined for Cost Center
 assigned 'Assigned, %' (Budget b, CostCenter c, Employee e) = 
-    GROUP SUM assigned(Period p, b, e) BY costCenter(p) MATERIALIZED;     
+    //GROUP SUM assigned(Period p, b, e) BY costCenter(p) MATERIALIZED;     
+    assigned(period(c,b), b, e);
 
 salary 'Salary, USD' (Period p, Employee e, Budget b) = 
     GROUP SUM NUMERIC[16,3](round0(salary(e, b, Currency c) * (OVERRIDE taxCoefficient(b, e), 1.0) * 
                                    assigned(p, b, e) / 100.0 
                                    / defaultRateOn(c, fromDate(b)))) MATERIALIZED;
 
-salary 'Salary, USD' (CostCenter c, Employee e, Budget b) = 
-    GROUP SUM salary(Period p, e, b) IF selected(p, b) BY costCenter(p);
+salary 'Salary, USD' (CostCenter c, Employee e, Budget b) = // salary of this Employee from this Cost Center in this month
+    GROUP SUM salary(Period p, e, b) IF selected(p, b) BY costCenter(p);     // through all periods
 
 salary 'Salary, USD' (CostCenter c, CostItem i, Budget b) = 
     GROUP SUM salary(c, Employee e, b) BY costItem(e, b);
@@ -52,30 +58,39 @@ EXTEND CLASS ExtraCap {
 sensitive (ExtraCap e) += e == ExtraCap.salary;
 cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.salary AND salary(p, i) THEN salary(p, i);
 
+assignedQuarter 'Overall assignment of Employee within Company for quarter' (Budget b, Employee e) = 
+                GROUP CONCAT STRING(left(name(Budget be),3)+': '+STRING[3](INTEGER(assigned(be,e)))+'%'),', ' ORDER fromDate(be) IF quarterNumber(be) == quarterNumber(b);
 backgroundAssigned (Budget b, Employee e) = RGB(255,212,212) IF assigned(b, e) > 100;
+backgroundAssignedQuarter (Budget b, Employee e) = GROUP MAX backgroundAssigned(Budget be,e) IF quarterNumber(be) == quarterNumber(b);
+isAssignedQuarter (CostCenter c, Budget b, Employee e) = TRUE IF GROUP MAX assigned(period(c,Budget be),be,e) IF quarterNumber(be) == quarterNumber(b);
+
 searchByName 'Search' = DATA LOCAL NESTED ISTRING ();
 EXTEND FORM costCenterBudget
     PROPERTIES() searchByName
-
-    OBJECTS e = Employee
-    PROPERTIES(e) READONLY firstName, lastName, namePosition
-    PROPERTIES assigned(p, e)
-    FILTERS isSubstring(firstName(e), searchByName()) OR isSubstring(lastName(e), searchByName()) OR isSubstring(namePosition(e), searchByName()) OR NOT searchByName()
     
     OBJECTS eb = Budget
-    PROPERTIES(eb) READONLY fromDate, toDate, name
-    PROPERTIES(eb, e) READONLY assigned BACKGROUND backgroundAssigned(eb, e) 
-    PROPERTIES(p, eb, e) assigned
-    FILTERS selected(p, eb)
+    //PROPERTIES(eb) READONLY fromDate, toDate, name
+    //PROPERTIES(eb, e) READONLY assigned
+    FILTERS quarterNumber(eb) == quarterNumber(bm)
+
+    OBJECTS epe = (e = Employee, ep = Period)
+    PROPERTIES(e) READONLY name, namePosition // firstName, lastName
+    PROPERTIES(ep,e) assigned
+    PROPERTIES assigned(ep, eb, e) COLUMNS (eb) HEADER name(eb)
+    PROPERTIES assignedQuarter(bm, e) BACKGROUND backgroundAssignedQuarter(bm, e) //, assigned(p, e)
+    FILTERS isSubstring(lower(firstName(e)), lower(searchByName())) OR isSubstring(lower(lastName(e)), lower(searchByName())) OR isSubstring(lower(namePosition(e)), lower(searchByName())) OR NOT searchByName(),
+            ep == period(c,bm)
+            
+    FILTERGROUP myteam
+        FILTER 'Show the only assigned Team for the Cost Center this quarter' isAssignedQuarter(c,bm,e)
 ;
 
 DESIGN costCenterBudget {
-    periodRightPane {
+    monthlyTabPane {
         NEW teamPane {
             caption = 'Team';
             MOVE PROPERTY (searchByName()) { alignment = STRETCH; }
-            MOVE BOX(e);
-            MOVE BOX(eb);
+            MOVE BOX(epe);
         }
     }
 }
@@ -159,6 +174,9 @@ WHEN SETCHANGED(budget[SalaryBudgetDetail](SalaryBudgetDetail d)) DO
 
 WHEN SETCHANGED(SalaryBudgetDetail d IS SalaryBudgetDetail) DO
     name[BudgetDetail](d) <- 'Salary';
+    
+WHEN SETCHANGED(SalaryBudgetDetail d IS SalaryBudgetDetail) DO
+    description[BudgetDetail](d) <- 'Sum of all Employees salaries within Cost Type in this budgeting month.';
 
 WHEN SETCHANGED(salary(costCenter(SalaryBudgetDetail d), costItem(d), budget(d))) DO
     planned[BudgetDetail](d) <- salary(costCenter(d), costItem(d), budget(d));
