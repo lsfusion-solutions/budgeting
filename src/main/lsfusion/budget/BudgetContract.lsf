@@ -8,7 +8,7 @@ CLASS Contract 'Contract';
 TABLE contract (Contract);
 
 contractor 'Contractor' = DATA Contractor (Contract) NONULL DELETE;
-period 'Period' = DATA Period (Contract) NONULL;
+period 'Period' = DATA Period (Contract);
 
 number 'Number' = DATA STRING[30] (Contract) CHARWIDTH 10;
 date 'Date' = DATA DATE (Contract);
