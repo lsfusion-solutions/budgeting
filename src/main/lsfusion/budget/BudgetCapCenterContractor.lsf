@@ -22,11 +22,12 @@ cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.contractors AND con
 EXTEND FORM costCenterBudget
     PROPERTIES () filterContractor
     
-    OBJECTS cc = Contractor
+    OBJECTS cpc = (pc = Period, cc = Contractor)
     PROPERTIES(cc) ON CHANGE editContractor(cc) name, nameCostItem, nameType, rate, nameCurrency
-    PROPERTIES hours(p, cc), sum(p, cc), contractors(p, cc)
+    PROPERTIES hours(pc, cc), sum(pc, cc), contractors(pc, cc)
     ORDERS name(cc)
-    FILTERS isSubstring(lower(name(cc)), lower(filterContractor())) OR isSubstring(taxID(cc), filterContractor()) OR isSubstring(regID(cc), filterContractor()) OR NOT filterContractor()
+    FILTERS isSubstring(lower(name(cc)), lower(filterContractor())) OR isSubstring(taxID(cc), filterContractor()) OR isSubstring(regID(cc), filterContractor()) OR NOT filterContractor(),
+            pc == period(c,bm)
 ;
 
 addContractorBudget '+ Add' () {
@@ -38,14 +39,14 @@ addContractorBudget '+ Add' () {
         }
     }
 } TOOLBAR;
-EXTEND FORM costCenterBudget PROPERTIES addContractorBudget() DRAW cc;
+EXTEND FORM costCenterBudget PROPERTIES addContractorBudget() DRAW cpc;
 
 DESIGN costCenterBudget {
     monthlyTabPane {
         NEW contractorsPane AFTER teamPane {
             caption = 'Contractors';
             MOVE PROPERTY (filterContractor()) { alignment = STRETCH; }
-            MOVE BOX(cc);
+            MOVE BOX(cpc);
         }
     }
 }
@@ -96,10 +97,10 @@ EXTEND FORM costCenterBudget
     OBJECTS cb = Budget
     FILTERS quarterNumber(cb) == quarterNumber(bm)
     //PROPERTIES(cb) READONLY fromDate, toDate, name
-    PROPERTIES READONLYIF readonly(bm, c) contractors(c, bm, cc) ON CHANGE changeContractors(c, bm, cc) DRAW cc COLUMNS (cb) HEADER name(cb)
+    PROPERTIES READONLYIF readonly(bm, c) contractors(c, bm, cc) ON CHANGE changeContractors(c, bm, cc) DRAW cpc COLUMNS (cb) HEADER name(cb)
     //FILTERS selected(p, cb)
     
-    PROPERTIES(c, bm, cc) READONLY monthlyContractorsQuarter DRAW cc
+    PROPERTIES(c, bm, cc) READONLY monthlyContractorsQuarter DRAW cpc
     
     PROPERTIES(bmd) nameContractor
 ;

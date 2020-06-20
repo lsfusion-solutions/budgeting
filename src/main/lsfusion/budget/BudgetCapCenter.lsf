@@ -82,7 +82,25 @@ childSpent 'Spent, USD' (Period p, CostItem i) = GROUP SUM amountUSD(ExpenseLedg
 
 spent 'Spent, USD' (Period p) = GROUP SUM amountUSD(ExpenseLedger l) IF costCenter(p) == costCenter(l) AND NOT skip(l) AND selected(p, budget(l));
 
-FORM costCenterBudget 'Project budget'
+FORM costCenterBudget 'Project budget' // Replace old costCenterBudget form when made refactoring from Periods to quarters
+    OBJECTS c = CostCenter PANEL
+    PROPERTIES(c) name SELECTOR
+    FILTERS access(c, currentUser())
+;
+DESIGN costCenterBudget {
+    OBJECTS {
+        NEW header {
+            alignment = STRETCH;
+            MOVE PROPERTY (name(c)) {alignment = STRETCH; caption = 'Select name of Cost Center: '; }
+        }
+        NEW pane {
+            type = TABBED;
+            fill = 1;
+        }
+    }
+}
+
+FORM costCenterBudgetArch 'Project budget'
     OBJECTS c = CostCenter PANEL
     PROPERTIES(c) name SELECTOR
     FILTERS access(c, currentUser())
@@ -122,7 +140,7 @@ FORM costCenterBudget 'Project budget'
     ORDERS amountUSD(pe) DESC
 ;
 
-DESIGN costCenterBudget {
+DESIGN costCenterBudgetArch {
     OBJECTS {
         NEW header {
             alignment = STRETCH;
@@ -165,7 +183,6 @@ DESIGN costCenterBudget {
             }
         }
     }
-    
 }
 
 // Monthly
@@ -213,35 +230,34 @@ DESIGN costCenterBudget {
             caption = 'Monthly';
             type = SPLITH;
             MOVE BOX(bm);
-            NEW montlyDetailPane {
+            NEW monthlyTabPane {
+                type = TABBED;
                 fill = 3;
-                type = SPLITV;
-                NEW monthlyTabPane {
-                    type = TABBED;
-                    fill = 3;
-                    NEW budgetDetail {
-                        caption = 'Budget Items';
-                        alignment = STRETCH;
-                        MOVE BOX(bmd);
-                    }
-                    NEW monthlyExpense {
-                        type = SPLITH;
-                        caption = 'Expense Ledger';
-                        MOVE BOX (TREE costItemsM);
-                        MOVE BOX (pem) { fill = 3; }
-                    }
-                }
-                NEW details {
+                NEW budgetDetail {
+                    caption = 'Budget Items';
+                    alignment = STRETCH;
+                    type = CONTAINERV ;
                     fill = 1;
-                    type = TABBED;
-                    NEW description {
-                        caption = 'Description';
-                        MOVE PROPERTY(description(bmd)) {
-                            //panelCaptionAbove = TRUE;
-                            caption = '';
-                            fill = 1;
+                    MOVE BOX(bmd) { fill = 3; alignment = STRETCH; }
+                    NEW details {
+                        fill = 1;
+                        alignment = STRETCH;
+                        type = TABBED;
+                        NEW description {
+                            caption = 'Description';
+                            MOVE PROPERTY(description(bmd)) {
+                                //panelCaptionAbove = TRUE;
+                                caption = '';
+                                fill = 1;
+                            }
                         }
                     }
+                }
+                NEW monthlyExpense {
+                    type = SPLITH;
+                    caption = 'Expense Ledger';
+                    MOVE BOX (TREE costItemsM);
+                    MOVE BOX (pem) { fill = 3; }
                 }
             }
         }
