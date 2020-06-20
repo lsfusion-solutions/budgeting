@@ -1,6 +1,6 @@
 MODULE BudgetCapCenterContractor;
 
-REQUIRE BudgetCapCenter, Contractor, BudgetCapCenterApproval, Utils, BudgetCycle, BudgetCapCenterEmployee;
+REQUIRE BudgetCapCenter, Contractor, BudgetCapCenterApproval, Utils, BudgetCapCenterEmployee;
 
 NAMESPACE Budget;
 
