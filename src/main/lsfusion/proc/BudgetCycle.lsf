@@ -40,6 +40,10 @@ access 'Access' (BudgetPortion b, Employee e) = TRUE IF numberEmployee(b,e) > 0;
 author (BudgetPortion b) <- currentUser() WHEN SET(b IS BudgetPortion);
 dateTime(BudgetPortion b) <- currentDateTime() WHEN CHANGED(planned(b));
 
+author 'Author' = DATA Employee(BudgetDetail);
+authorName 'Author' (BudgetDetail b) = name(author(b)) CHARWIDTH 20;
+WHEN SETCHANGED (planned(BudgetDetail b)) DO author(b) <- currentUser();
+
 numberAuthors 'Number from Employees' (BudgetPortion b, Employee e) = GROUP SUM 1 IF author(BudgetDetail d) == e AND part(d) = b; 
 nameExplain 'Cost Center' (BudgetPortion b) = name(costCenter(b)) CHARWIDTH 30;
 authorName 'Authors' (BudgetPortion b) = GROUP CONCAT name(Employee e),', ' IF numberAuthors(b,e) > 0 CHARWIDTH 30;
