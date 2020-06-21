@@ -1,0 +1,39 @@
+MODULE BudgetCycleQuarter;
+
+REQUIRE BudgetCycle;
+
+NAMESPACE Budget;
+
+//--- Quarterly aggregated Budget proposals ---
+
+CLASS BudgetQuarter : BudgetPortion;
+TABLE budgetquarter(BudgetQuarter);
+
+budgetingCostCenter 'Number of Budget Items by Cost Center' = 
+        GROUP SUM 1 BY costCenter(BudgetDetail d);
+
+budgetingQuarterCostCenter 'Number of Budget Items by Cost Center in Quarter' = 
+        GROUP SUM 1 BY costCenter(BudgetDetail d), quarterNumber(budget(d));
+
+proposalQuarter 'Quarter Aggregation' = AGGR BudgetQuarter WHERE budgetingQuarterCostCenter(CostCenter costCq, INTEGER quarter) AND quarterBudgeting(quarter) MATERIALIZED INDEXED;
+
+partQuarter 'Quarter Budget Proposal' (BudgetDetail d) = proposalQuarter(costCenter(d),quarterNumber(budget(d)));
+
+quarterBudgeting(BudgetQuarter b) += quarterBudgeting(quarter(b));
+
+WHEN SETCHANGED(partQuarter[BudgetDetail](BudgetDetail d)) DO
+    part[BudgetDetail](d) <- partQuarter[BudgetDetail](d);
+
+WHEN SETCHANGED(partQuarter[BudgetDetail](BudgetDetail d)) DO
+    dateTime[BudgetPortion](partQuarter(d)) <- currentDateTime();
+
+WHEN SETCHANGED(planned[BudgetDetail](BudgetDetail d)) DO
+    author[BudgetPortion](partQuarter(d)) <- author(d);
+
+WHEN SETCHANGED(costCq[BudgetQuarter](BudgetQuarter d)) DO
+    costCenter[BudgetPortion](d) <- costCq[BudgetQuarter](d);
+
+WHEN SET(BudgetQuarter d IS BudgetQuarter) DO
+    step[BudgetPortion](d) <- Step.update;
+
+EXTEND FORM budgetPortionsOverview PROPERTIES budgetingQuarterCostCenter(cq,qq) AFTER quarterPlannedInteger(cq,qq);
