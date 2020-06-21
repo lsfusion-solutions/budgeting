@@ -51,7 +51,7 @@ dateLine 'Deadline' = ABSTRACT DATE (Assign) MATERIALIZED CHARWIDTH 20;
 overdue 'Overdue' (s) = dateLine(s) < currentDate();
 
 TABLE employeeTask (Employee, Assign);
-assigned = ABSTRACT BOOLEAN (Employee, Assign) MATERIALIZED;
+assigned = ABSTRACT BOOLEAN (Employee, Assign);
 skip = ABSTRACT BOOLEAN (Employee, Assign);
 in (Employee e, Assign s) = assigned(e, s) AND NOT skip(e, s);// MATERIALIZED;
 

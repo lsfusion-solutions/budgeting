@@ -47,7 +47,8 @@ EXTEND FORM costCenterBudget
     PROPERTIES rent(c, er, rb) COLUMNS (rb) HEADER name(rb)
     ORDERS name(er)
     FILTERS isSubstring(lower(name(er)), lower(searchByRent())) OR isSubstring(lower(locationQuarter(er,bm)), lower(searchByRent())) OR NOT searchByRent(),
-            rl == location(er,bm)
+            rl == location(er,bm),
+            isAssignedQuarter(c,bm,er)
             
     FILTERGROUP rentteam
         FILTER 'Show the only assigned rental items for the Cost Center this quarter' isAssignedQRent(c,bm,er)

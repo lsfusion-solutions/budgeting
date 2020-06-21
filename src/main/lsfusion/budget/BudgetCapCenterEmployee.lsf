@@ -80,7 +80,8 @@ EXTEND FORM costCenterBudget
     PROPERTIES assignedQuarter(bm, e) BACKGROUND backgroundAssignedQuarter(bm, e) //, assigned(p, e)
     ORDERS name(e)
     FILTERS isSubstring(lower(firstName(e)), lower(searchByName())) OR isSubstring(lower(lastName(e)), lower(searchByName())) OR isSubstring(lower(namePosition(e)), lower(searchByName())) OR NOT searchByName(),
-            ep == period(c,bm)
+            ep == period(c,bm),
+            NOT fromDate(ep) > fromDate(monthTo(e))
             
     FILTERGROUP myteam
         FILTER 'Show the only assigned Team for the Cost Center this quarter' isAssignedQuarter(c,bm,e)
