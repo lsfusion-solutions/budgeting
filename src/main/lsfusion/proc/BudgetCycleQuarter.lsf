@@ -19,6 +19,7 @@ proposalQuarter 'Quarter Aggregation' = AGGR BudgetQuarter WHERE budgetingQuarte
 
 partQuarter 'Quarter Budget Proposal' (BudgetDetail d) = proposalQuarter(costCenter(d),quarterNumber(budget(d)));
 
+quarter(BudgetQuarter b) += quarter(b);
 quarterBudgeting(BudgetQuarter b) += quarterBudgeting(quarter(b));
 
 WHEN SETCHANGED(partQuarter[BudgetDetail](BudgetDetail d)) DO

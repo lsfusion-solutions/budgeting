@@ -45,13 +45,13 @@ authorName 'Author' (BudgetDetail b) = name(author(b)) CHARWIDTH 20;
 WHEN SETCHANGED (planned(BudgetDetail b)) DO author(b) <- currentUser();
 
 numberAuthors 'Number from Employees' (BudgetPortion b, Employee e) = GROUP SUM 1 IF author(BudgetDetail d) == e AND part(d) = b; 
-nameExplain 'Cost Center' (BudgetPortion b) = name(costCenter(b)) CHARWIDTH 30;
 authorName 'Authors' (BudgetPortion b) = GROUP CONCAT name(Employee e),', ' IF numberAuthors(b,e) > 0 CHARWIDTH 30;
 
 // Quarters
 quarterNumber 'Quarter ID' (Budget b) = extractYear(fromDate(b))*10 + floor( DOUBLE (extractMonthNumber(fromDate(b)) - 1) / 3) + 1 MATERIALIZED;
 getQuarter 'Quarter from date' (DATE d) = extractYear(d)*10 + floor( DOUBLE (extractMonthNumber(d) - 1) / 3) + 1;
 quarter = GROUP AGGR Budget b BY quarterNumber(b); 
+quarter 'Quarter' =  ABSTRACT INTEGER (BudgetPortion);
 quarterBudgeting 'Quarter Budgeting' =  ABSTRACT BOOLEAN (BudgetPortion);
 
 quarterBudgeting 'Quarterly Budgeting' = DATA BOOLEAN (INTEGER); // Enable automated quarterly budgeting
@@ -67,6 +67,9 @@ quarterPlanned 'Planned, USD' (INTEGER q) = GROUP SUM quarterPlanned(CostCenter 
 quarterPlannedInteger 'Planned, USD' (INTEGER q) = INTEGER (quarterPlanned(q));
 quarterSpent 'Spent, USD' = GROUP SUM spent(Budget d, CostCenter c) BY c,quarterNumber(d);
 quarterSpentInteger 'Spent, USD' (CostCenter c, INTEGER q) = INTEGER (quarterSpent(c,q));
+
+quarterName 'Quarter' (BudgetPortion p) = quarterName(quarter(p));
+nameExplain 'Cost Center' (BudgetPortion b) = quarterName(b) + ' - ' + name(costCenter(b)) CHARWIDTH 30;
 
 // Limits
 capBudget 'Month Cap for Company, USD' = DATA NUMERIC[16,3] (Budget);
@@ -195,7 +198,9 @@ FORM budgetPortions 'Budget Proposals'
     PROPERTIES(o) READONLY nameExplain, authorName, planned, nameStep, dateTime, authorNameLast
     //PROPERTIES newPart() 
     PROPERTIES(o) NEWSESSION editPart = EDIT SHOWIF afg(currentUser()) DRAW o, delPart = DELETE SHOWIF (afg(currentUser()) AND NOT quarterBudgeting(o))
-    FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
+    ORDERS nameExplain(o) DESC
+    FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser()),
+            quarterBudgeting(o)
     
     OBJECTS bcid=(b=Budget,c=CostCenter,i=CostItem,d = BudgetDetail)
     PROPERTIES (b) READONLY description
@@ -265,7 +270,7 @@ DESIGN budgetPortions {
 //--- Procedure: Init and Update Steps ---
 
 @defineAssignment(BudgetPortion, budgeting, update, 'Complete Budget Proposal editing',planned);
-assigned(Employee e,AssignUpdate a) += TRUE IF numberAuthors(sbj(a),e) > 0 AND a IS AssignUpdate;// OR (access(sbj(a),e) AND hasUpdate(e)) // OR access(sbj(a),e); //  author(sbj(a)) == e
+assigned(Employee e,AssignUpdate a) += TRUE IF numberAuthors(sbj(a),e) > 0 AND quarterBudgeting(sbj(a)) AND a IS AssignUpdate;// OR (access(sbj(a),e) AND hasUpdate(e)) // OR access(sbj(a),e); //  author(sbj(a)) == e
 @buttonDecisions(update,enter,'Send the Budget for AFG Review');
 
 userEntered 'Send all new records for Review' () { 
@@ -290,14 +295,14 @@ centerUpdated 'New proposals within this Cost Center exist' (CostCenter c) = // 
 //--- Procedure: Review and Review Updated Steps ---
 
 @defineAssignment(BudgetPortion, budgeting, enter, 'AFG review',planned);
-assigned(Employee e,AssignEnter a) += TRUE IF (afg(e) OR hasEnter(e)) AND a IS AssignEnter;
+assigned(Employee e,AssignEnter a) += TRUE IF (afg(e) OR hasEnter(e)) AND quarterBudgeting(sbj(a)) AND a IS AssignEnter;
 @buttonDecisions(enter,review,'Complete Review and send the Budget Proposal for Approval');
 @buttonDecisions(enter,reject,'Reject and send the Budget Proposal back for revising');
 
 //--- Procedure: Approve Step ---
 
 @defineAssignment(BudgetPortion, budgeting, review, 'C-level Budget Approval',planned);
-assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR hasReview(e)) AND a IS AssignReview;
+assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR hasReview(e)) AND quarterBudgeting(sbj(a)) AND a IS AssignReview;
 @buttonDecisions(review,approve,'Approve the Budget');
 @buttonDecisions(review,reject,'Reject and send the Budget Proposal back for revising');
 
@@ -322,7 +327,7 @@ WHEN SET(isApproved (BudgetPortion o)) DO {
 //--- Procedure: Updating information on Reject Step ---
 
 @defineAssignment(BudgetPortion, budgeting, reject, 'Budget rejected',planned);
-assigned(Employee e,AssignReject a) += TRUE IF numberAuthors(sbj(a),e) > 0 OR (access(sbj(a),e) AND hasReject(e)) AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
+assigned(Employee e,AssignReject a) += TRUE IF numberAuthors(sbj(a),e) > 0 OR (access(sbj(a),e) AND hasReject(e)) AND quarterBudgeting(sbj(a)) AND a IS AssignReject; //OR afg(e) OR access(sbj(a),e);
 @buttonDecisions(reject,enter,'Send the revised Budget for AFG Review');
 
 //--- Automotive Proposal initialization ---
