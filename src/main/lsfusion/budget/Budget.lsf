@@ -17,6 +17,7 @@ description 'Description' (Budget b) = CONCAT ' ', name(b), '(' + fromDate(b) + 
 FORM dialogBudgets 'Budget'
     OBJECTS o = Budget
     PROPERTIES(o) READONLY name, fromDate, toDate
+    ORDERS fromDate(o) DESC 
     
     LIST Budget OBJECT o
 ;
@@ -53,6 +54,7 @@ CONSTRAINT costCenter(BudgetDetail d) AND NOT selected(budget(d), costCenter(d))
 name 'Name' = DATA STRING[100] (BudgetDetail) CHARWIDTH 30;
 description 'Description' = DATA RICHTEXT (BudgetDetail);
 longBudgetName 'Budget' (BudgetDetail d) = CONCAT ' - ', nameBudget(d), name(d); 
+dateTime 'Updated' = DATA DATETIME (BudgetDetail);
 
 mandatoryNameBudgetDetail 'Name required for budget detail' = DATA BOOLEAN (CostItem);
 EXTEND FORM costItem
@@ -72,6 +74,8 @@ optimized 'Optimized, %' (BudgetDetail d) = NUMERIC[16,2](100.0 - (optimizedPlan
 CONSTRAINT (SETCHANGED(planned(BudgetDetail d)) OR CHANGED(name(d))) AND 
             mandatoryNameBudgetDetail(costItem(d)) AND planned(d) >= 5000 AND NOT name(d)
             MESSAGE 'Budget detail\'s name is required for spendings more then 5000';
+
+WHEN SETCHANGED (planned(BudgetDetail d)) DO dateTime(d) <- currentDateTime(); // logging
 
 // Readonly
 

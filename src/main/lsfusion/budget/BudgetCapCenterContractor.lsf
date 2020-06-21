@@ -97,7 +97,7 @@ EXTEND FORM costCenterBudget
     OBJECTS cb = Budget
     FILTERS quarterNumber(cb) == quarterNumber(bm)
     //PROPERTIES(cb) READONLY fromDate, toDate, name
-    PROPERTIES READONLYIF readonly(bm, c) contractors(c, bm, cc) ON CHANGE changeContractors(c, bm, cc) DRAW cpc COLUMNS (cb) HEADER name(cb)
+    PROPERTIES READONLYIF readonly(cb, c) contractors(c, cb, cc) ON CHANGE changeContractors(c, cb, cc) DRAW cpc COLUMNS (cb) HEADER name(cb)
     //FILTERS selected(p, cb)
     
     PROPERTIES(c, bm, cc) READONLY monthlyContractorsQuarter DRAW cpc

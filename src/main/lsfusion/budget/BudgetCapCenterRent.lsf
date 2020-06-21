@@ -82,7 +82,7 @@ WHEN SETCHANGED(budget[RentBudgetDetail](RentBudgetDetail d)) DO
 WHEN SETCHANGED(RentBudgetDetail d IS RentBudgetDetail) DO
     name[BudgetDetail](d) <- 'Rent';
     
-WHEN SETCHANGED(RentBudgetDetail d IS SalaryBudgetDetail) DO
+WHEN SETCHANGED(RentBudgetDetail d IS RentBudgetDetail) DO
     description[BudgetDetail](d) <- 'Sum of all Renting budgets within Cost Type in this budgeting month.';
 
 WHEN SETCHANGED(rent(costCenter(RentBudgetDetail d), costItem(d), budget(d))) DO
