@@ -38,3 +38,12 @@ WHEN SET(BudgetQuarter d IS BudgetQuarter) DO
     step[BudgetPortion](d) <- Step.update;
 
 EXTEND FORM budgetPortionsOverview PROPERTIES budgetingQuarterCostCenter(cq,qq) AFTER quarterPlannedInteger(cq,qq);
+
+isRevokable (CostCenter c, Budget b) = TRUE IF quarterBudgeting(quarterNumber(b)) AND (step(proposalQuarter(c,quarterNumber(b))) == Step.enter OR step(proposalQuarter(c,quarterNumber(b))) == Step.review);
+revokeBudget 'Revoke Budget' (CostCenter c, Budget b) {
+    IF quarterBudgeting(quarterNumber(b)) THEN {
+        stepOut(stepLog(proposalQuarter(c,quarterNumber(b)))) <- Step.reject;
+        APPLY;
+    }
+} TOOLBAR;
+EXTEND FORM costCenterBudget PROPERTIES revokeBudget(c,bm) DRAW bmd SHOWIF isRevokable(c,bm);

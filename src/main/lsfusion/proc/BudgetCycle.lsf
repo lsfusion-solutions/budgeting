@@ -115,8 +115,8 @@ limitCaption 'Limit caption' (CostCenter c, Budget b) = CASE
         ELSE '';
 
 limitDesc 'Limit, USD'  (CostCenter c, Budget b) = CONCAT ' ', limitCaption(c,b), INTEGER (limit(c,b)), 'USD';
-EXTEND FORM costCenterBudget PROPERTIES PANEL ON CHANGE reviewBudget(bm) limitDesc(c,bm) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm);
-DESIGN costCenterBudget { budgetDetail { MOVE PROPERTY (limitDesc(c,bm)) FIRST { alignment = STRETCH; caption = ''; fontStyle = 'bold'; fontSize = 16;} }}
+EXTEND FORM costCenterBudget PROPERTIES PANEL ON CHANGE reviewBudget(bm) limit(c,bm) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm); //  limitDesc(c,bm)
+DESIGN costCenterBudget { budgetDetail { MOVE PROPERTY (limit(c,bm)) FIRST { alignment = END; caption = 'REMAINING LIMIT (click the value for details)'; fontStyle = 'bold'; fontSize = 16;} }}
 
 CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
 
@@ -203,7 +203,7 @@ FORM budgetPortions 'Budget Proposals'
             quarterBudgeting(o)
     
     OBJECTS bcid=(b=Budget,c=CostCenter,i=CostItem,d = BudgetDetail)
-    PROPERTIES (b) READONLY description
+    PROPERTIES (b) READONLY name
     PROPERTIES (c) READONLY name
     PROPERTIES (i) READONLY canonicalName
     PROPERTIES(d) READONLY name, planned, description PANEL, authorName SHOWIF afg(currentUser()), dateTime SHOWIF afg(currentUser())
@@ -248,7 +248,7 @@ DESIGN budgetPortions {
                     fill = 1;
                     alignment = STRETCH;
                     caption = 'Budget Details';
-                    PROPERTY (description(b)) { caption='Budget'; }
+                    PROPERTY (name(b)) { caption='Budget'; }
                     PROPERTY (name(c)) { caption='Cost Center'; }
                     PROPERTY (canonicalName(i)) { caption='Cost type'; }
                     PROPERTY (name(d)) { caption='Budget Detail'; }
@@ -601,7 +601,18 @@ DESIGN steplog {
 @showStepAttributes(steplog,out);
 
 EXTEND FORM budgetPortions OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND stepOut(l);
-@extendDetails(budgetPortions,proc,v);
+//@extendDetails(budgetPortions,proc,v);
+DESIGN budgetPortions {
+    proc {
+        NEW stepLog {
+            fill = 1;
+            alignment = STRETCH;
+            caption = 'Process steps log';
+            type = CONTAINERV;
+            MOVE BOX(l);
+        }
+    }
+}
 @showStepAttributes(budgetPortions,out);
 EXTEND FORM budgetPortions PROPERTIES(o) dropApproval SHOWIF isApprovedDrop(o) DRAW l, revokeBudget SHOWIF isRevokable(o) DRAW l;
 
