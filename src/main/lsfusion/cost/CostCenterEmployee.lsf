@@ -14,17 +14,40 @@ EXTEND FORM costCenter
 
 TABLE costCenterEmployee (CostCenter, Employee);
 access 'Access' = DATA BOOLEAN (CostCenter, Employee);
+approve 'Approve' = DATA BOOLEAN (CostCenter, Employee);
 
 countCenterAccess (Employee e) = GROUP SUM 1 IF access(CostCenter c, e); 
 
 EXTEND FORM employee
     OBJECTS c = CostCenter
-    PROPERTIES access(c, e)
+    PROPERTIES access(c, e), approve(c,e)
     PROPERTIES(c) READONLY name
 ;
 
 DESIGN employee {
     tabbedPane {
         MOVE BOX(c);
+    }
+}
+
+EXTEND FORM costCenter
+    OBJECTS e = Employee
+    PROPERTIES (c,e) access, approve
+    PROPERTIES (e) READONLY name
+;
+
+DESIGN costCenter {
+    OBJECTS {
+        type = CONTAINERV;
+        fill = 1;
+        alignment = STRETCH;
+        MOVE PROPERTY (name(c));
+        NEW flag {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY (archive(c));
+        }
+        MOVE PROPERTY (nameOwner(c));
+        MOVE BOX (e);
     }
 }

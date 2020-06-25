@@ -30,7 +30,7 @@ countInvoices 'Number of Invoices in Purchase Order' = GROUP SUM 1 BY part(Invoi
 planned 'Planned, USD' (PurchaseOrder b) = GROUP SUM NUMERIC[16,2](invoiced(Invoice d)) BY part(d);
 currency 'Currency' (PurchaseOrder b) = GROUP LAST currency(Invoice d) BY part(d);
 numberCostCenter 'Number by Cost Center' (PurchaseOrder b, CostCenter c) = GROUP SUM 1 IF  part(Invoice d) == b AND costCenter(d) == c;
-numberEmployee 'Number by Employee' (PurchaseOrder b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF access(c,e); 
+numberEmployee 'Number by Employee' (PurchaseOrder b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF approve(c,e) OR owner(c) == e; 
 access 'Access' (PurchaseOrder b, Employee e) = TRUE IF numberEmployee(b,e) > 0; 
 
 author (PurchaseOrder b) <- currentUser() WHEN SET(b IS PurchaseOrder);
@@ -75,6 +75,7 @@ passThreshold 'Limit' (Invoice i) = invoiced(i) <= limit(costCenter(budgetDetail
 passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
 EXTEND FORM costCenters PROPERTIES (c) limit;
 EXTEND FORM costCenter PROPERTIES (c) limit;
+DESIGN costCenter {flag{MOVE PROPERTY (limit(c));}}
 EXTEND FORM costItems PROPERTIES (c) limit;
 EXTEND FORM costItem PROPERTIES (c) limit;
 
@@ -275,7 +276,7 @@ assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS Assi
 
 @defineAssignment(PurchaseOrder, po, enter, 'Product Owner Purchase order Approval',planned);
 @extendPurchaseOrder(enter);
-assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND access(sbj(a),e) AND NOT afg(e) AND a IS AssignEnter;
+assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND access(sbj(a),e) AND a IS AssignEnter;
 
 //--- Procedure: Approve Step ---
 
