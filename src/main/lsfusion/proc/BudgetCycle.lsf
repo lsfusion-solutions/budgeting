@@ -115,8 +115,21 @@ limitCaption 'Limit caption' (CostCenter c, Budget b) = CASE
         ELSE '';
 
 limitDesc 'Limit, USD'  (CostCenter c, Budget b) = CONCAT ' ', limitCaption(c,b), INTEGER (limit(c,b)), 'USD';
-EXTEND FORM costCenterBudget PROPERTIES PANEL ON CHANGE reviewBudget(bm) limit(c,bm) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm); //  limitDesc(c,bm)
-DESIGN costCenterBudget { budgetDetail { MOVE PROPERTY (limit(c,bm)) FIRST { alignment = END; caption = 'REMAINING LIMIT (click the value for details)'; fontStyle = 'bold'; fontSize = 16;} }}
+EXTEND FORM costCenterBudget PROPERTIES PANEL ON CHANGE reviewBudget(bm) limitInt=INTEGER (limit(c,bm)) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm); //  limitDesc(c,bm)
+DESIGN costCenterBudget { 
+    budgetDetail {
+        NEW lineTotal FIRST {
+            alignment = STRETCH;
+            type = CONTAINERH ;
+            MOVE PROPERTY (limitInt) FIRST { 
+                alignment = END; 
+                caption = 'LIVE LIMIT (click the value for details)'; 
+                fontStyle = 'bold'; 
+                fontSize = 16;
+            } 
+        }
+    }
+}
 
 CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
 
@@ -139,7 +152,7 @@ budgetDetail 'Budget Detail' = DATA BudgetDetail(Message);
 EXTEND CLASS Step
 {
     enter 'Entered',
-    review 'Reviewed',
+    review 'AFG Passed',
     approve 'Approved',
     reject 'Revising',
     update 'Update'
@@ -312,7 +325,7 @@ dropApproval 'Drop Approval' (BudgetPortion o) {
     stepOut(stepLog(o)) <- Step.reject;
     APPLY;
 } TOOLBAR;
-isRevokable (BudgetPortion s) = (step(s) == Step.enter OR step(s) == Step.review) AND (author(s) == currentUser() OR access(s,currentUser()));
+isRevokable (BudgetPortion s) = (step(s) == Step.enter OR step(s) == Step.review OR step(s) == Step.approve) AND (author(s) == currentUser() OR access(s,currentUser()));
 revokeBudget 'Revoke Budget' (BudgetPortion o) {
     stepOut(stepLog(o)) <- Step.reject;
     APPLY;
@@ -347,6 +360,33 @@ WHEN SET (budget(BudgetDetail b)) AND NOT part(b) DO {
             }
     }
 }
+
+// Approval statistics
+
+quarterPlannedApprove 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d) AND isApproved(part(d));
+quarterPlannedApprove 'Planned, USD' (INTEGER q) = GROUP SUM quarterPlannedApprove(CostCenter c, q);
+
+FORM reviewCostCentersApprove
+    OBJECTS q = INTEGER PANEL 
+    PROPERTIES quarterName(q)
+    
+    OBJECTS c = CostCenter
+    PROPERTIES READONLY name(c), quarterPlannedApprove(c,q)
+    //FILTERS NOT archive(c)
+;
+
+DESIGN reviewCostCentersApprove {size = (800,400);}
+
+reviewBudgetApprove(Budget b) {
+    SHOW reviewCostCentersApprove OBJECTS q = quarterNumber(b) FLOAT WAIT;
+}
+
+limitApproveQuarter 'Limit, USD' (CostCenter c, Budget b) = 
+        IF quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) (-) quarterPlannedApprove(quarterNumber(b))
+        ELSE NULL;
+
+EXTEND FORM costCenterBudget PROPERTIES PANEL ON CHANGE reviewBudgetApprove(bm) limitIntApprove=INTEGER (limitApproveQuarter(c,bm)) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm);
+DESIGN costCenterBudget { lineTotal { MOVE PROPERTY (limitIntApprove) FIRST { alignment = END; caption = 'APPROVED LIMIT (click the value for details)'; fontStyle = 'bold'; fontSize = 16;} }}
 
 //--- Logging Procedure ---
 
@@ -418,7 +458,7 @@ WHEN SETCHANGED (stepOut(StepLog l)) DO {
         IF budget(lastLog(d)) != budget(prevLog(d)) THEN 
             text(m) <- text(m) + 'Budget changed from ' + (OVERRIDE name(budget(lastLog(d))),'') + ' \nto ' + (OVERRIDE name(budget(prevLog(d))),'') + '\n';
         IF planned(lastLog(d)) != planned(prevLog(d)) THEN 
-            text(m) <- text(m) + 'Planned sum changed from ' + (OVERRIDE STRING (planned(lastLog(d))),'') + ' USD to ' + (OVERRIDE STRING (planned(prevLog(d))),'') + ' USD\n';
+            text(m) <- text(m) + 'Planned sum changed from ' + (OVERRIDE STRING (planned(prevLog(d))),'') + ' USD to ' + (OVERRIDE STRING (planned(lastLog(d))),'') + ' USD\n';
         messageFlagPrev(d) <- TRUE;
     }
 }

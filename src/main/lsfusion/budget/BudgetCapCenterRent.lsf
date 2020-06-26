@@ -42,16 +42,16 @@ EXTEND FORM costCenterBudget
 
     OBJECTS rpr = (er = Employee, rl = Location)
     PROPERTIES(er) READONLY name, namePosition // firstName, lastName
-    PROPERTIES(er) nameLocation
-    PROPERTIES =name(location(er, rb)) ON CHANGE changeLocation(er, rb) COLUMNS (rb) HEADER name(rb)
-    PROPERTIES rent(c, er, rb) COLUMNS (rb) HEADER name(rb)
+    PROPERTIES(er) READONLYIF (readonlyProc(bm, c) OR NOT afg(currentUser())) nameLocation
+    PROPERTIES =name(location(er, rb)) READONLYIF (readonlyProc(bm, c) OR NOT afg(currentUser())) ON CHANGE changeLocation(er, rb) COLUMNS (rb) HEADER name(rb)
+    PROPERTIES READONLYIF (readonlyProc(bm, c) OR NOT afg(currentUser())) rent(c, er, rb) COLUMNS (rb) HEADER name(rb)
     ORDERS name(er)
     FILTERS isSubstring(lower(name(er)), lower(searchByRent())) OR isSubstring(lower(locationQuarter(er,bm)), lower(searchByRent())) OR NOT searchByRent(),
             rl == location(er,bm),
             isAssignedQuarter(c,bm,er)
             
-    FILTERGROUP rentteam
-        FILTER 'Show the only assigned rental items for the Cost Center this quarter' isAssignedQRent(c,bm,er)
+    //FILTERGROUP rentteam
+    //    FILTER 'Show the only assigned rental items for the Cost Center this quarter' isAssignedQRent(c,bm,er)
 ;
 
 DESIGN costCenterBudget {

@@ -314,7 +314,7 @@ moveBudgetDetail 'Move' (BudgetDetail d) {
     }
 }
 
-EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) moveBudgetDetail(bmd) DRAW bmd TOOLBAR;
+EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonlyProc(bmd, c) moveBudgetDetail(bmd) DRAW bmd TOOLBAR;
 
 addInvoice 'Add invoice' (BudgetDetail d) {
     NEWSESSION {

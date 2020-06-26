@@ -47,3 +47,22 @@ revokeBudget 'Revoke Budget' (CostCenter c, Budget b) {
     }
 } TOOLBAR;
 EXTEND FORM costCenterBudget PROPERTIES revokeBudget(c,bm) DRAW bmd SHOWIF isRevokable(c,bm);
+
+readonlyProc (Budget d, CostCenter c) = isApproved(proposalQuarter(c,quarterNumber(d))) OR NOT quarterBudgeting(quarterNumber(d)); //  OR NOT afg(currentUser())
+
+EXTEND FORM reviewCostCentersApprove FILTERS isApproved(proposalQuarter(c,q));
+
+EXTEND FORM costCenterBudget OBJECTS ol=(o = BudgetPortion,l = StepLog) PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND o == proposalQuarter(c,q) AND stepOut(l);
+DESIGN costCenterBudget {
+    monthlyTabPane {
+        NEW stepLog BEFORE monthlyExpense {
+            fill = 1;
+            alignment = STRETCH;
+            caption = 'Approval log';
+            type = CONTAINERV;
+            MOVE BOX(ol);
+        }
+    }
+}
+@showStepAttributes(costCenterBudget,out);
+EXTEND FORM costCenterBudget PROPERTIES(o) dropApproval SHOWIF isApprovedDrop(o) DRAW ol, revokeBudget SHOWIF isRevokable(o) DRAW ol;

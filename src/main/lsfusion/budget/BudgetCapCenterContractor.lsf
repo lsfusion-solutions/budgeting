@@ -165,4 +165,4 @@ copyFrom 'Copy from' (Budget bb, CostCenter c) {
     }
 }
 
-EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) copyFrom(bm, c) DRAW bmd TOOLBAR;
+//EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) copyFrom(bm, c) DRAW bmd TOOLBAR;
