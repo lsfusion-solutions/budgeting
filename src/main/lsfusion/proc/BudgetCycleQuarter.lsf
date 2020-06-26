@@ -19,6 +19,8 @@ proposalQuarter 'Quarter Aggregation' = AGGR BudgetQuarter WHERE budgetingQuarte
 
 partQuarter 'Quarter Budget Proposal' (BudgetDetail d) = proposalQuarter(costCenter(d),quarterNumber(budget(d)));
 
+period (CostCenter c, INTEGER q) = GROUP LAST period(c,Budget b) IF quarterNumber(b) == q;
+
 quarter(BudgetQuarter b) += quarter(b);
 quarterBudgeting(BudgetQuarter b) += quarterBudgeting(quarter(b));
 
@@ -49,6 +51,7 @@ revokeBudget 'Revoke Budget' (CostCenter c, Budget b) {
 EXTEND FORM costCenterBudget PROPERTIES revokeBudget(c,bm) DRAW bmd SHOWIF isRevokable(c,bm);
 
 readonlyProc (Budget d, CostCenter c) = isApproved(proposalQuarter(c,quarterNumber(d))) OR NOT quarterBudgeting(quarterNumber(d)); //  OR NOT afg(currentUser())
+readonlyProc (INTEGER q, CostCenter c) = isApproved(proposalQuarter(c,q)) OR NOT quarterBudgeting(q);
 
 EXTEND FORM reviewCostCentersApprove FILTERS isApproved(proposalQuarter(c,q));
 

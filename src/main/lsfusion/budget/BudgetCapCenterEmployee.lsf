@@ -60,9 +60,14 @@ cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.salary AND salary(p
 
 assignedQuarter 'Overall assignment of Employee within Company for quarter' (Budget b, Employee e) = 
                 GROUP CONCAT STRING(left(name(Budget be),3)+': '+STRING[3](INTEGER(assigned(be,e)))+'%'),', ' ORDER fromDate(be) IF quarterNumber(be) == quarterNumber(b);
+assignedQuarter 'Overall assignment of Employee within Company for quarter' (INTEGER q, Employee e) = 
+                GROUP CONCAT STRING(left(name(Budget be),3)+': '+STRING[3](INTEGER(assigned(be,e)))+'%'),', ' ORDER fromDate(be) IF quarterNumber(be) == q;
 backgroundAssigned (Budget b, Employee e) = RGB(255,212,212) IF assigned(b, e) > 100;
 backgroundAssignedQuarter (Budget b, Employee e) = GROUP MAX backgroundAssigned(Budget be,e) IF quarterNumber(be) == quarterNumber(b);
+backgroundAssignedQuarter (INTEGER q, Employee e) = GROUP MAX backgroundAssigned(Budget be,e) IF quarterNumber(be) == q;
+backgroundProtected (INTEGER q, CostCenter c) = RGB(240,240,240) IF readonlyProc(q, c);
 isAssignedQuarter (CostCenter c, Budget b, Employee e) = TRUE IF GROUP MAX assigned(period(c,Budget be),be,e) IF quarterNumber(be) == quarterNumber(b);
+isAssignedQuarter (CostCenter c, INTEGER q, Employee e) = TRUE IF GROUP MAX assigned(period(c,Budget be),be,e) IF quarterNumber(be) == q;
 
 searchByName 'Search' = DATA LOCAL NESTED ISTRING ();
 EXTEND FORM costCenterBudget
@@ -183,3 +188,55 @@ WHEN SETCHANGED(SalaryBudgetDetail d IS SalaryBudgetDetail) DO
 
 WHEN SETCHANGED(salary(costCenter(SalaryBudgetDetail d), costItem(d), budget(d))) DO
     planned[BudgetDetail](d) <- salary(costCenter(d), costItem(d), budget(d));
+
+// Flow editor
+showSensitiveColumns 'Show sensitive columns' = DATA LOCAL NESTED BOOLEAN ();
+EXTEND FORM employees
+    OBJECTS q = INTEGER PANEL 
+    PROPERTIES quarterName(q) //SELECTOR 
+    FILTERS quarterBudgeting(q)
+    
+    OBJECTS c = CostCenter
+    PROPERTIES BACKGROUND backgroundProtected(q,c) name(c), quarterPlanned(c,q)
+    
+    OBJECTS eb = Budget
+    FILTERS quarterNumber(eb) == q
+    
+    OBJECTS epe = (eq = Employee, ep = Period)
+    PROPERTIES(eq) READONLY name, namePosition
+    PROPERTIES(ep,eq) READONLYIF (readonlyProc(q, c) OR NOT afg(currentUser())) assigned BACKGROUND backgroundProtected(q,c)
+    PROPERTIES READONLYIF (readonlyProc(q, c) OR NOT afg(currentUser())) assigned(ep, eb, eq) BACKGROUND backgroundProtected(q,c) COLUMNS (eb) HEADER name(eb)
+    PROPERTIES assignedQuarter(q, eq) BACKGROUND backgroundAssignedQuarter(q, eq)
+    ORDERS name(eq)
+    FILTERS isSubstring(lower(firstName(eq)), lower(searchByName())) OR isSubstring(lower(lastName(eq)), lower(searchByName())) OR isSubstring(lower(namePosition(eq)), lower(searchByName())) OR NOT searchByName(),
+            ep == period(c,q),
+            NOT fromDate(ep) > fromDate(monthTo(eq)),
+            isAssignedQuarter(c,q,eq) OR afg(currentUser())
+            
+    PROPERTIES() searchByName
+    
+    FILTERGROUP myteam
+        FILTER 'Show the only assigned Team for the Cost Center this quarter' isAssignedQuarter(c,q,eq)
+    FILTERGROUP mycostcenter
+        FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT
+;
+
+DESIGN employees {
+    pane {
+        NEW budgeting AFTER BOX(ec) {
+            caption = 'Budgeting';
+            alignment = STRETCH;
+            fill = 1;
+            type = CONTAINERV;
+            MOVE PROPERTY (quarterName(q)) { caption = 'Select Quarter for budgeting'; }
+            MOVE PROPERTY (searchByName());
+            NEW flow {
+                type = CONTAINERH;
+                alignment = STRETCH;
+                fill = 1;
+                MOVE BOX (c) {fill = 1;}
+                MOVE BOX (epe) {fill = 3;}
+            }
+        }
+    }
+}
