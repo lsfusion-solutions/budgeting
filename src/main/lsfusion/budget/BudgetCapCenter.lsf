@@ -100,6 +100,30 @@ DESIGN costCenterBudget {
     }
 }
 
+// Edit periods by CostCenter
+EXTEND FORM costCenter
+    OBJECTS p = Period
+    PROPERTIES(p) fromDate, toDate
+    PROPERTIES(p) NEW, DELETE SHOWIF NOT readonly(p)
+    FILTERS costCenter(p) == c
+    
+    OBJECTS b = Budget
+    PROPERTIES READONLYIF readonly(p) selected(p, b)
+    PROPERTIES(b) READONLY fromDate, toDate, name
+    FILTERS period(c, b) == p OR NOT period(c, b) 
+;
+
+DESIGN costCenter {
+    OBJECTS {
+        NEW periods BEFORE BOX(e) {
+            fill = 1;
+            type = CONTAINERH;
+            MOVE BOX (p);
+            MOVE BOX (b);
+        }
+    }
+}
+
 FORM costCenterBudgetArch 'Project budget'
     OBJECTS c = CostCenter PANEL
     PROPERTIES(c) name SELECTOR

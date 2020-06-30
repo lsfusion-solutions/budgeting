@@ -48,6 +48,6 @@ DESIGN costCenter {
             MOVE PROPERTY (archive(c));
         }
         MOVE PROPERTY (nameOwner(c));
-        MOVE BOX (e);
+        MOVE BOX (e) { fill = 1; }
     }
 }
