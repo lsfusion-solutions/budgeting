@@ -68,9 +68,6 @@ quarterPlannedInteger 'Planned, USD' (INTEGER q) = INTEGER (quarterPlanned(q));
 quarterSpent 'Spent, USD' = GROUP SUM spent(Budget d, CostCenter c) BY c,quarterNumber(d);
 quarterSpentInteger 'Spent, USD' (CostCenter c, INTEGER q) = INTEGER (quarterSpent(c,q));
 
-quarterPlannedApprove 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d) AND isApproved(part(d));
-quarterPlannedApprove 'Planned, USD' (INTEGER q) = GROUP SUM quarterPlannedApprove(CostCenter c, q);
-
 quarterName 'Quarter' (BudgetPortion p) = quarterName(quarter(p));
 nameExplain 'Cost Center' (BudgetPortion b) = quarterName(b) + ' - ' + name(costCenter(b)) CHARWIDTH 30;
 
@@ -139,8 +136,6 @@ CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - p
 CONSTRAINT capBudget(Budget b) > 0 AND (capBudget(b) - planned(b)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit of Company is exceeded';
 
 CONSTRAINT quarterLimitCostCenter(INTEGER q, CostCenter c) > 0 AND (quarterLimitCostCenter(q,c) - quarterPlanned(c,q)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter Limit for the Cost Center is exceeded';
-
-CONSTRAINT quarterLimitCompany(INTEGER q) > 0 AND (quarterLimitCompany(q) - quarterPlannedApprove(q)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter Limit of Company is exceeded';
 
 CONSTRAINT freeCostCenter(CostCenter c) AND currentLimit(c,Budget bm) AND quarterPlanned(c, quarterNumber(bm)) > currentLimit(c,bm)
     CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter budget is exceeded';
@@ -365,6 +360,11 @@ WHEN SET (budget(BudgetDetail b)) AND NOT part(b) DO {
 }
 
 // Approval statistics
+
+quarterPlannedApprove 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d) AND isApproved(part(d));
+quarterPlannedApprove 'Planned, USD' (INTEGER q) = GROUP SUM quarterPlannedApprove(CostCenter c, q);
+
+CONSTRAINT quarterLimitCompany(INTEGER q) > 0 AND (quarterLimitCompany(q) - quarterPlannedApprove(q)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter Limit of Company is exceeded';
 
 FORM reviewCostCentersApprove
     OBJECTS q = INTEGER PANEL 
