@@ -43,6 +43,7 @@ color 'Color' (PurchaseOrder o) = RGB(250,200,200) IF [GROUP SUM 1 IF urgent(Inv
 supply 'Known Supplier' = DATA BOOLEAN (Invoice);
 searchSupply 'Search Supplier' (PurchaseOrder o) = TRUE IF [GROUP SUM amount(Invoice i) IF NOT contractor(i) BY part(i)](o);
 budgetDetailName 'Budget Item' (Invoice d) = CONCAT ' - ', nameBudget(budgetDetail(d)), name(budgetDetail(d));  
+budgetDetailNameSum 'Budget Item' (Invoice d) = nameBudget(budgetDetail(d)) + '(' + STRING (INTEGER(planned(budgetDetail(d)))) + ')';  
 longBudgetDetailName 'Budget Item' (Invoice d) = longBudgetName(budgetDetail(d));  
 costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
 planned 'Budgeted, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
@@ -53,6 +54,8 @@ balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),(OVERRIDE da
 CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
 amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
 fullName 'Invoice name' (Invoice i) = CONCAT ' ',number(i),'dated',date(i),'for',amountName(i);
+
+budgetDetailSum 'Budget Items' = GROUP CONCAT budgetDetailNameSum(Invoice i),', ' BY part(i);
 
 quarterInvoiced 'Invoiced, USD' (CostCenter c, INTEGER q) = GROUP SUM invoiced(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
 quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balance(BudgetDetail d, currentDate()) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
@@ -392,7 +395,7 @@ DESIGN purchaseOrder { TOOLBAR { MOVE PROPERTY(completeUpdate(o)); } }
 //--- Main Form ---
 
 EXTEND FORM purchaseOrders
-    PROPERTIES(o) READONLY nameExplain, datePlan, planned, nameStep, passThreshold, searchSupply, dateTime, nameAuthor
+    PROPERTIES(o) READONLY nameExplain, budgetDetailSum SHOWIF afg(currentUser()), datePlan, planned, nameStep, passThreshold, searchSupply, dateTime, nameAuthor
     PROPERTIES newPart() 
     PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
     ORDERS datePlan(o)
