@@ -70,38 +70,6 @@ isAssignedQuarter (CostCenter c, Budget b, Employee e) = TRUE IF GROUP MAX assig
 isAssignedQuarter (CostCenter c, INTEGER q, Employee e) = TRUE IF GROUP MAX assigned(period(c,Budget be),be,e) IF quarterNumber(be) == q;
 
 searchByName 'Search' = DATA LOCAL NESTED ISTRING ();
-EXTEND FORM costCenterBudget
-    PROPERTIES() searchByName
-    
-    OBJECTS eb = Budget
-    //PROPERTIES(eb) READONLY fromDate, toDate, name
-    //PROPERTIES(eb, e) READONLY assigned
-    FILTERS quarterNumber(eb) == quarterNumber(bm)
-
-    OBJECTS epe = (e = Employee, ep = Period)
-    PROPERTIES(e) READONLY name, namePosition // firstName, lastName
-    PROPERTIES(ep,e) READONLYIF (readonlyProc(bm, c) OR NOT afg(currentUser())) assigned
-    PROPERTIES READONLYIF (readonlyProc(bm, c) OR NOT afg(currentUser())) assigned(ep, eb, e) COLUMNS (eb) HEADER name(eb)
-    PROPERTIES assignedQuarter(bm, e) BACKGROUND backgroundAssignedQuarter(bm, e) //, assigned(p, e)
-    ORDERS name(e)
-    FILTERS isSubstring(lower(firstName(e)), lower(searchByName())) OR isSubstring(lower(lastName(e)), lower(searchByName())) OR isSubstring(lower(namePosition(e)), lower(searchByName())) OR NOT searchByName(),
-            ep == period(c,bm),
-            NOT fromDate(ep) > fromDate(monthTo(e)),
-            isAssignedQuarter(c,bm,e) OR afg(currentUser())
-            
-    FILTERGROUP myteam
-        FILTER 'Show the only assigned Team for the Cost Center this quarter' isAssignedQuarter(c,bm,e)
-;
-
-DESIGN costCenterBudget {
-    monthlyTabPane {
-        NEW teamPane AFTER budgetDetail {
-            caption = 'Team';
-            MOVE PROPERTY (searchByName()) { alignment = STRETCH; }
-            MOVE BOX(epe);
-        }
-    }
-}
 
 // Total Assigned 
 EXTEND FORM employees

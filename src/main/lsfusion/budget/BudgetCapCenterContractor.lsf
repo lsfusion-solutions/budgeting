@@ -43,7 +43,7 @@ EXTEND FORM costCenterBudget PROPERTIES addContractorBudget() DRAW cpc;
 
 DESIGN costCenterBudget {
     monthlyTabPane {
-        NEW contractorsPane AFTER teamPane {
+        NEW contractorsPane AFTER budgetDetail {
             caption = 'Contractors';
             MOVE PROPERTY (filterContractor()) { alignment = STRETCH; }
             MOVE BOX(cpc);
