@@ -679,7 +679,7 @@ EXTEND FORM costCenterBudget
     PROPERTIES(bqd) READONLY nameBudget, canonicalNameCostItem, name, planned, invoiced, spentInteger, description PANEL, sensitive
     FILTERS costCenter(bqd) == c,
             quarterNumber(budget(bqd)) == q,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bmd)) OR NOT hideSensitive(mainRole(currentUser()))
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bqd)) OR NOT hideSensitive(mainRole(currentUser()))
     ORDERS planned(bqd) DESC 
             
     TREE costItemsQ ciq = CostItem PARENT parent(ciq)
