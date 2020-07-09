@@ -1,6 +1,6 @@
 MODULE PurchaseInvoiceEmployee;
 
-REQUIRE PurchaseInvoice, Employee;
+REQUIRE PurchaseInvoice, EmployeeB;
 
 NAMESPACE Purchase;
 

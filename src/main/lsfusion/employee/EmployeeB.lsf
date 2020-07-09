@@ -1,6 +1,8 @@
-MODULE Employee;
+MODULE EmployeeB;
 
-REQUIRE Security, Location, Utils;
+REQUIRE Security, LocationB, Utils;
+
+NAMESPACE Employee;
 
 CLASS Employee 'Employee' : CustomUser;
 TABLE employee (Employee);

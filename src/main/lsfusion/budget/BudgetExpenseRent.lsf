@@ -1,6 +1,6 @@
 MODULE BudgetExpenseRent;
 
-REQUIRE BudgetExpense, BudgetRent, Location, BudgetCapCenterEmployee, EmployeeBusinessTrip;
+REQUIRE BudgetExpense, BudgetRent, LocationB, BudgetCapCenterEmployee, EmployeeBusinessTrip;
 
 NAMESPACE Budget;
 

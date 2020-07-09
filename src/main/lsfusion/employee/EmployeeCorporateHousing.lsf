@@ -1,6 +1,6 @@
 MODULE EmployeeCorporateHousing;
 
-REQUIRE Employee, Time;
+REQUIRE EmployeeB, Time;
 
 NAMESPACE Employee;
 

@@ -1,6 +1,6 @@
 MODULE EmployeeVacation;
 
-REQUIRE Employee, Time, EmployeeCalendar;
+REQUIRE EmployeeB, Time, EmployeeCalendar;
 
 NAMESPACE Employee;
 

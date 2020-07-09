@@ -1,6 +1,6 @@
 MODULE CostCenterEmployee;
 
-REQUIRE CostCenter, Employee;
+REQUIRE CostCenter, EmployeeB;
 
 NAMESPACE Cost;
 

@@ -1,0 +1,8 @@
+MODULE BudgetingMyCompany;
+
+REQUIRE MasterDataP,
+        Inventory,
+        
+        EmployeeMyCompany, ContractorMyCompany;
+
+NAMESPACE Budgeting;

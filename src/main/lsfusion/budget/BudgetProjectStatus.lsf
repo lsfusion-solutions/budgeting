@@ -1,6 +1,6 @@
 MODULE BudgetProjectStatus;
 
-REQUIRE Employee, Budget, CostCenterEmployee, BudgetCapCenterEmployee, 
+REQUIRE EmployeeB, Budget, CostCenterEmployee, BudgetCapCenterEmployee, 
         EmployeeAbsence, EmployeeVacation, EmployeeBusinessTrip, EmployeeCorporateHousing,
         BudgetCapCenterContractor, BudgetContractPurchaseInvoice, BudgetPurchaseInvoiceExpense;
 

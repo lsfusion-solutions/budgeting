@@ -1,6 +1,6 @@
 MODULE EmployeeHiring;
 
-REQUIRE Employee, Country;
+REQUIRE EmployeeB, Country;
 
 NAMESPACE Employee;
 

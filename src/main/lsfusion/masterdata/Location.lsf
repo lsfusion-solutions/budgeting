@@ -1,6 +1,8 @@
-MODULE Location;
+MODULE LocationB;
 
 REQUIRE MasterData;
+
+NAMESPACE Location;
 
 CLASS Location 'Location';
 TABLE location(Location);

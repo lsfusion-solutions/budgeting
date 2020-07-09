@@ -1,4 +1,4 @@
-MODULE Account;
+MODULE AccountB;
 
 REQUIRE Currency, CostCenter;
 

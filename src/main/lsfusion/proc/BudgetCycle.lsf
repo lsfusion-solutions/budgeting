@@ -381,11 +381,10 @@ reviewBudgetApprove(Budget b) {
     SHOW reviewCostCentersApprove OBJECTS q = quarterNumber(b) FLOAT WAIT;
 }
 
-limitApproveQuarter 'Limit, USD' (CostCenter c, Budget b) = 
-        IF quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) (-) quarterPlannedApprove(quarterNumber(b))
-        ELSE NULL;
+limitApproveQuarter 'Limit, USD' (Budget b) = 
+        quarterLimitCompany(quarterNumber(b)) (-) quarterPlannedApprove(quarterNumber(b)) IF quarterLimitCompany(quarterNumber(b)) > 0;
 
-EXTEND FORM costCenterBudget PROPERTIES PANEL ON CHANGE reviewBudgetApprove(bm) limitIntApprove=INTEGER (limitApproveQuarter(c,bm)) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm);
+EXTEND FORM costCenterBudget PROPERTIES PANEL ON CHANGE reviewBudgetApprove(bm) limitIntApprove=INTEGER (limitApproveQuarter(bm)) BACKGROUND RGB(204,255,255) SHOWIF limit(c,bm);
 DESIGN costCenterBudget { lineTotal { MOVE PROPERTY (limitIntApprove) FIRST { alignment = END; caption = 'APPROVED LIMIT (click the value for details)'; fontStyle = 'bold'; fontSize = 16;} }}
 
 //--- Logging Procedure ---

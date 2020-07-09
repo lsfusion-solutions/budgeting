@@ -1,6 +1,6 @@
 MODULE Cycle;
 
-REQUIRE Authentication, Time, Security, Country, Employee, Currency;
+REQUIRE Authentication, Time, Security, Country, EmployeeB, Currency;
 
 disableEvents = DATA LOCAL BOOLEAN ();
 backgroundFill = RGB(255, 255, 224);

@@ -1,6 +1,6 @@
 MODULE EmployeeCalendar;
 
-REQUIRE Employee, Time;
+REQUIRE EmployeeB, Time;
 
 NAMESPACE Employee;
 

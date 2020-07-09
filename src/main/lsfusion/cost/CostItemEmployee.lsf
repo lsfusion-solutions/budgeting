@@ -1,6 +1,6 @@
 MODULE CostItemEmployee;
 
-REQUIRE CostItem, Employee;
+REQUIRE CostItem, EmployeeB;
 
 NAMESPACE Cost;
 
