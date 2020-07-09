@@ -220,7 +220,7 @@ readonlyProc (BudgetDetail d, CostCenter c) = (isProcessing(d) OR readonly(d, c)
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
     PROPERTIES(bm) READONLY name, fromDate SHOWIF NULL //, toDate, 
-    PROPERTIES READONLY planned(bm, c), invoiced(bm,c) // , optimizedPlanned(bm, c), optimized(bm, c)
+    PROPERTIES READONLY insensitivePlanned(bm, c), invoiced(bm,c) // planned(bm, c) , optimizedPlanned(bm, c), optimized(bm, c)
     ORDERS fromDate(bm) DESC 
     FILTERS selected(bm, c)
     

@@ -32,7 +32,7 @@ attachment = DATA FILE(BudgetPortion);
 sbj = ABSTRACT BudgetPortion (Assign) MATERIALIZED;
 part = DATA BudgetPortion (BudgetDetail); // Budget Proposal may include multiple items, each is named BudgetDetail
 
-planned 'Planned, USD' (BudgetPortion b) = GROUP SUM NUMERIC[16,2](planned(BudgetDetail d)) IF  part(d) == b;
+planned 'Planned, USD' (BudgetPortion b) = GROUP SUM NUMERIC[16,2](planned(BudgetDetail d)) IF  part(d) == b AND NOT sensitive(d);
 numberCostCenter 'Number by Cost Center' (BudgetPortion b, CostCenter c) = GROUP SUM 1 IF  part(BudgetDetail d) == b AND costCenter(d) == c;
 numberEmployee 'Number by Employee' (BudgetPortion b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF access(c,e); 
 access 'Access' (BudgetPortion b, Employee e) = TRUE IF numberEmployee(b,e) > 0; 
@@ -58,8 +58,8 @@ quarterBudgeting 'Quarterly Budgeting' = DATA BOOLEAN (INTEGER); // Enable autom
 
 quarterName 'Quarter' (INTEGER q) =  STRING[4](floor(q/10)) + ' \'Q' + STRING[1] (q - floor(q/10)*10);
 
-quarterPlanned 'Planned, USD' (CostCenter c, Budget q) = GROUP SUM planned(BudgetDetail d) IF quarterNumber(q) == quarterNumber(budget(d)) AND c == costCenter(d);
-quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterPlanned 'Planned, USD' (CostCenter c, Budget q) = GROUP SUM planned(BudgetDetail d) IF quarterNumber(q) == quarterNumber(budget(d)) AND c == costCenter(d) AND NOT sensitive(d);
+quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d) AND NOT sensitive(d);
 quarterPlannedInteger 'Planned, USD' (CostCenter c, INTEGER q) = INTEGER (quarterPlanned(c,q));
 quarterPlanned 'Planned, USD' (Budget q) = GROUP SUM quarterPlanned(CostCenter c, q);
 quarterPlannedInteger 'Planned, USD' (Budget q) = INTEGER (quarterPlanned(q));
@@ -101,9 +101,9 @@ reviewBudget(Budget b) {
 }
 
 limit 'Limit, USD' (CostCenter c, Budget b) = CASE
-        WHEN capCostCenter(b,c) > 0 THEN capCostCenter(b,c) - planned(b,c)
+        WHEN capCostCenter(b,c) > 0 THEN capCostCenter(b,c) - insensitivePlanned(b,c)
         WHEN quarterLimitCostCenter(quarterNumber(b),c) > 0 THEN quarterLimitCostCenter(quarterNumber(b),c) - quarterPlanned(c,b)
-        WHEN capBudget(b) > 0 THEN capBudget(b) - planned(b)
+        WHEN capBudget(b) > 0 THEN capBudget(b) - insensitivePlanned(b)
         WHEN quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) - quarterPlanned(b)
         ELSE NULL;
 
@@ -361,7 +361,7 @@ WHEN SET (budget(BudgetDetail b)) AND NOT part(b) DO {
 
 // Approval statistics
 
-quarterPlannedApprove 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d) AND isApproved(part(d));
+quarterPlannedApprove 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d) AND isApproved(part(d)) AND NOT sensitive(d);
 quarterPlannedApprove 'Planned, USD' (INTEGER q) = GROUP SUM quarterPlannedApprove(CostCenter c, q);
 
 CONSTRAINT quarterLimitCompany(INTEGER q) > 0 AND (quarterLimitCompany(q) - quarterPlannedApprove(q)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter Limit of Company is exceeded';

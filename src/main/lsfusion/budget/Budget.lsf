@@ -110,6 +110,7 @@ spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budg
 spentInteger 'Spent, USD' (Budget b,CostCenter c) = INTEGER (spent(b,c));
 
 planned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d); 
+insensitivePlanned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) AND NOT sensitive(d) BY budget(d); 
 plannedInteger 'Planned, USD' (Budget b) = INTEGER (planned(b));
 spent 'Spent, USD' (Budget b) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l); 
 spentInteger 'Spent, USD' (Budget b) = INTEGER (spent(b));
