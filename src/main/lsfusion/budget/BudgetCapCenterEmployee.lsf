@@ -43,6 +43,9 @@ salary 'Salary, USD' (Period p, Employee e, Budget b) =
 salary 'Salary, USD' (CostCenter c, Employee e, Budget b) = // salary of this Employee from this Cost Center in this month
     GROUP SUM salary(Period p, e, b) IF selected(p, b) BY costCenter(p);     // through all periods
 
+salary 'Salary, USD' = // salary of this Employee from this Cost Center in this quarter
+    GROUP SUM salary(CostCenter c, Employee e, Budget b) BY c,e,quarterNumber(b);     // through all periods
+
 salary 'Salary, USD' (CostCenter c, CostItem i, Budget b) = 
     GROUP SUM salary(c, Employee e, b) BY costItem(e, b);
 
@@ -157,6 +160,9 @@ WHEN SETCHANGED(SalaryBudgetDetail d IS SalaryBudgetDetail) DO
 WHEN SETCHANGED(salary(costCenter(SalaryBudgetDetail d), costItem(d), budget(d))) DO
     planned[BudgetDetail](d) <- salary(costCenter(d), costItem(d), budget(d));
 
+plannedSalary 'Salary planned, USD' = GROUP SUM planned(SalaryBudgetDetail d) BY costCenter(d), budget(d);
+plannedSalary 'Salary planned, USD' = GROUP SUM plannedSalary(CostCenter c, Budget b) BY c, quarterNumber(b);
+
 // Flow editor
 showSensitiveColumns 'Show sensitive columns' = DATA LOCAL NESTED BOOLEAN ();
 EXTEND FORM employees
@@ -164,17 +170,20 @@ EXTEND FORM employees
     PROPERTIES quarterName(q) //SELECTOR 
     FILTERS quarterBudgeting(q)
     
-    OBJECTS c = CostCenter
-    PROPERTIES BACKGROUND backgroundProtected(q,c) name(c), quarterPlanned(c,q)
-    
     OBJECTS eb = Budget
     FILTERS quarterNumber(eb) == q
+    
+    OBJECTS c = CostCenter
+    PROPERTIES BACKGROUND backgroundProtected(q,c) name(c), quarterPlanned(c,q), plannedSalary(c,q)
+    PROPERTIES BACKGROUND backgroundProtected(q,c) plannedSalary(c,eb) COLUMNS (eb) HEADER name(eb)
     
     OBJECTS epe = (eq = Employee, ep = Period)
     PROPERTIES(eq) READONLY name, namePosition
     PROPERTIES(ep,eq) READONLYIF (readonlyProc(q, c) OR NOT afg(currentUser())) assigned BACKGROUND backgroundProtected(q,c)
     PROPERTIES READONLYIF (readonlyProc(q, c) OR NOT afg(currentUser())) assigned(ep, eb, eq) BACKGROUND backgroundProtected(q,c) COLUMNS (eb) HEADER name(eb)
-    PROPERTIES assignedQuarter(q, eq) BACKGROUND backgroundAssignedQuarter(q, eq)
+    PROPERTIES assignedQuarter(q, eq) BACKGROUND backgroundAssignedQuarter(q, eq) PANEL 
+    PROPERTIES salary(ep, eq, eb) COLUMNS (eb) HEADER name(eb)
+    PROPERTIES salary(c, eq, q)
     ORDERS name(eq)
     FILTERS isSubstring(lower(firstName(eq)), lower(searchByName())) OR isSubstring(lower(lastName(eq)), lower(searchByName())) OR isSubstring(lower(namePosition(eq)), lower(searchByName())) OR NOT searchByName(),
             ep == period(c,q),
@@ -203,7 +212,11 @@ DESIGN employees {
                 alignment = STRETCH;
                 fill = 1;
                 MOVE BOX (c) {fill = 1;}
-                MOVE BOX (epe) {fill = 3;}
+                NEW budgetingDetail {
+                    fill = 3;
+                    MOVE BOX (epe);
+                    MOVE PROPERTY (assignedQuarter(q, eq)) {alignment = STRETCH;}
+                }
             }
         }
     }
