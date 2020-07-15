@@ -1,7 +1,7 @@
 MODULE BudgetingMyCompany;
 
 REQUIRE MasterDataP,
-        Inventory,
+        Inventory, InventoryRu,
         
         EmployeeMyCompany, ContractorMyCompany;
 
