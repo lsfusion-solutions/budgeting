@@ -131,14 +131,14 @@ DESIGN costCenterBudget {
     }
 }
 
-CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
+//CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
 
-CONSTRAINT capBudget(Budget b) > 0 AND (capBudget(b) - planned(b)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit of Company is exceeded';
+//CONSTRAINT capBudget(Budget b) > 0 AND (capBudget(b) - planned(b)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit of Company is exceeded';
 
-CONSTRAINT quarterLimitCostCenter(INTEGER q, CostCenter c) > 0 AND (quarterLimitCostCenter(q,c) - quarterPlanned(c,q)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter Limit for the Cost Center is exceeded';
+//CONSTRAINT quarterLimitCostCenter(INTEGER q, CostCenter c) > 0 AND (quarterLimitCostCenter(q,c) - quarterPlanned(c,q)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter Limit for the Cost Center is exceeded';
 
-CONSTRAINT freeCostCenter(CostCenter c) AND currentLimit(c,Budget bm) AND quarterPlanned(c, quarterNumber(bm)) > currentLimit(c,bm)
-    CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter budget is exceeded';
+//CONSTRAINT freeCostCenter(CostCenter c) AND currentLimit(c,Budget bm) AND quarterPlanned(c, quarterNumber(bm)) > currentLimit(c,bm)
+//    CHECKED BY planned[BudgetDetail] MESSAGE 'Quarter budget is exceeded';
 
 // Enable Chat
 newComment 'New Comment' = DATA LOCAL TEXT (BudgetDetail);
