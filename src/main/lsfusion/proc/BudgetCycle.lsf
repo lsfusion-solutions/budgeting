@@ -58,7 +58,7 @@ quarterBudgeting 'Quarterly Budgeting' = DATA BOOLEAN (INTEGER); // Enable autom
 
 quarterName 'Quarter' (INTEGER q) =  STRING[4](floor(q/10)) + ' \'Q' + STRING[1] (q - floor(q/10)*10);
 
-quarterPlanned 'Planned, USD' (CostCenter c, Budget q) = GROUP SUM planned(BudgetDetail d) IF quarterNumber(q) == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterPlanned 'Planned, USD' (CostCenter c, Budget q) = GROUP SUM planned(BudgetDetail d) IF quarterNumber(q) == quarterNumber(budget(d)) AND c == costCenter(d) AND NOT sensitive(d);
 quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d) AND NOT sensitive(d);
 quarterPlannedInteger 'Planned, USD' (CostCenter c, INTEGER q) = INTEGER (quarterPlanned(c,q));
 quarterPlanned 'Planned, USD' (Budget q) = GROUP SUM quarterPlanned(CostCenter c, q);
@@ -101,7 +101,7 @@ reviewBudget(Budget b) {
 }
 
 limit 'Limit, USD' (CostCenter c, Budget b) = CASE
-        WHEN capCostCenter(b,c) > 0 THEN capCostCenter(b,c) - planned(b,c)
+        WHEN capCostCenter(b,c) > 0 THEN capCostCenter(b,c) - insensitivePlanned(b,c)
         WHEN quarterLimitCostCenter(quarterNumber(b),c) > 0 THEN quarterLimitCostCenter(quarterNumber(b),c) - quarterPlanned(c,b)
         WHEN capBudget(b) > 0 THEN capBudget(b) - planned(b)
         WHEN quarterLimitCompany(quarterNumber(b)) > 0 THEN quarterLimitCompany(quarterNumber(b)) - quarterPlanned(b)
@@ -131,7 +131,7 @@ DESIGN costCenterBudget {
     }
 }
 
-//CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - planned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
+//CONSTRAINT capCostCenter(Budget b, CostCenter c) > 0 AND (capCostCenter(b,c) - insensitivePlanned(b,c)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit for the Cost Center is exceeded';
 
 //CONSTRAINT capBudget(Budget b) > 0 AND (capBudget(b) - planned(b)) < 0 CHECKED BY planned[BudgetDetail] MESSAGE 'Month Limit of Company is exceeded';
 
