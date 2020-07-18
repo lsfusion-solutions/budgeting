@@ -13,6 +13,7 @@ name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 20 NONULL;
 regID 'Registration ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
 taxID 'Tax ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
 name 'Name' = DATA ISTRING(AccountingName) IN id CHARWIDTH 20 NONULL;
+nameContractor 'Contractor' (AccountingName a) = name(contractor(a));
 
 CONSTRAINT regID(Contractor c) AND NOT onlyDigits(regID(c)) CHECKED BY regID[Contractor] MESSAGE 'Registration ID must contain only digits';
 CONSTRAINT taxID(Contractor c) AND NOT onlyDigits(taxID(c)) CHECKED BY taxID[Contractor] MESSAGE 'Tax ID must contain only digits';
@@ -118,6 +119,12 @@ FORM contractors 'Contractors'
     PROPERTIES (an) READONLYIF NOT enableEditContract() name
     PROPERTIES(an) TOOLBAR SHOWIF enableEditContract() NEW, DELETE 
     FILTERS contractor(an) == c
+    
+    OBJECTS al = AccountingName
+    PROPERTIES (al) nameContractor, name, NEW, DELETE 
+    
+    FILTERGROUP account
+    FILTER 'Show not linked names only' NOT contractor(al) DEFAULT 
 ;
 
 filterContractor 'Search' = DATA LOCAL NESTED ISTRING ();

@@ -130,6 +130,12 @@ DESIGN contractors {
                     }
                 }
             }
+            NEW account {
+                caption = 'Accounting Names';
+                fill = 1;
+                alignment = STRETCH;
+                MOVE BOX (al);
+            }
         }
     }
 }
