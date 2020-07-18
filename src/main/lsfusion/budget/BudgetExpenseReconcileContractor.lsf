@@ -1,0 +1,36 @@
+MODULE BudgetExpenseReconcileContractor;
+
+REQUIRE BudgetExpenseReconcile, BudgetContract, PaymentCycle;
+
+NAMESPACE Budget;
+
+contractor 'Contractor' = ABSTRACT Contractor(ExpenseLedger);
+contractorManual 'Contractor' = DATA Contractor(Expense);
+
+contractorAutomate 'Automotive Search' (Expense e) = GROUP LAST contractor(AccountingName a) IF isSubstring(lower(note(e)), lower(name(a))) OR isSubstring(lower(reference(e)),lower(name(a)));
+
+contractor 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractorAutomate(e);
+
+contractor(Expense e) += contractor(e);
+
+selectContractor (Expense e)  { 
+    DIALOG dialogContractor OBJECTS c INPUT DO {
+        contractorManual(e) <- c;
+    }
+}
+
+nameContractor 'Contractor' (ExpenseLedger e) = name(contractor(e));
+
+EXTEND FORM expenses
+    PROPERTIES (e) READONLY nameContractor
+    PROPERTIES (ie) ON CHANGE selectContractor(ie) nameContractor
+;
+
+EXTEND FORM contractors
+    OBJECTS e = Expense
+    PROPERTIES (e) expenseType, date, nameGLAccount, note, reference, nameCurrency, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail, descriptionPurchaseInvoice
+    FILTERS contractor(e) == c
+;
+    
+DESIGN contractors { detailContractor { MOVE BOX (e) FIRST; } }
+
