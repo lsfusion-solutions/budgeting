@@ -56,3 +56,12 @@ overCopy(Invoice ni, Invoice i) + {
     contract(ni) <- contract(i);
     contractor(ni) <- contractor(i);
 }
+
+EXTEND FORM contractors
+    OBJECTS i = Invoice
+    PROPERTIES (i) READONLY date, number, nameCostCenter
+    PROPERTIES (i) TOOLBAR open SHOWIF hasFile(i)
+    FILTERS contractor(i) == c
+;
+
+DESIGN contractors { detailContractor { MOVE BOX (i) FIRST;} }

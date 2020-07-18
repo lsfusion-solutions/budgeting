@@ -664,6 +664,8 @@ loadPO 'Upload Invoice' () {
 EXTEND FORM invoices PROPERTIES loadPO();
 //EXTEND FORM costCenterBudget PROPERTIES loadPO();
 
+EXTEND FORM contractors PROPERTIES (i) READONLY  budgetDetailName, costItemName, amountName;
+
 NAVIGATOR {
     NEW loadPO BEFORE masterData;
 }

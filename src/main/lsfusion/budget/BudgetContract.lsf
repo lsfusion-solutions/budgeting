@@ -93,6 +93,11 @@ EXTEND FORM contractors
     PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, validity, nameContractor, taxIDcontractor, note, regularity, nameCurrency, amount, amountUSD, fileLink
     PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
     PROPERTIES (ct) readFile SHOWIF fileLink(ct)
+    
+    OBJECTS ctl = Contract
+    PROPERTIES (ctl) READONLY number, date, validity, note, regularity, nameCurrency, amount, amountUSD
+    PROPERTIES (ctl) readFile SHOWIF fileLink(ct)
+    FILTERS contractor(ctl) == c
 ;
 
 DESIGN contractors {
@@ -106,7 +111,12 @@ DESIGN contractors {
                 fill = 1;
                 alignment = STRETCH;
                 MOVE BOX (c);
-                MOVE BOX (p);
+                NEW detailContractor {
+                    type = TABBED;
+                    MOVE BOX (ctl);
+                    MOVE BOX (an);
+                    MOVE BOX (p);
+                }
             }
             NEW contracts {
                 caption = 'Contracts (Agreements)';

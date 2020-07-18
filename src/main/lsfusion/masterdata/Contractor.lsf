@@ -112,6 +112,11 @@ FORM contractors 'Contractors'
     PROPERTIES(c) TOOLBAR SHOWIF enableEditContract() NEW, EDIT, DELETE 
     
     PROPERTIES enableEditContract() TOOLBAR DRAW c
+    
+    OBJECTS an = AccountingName
+    PROPERTIES (an) READONLYIF NOT enableEditContract() name
+    PROPERTIES(an) TOOLBAR SHOWIF enableEditContract() NEW, DELETE 
+    FILTERS contractor(an) == c
 ;
 
 filterContractor 'Search' = DATA LOCAL NESTED ISTRING ();
