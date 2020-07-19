@@ -52,6 +52,7 @@ EXTEND FORM costCenterBudget PROPERTIES revokeBudget(c,bm) DRAW bmd SHOWIF isRev
 
 readonlyProc (Budget d, CostCenter c) = isApproved(proposalQuarter(c,quarterNumber(d))) OR NOT quarterBudgeting(quarterNumber(d)); //  OR NOT afg(currentUser())
 readonlyProc (INTEGER q, CostCenter c) = isApproved(proposalQuarter(c,q)) OR NOT quarterBudgeting(q);
+readonlyProc (INTEGER q, Period p) = readonlyProc(q, costCenter(p));
 
 EXTEND FORM reviewCostCentersApprove FILTERS isApproved(proposalQuarter(c,q));
 

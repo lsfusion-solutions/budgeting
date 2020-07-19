@@ -64,13 +64,15 @@ cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.salary AND salary(p
 assignedQuarter 'Overall assignment of Employee within Company for quarter' (Budget b, Employee e) = 
                 GROUP CONCAT STRING(left(name(Budget be),3)+': '+STRING[3](INTEGER(assigned(be,e)))+'%'),', ' ORDER fromDate(be) IF quarterNumber(be) == quarterNumber(b);
 assignedQuarter 'Overall assignment of Employee within Company for quarter' (INTEGER q, Employee e) = 
-                GROUP CONCAT STRING(left(name(Budget be),3)+': '+STRING[3](INTEGER(assigned(be,e)))+'%'),', ' ORDER fromDate(be) IF quarterNumber(be) == q;
+                GROUP CONCAT STRING(left(name(Budget be),3)+': '+STRING[3](INTEGER(assigned(be,e)))+'%'),', ' ORDER fromDate(be) IF quarterNumber(be) == q CHARWIDTH 30;
 backgroundAssigned (Budget b, Employee e) = RGB(255,212,212) IF assigned(b, e) > 100;
 backgroundAssignedQuarter (Budget b, Employee e) = GROUP MAX backgroundAssigned(Budget be,e) IF quarterNumber(be) == quarterNumber(b);
 backgroundAssignedQuarter (INTEGER q, Employee e) = GROUP MAX backgroundAssigned(Budget be,e) IF quarterNumber(be) == q;
 backgroundProtected (INTEGER q, CostCenter c) = RGB(240,240,240) IF readonlyProc(q, c);
+backgroundProtected (INTEGER q, Period p) = backgroundProtected(q, costCenter(p));
 isAssignedQuarter (CostCenter c, Budget b, Employee e) = TRUE IF GROUP MAX assigned(period(c,Budget be),be,e) IF quarterNumber(be) == quarterNumber(b);
 isAssignedQuarter (CostCenter c, INTEGER q, Employee e) = TRUE IF GROUP MAX assigned(period(c,Budget be),be,e) IF quarterNumber(be) == q;
+isAssignedQuarter (Period p, INTEGER q, Employee e) = isAssignedQuarter(costCenter(p),q,e);
 
 searchByName 'Search' = DATA LOCAL NESTED ISTRING ();
 
@@ -173,29 +175,30 @@ EXTEND FORM employees
     OBJECTS eb = Budget
     FILTERS quarterNumber(eb) == q
     
-    OBJECTS c = CostCenter
-    PROPERTIES BACKGROUND backgroundProtected(q,c) name(c), quarterPlanned(c,q), plannedSalary(c,q)
-    PROPERTIES BACKGROUND backgroundProtected(q,c) plannedSalary(c,eb) COLUMNS (eb) HEADER name(eb)
-    
-    OBJECTS epe = (eq = Employee, ep = Period)
-    PROPERTIES(eq) READONLY name, namePosition
-    PROPERTIES(ep,eq) READONLYIF (readonlyProc(q, c) OR NOT afg(currentUser())) assigned BACKGROUND backgroundProtected(q,c)
-    PROPERTIES READONLYIF (readonlyProc(q, c) OR NOT afg(currentUser())) assigned(ep, eb, eq) BACKGROUND backgroundProtected(q,c) COLUMNS (eb) HEADER name(eb)
-    PROPERTIES assignedQuarter(q, eq) BACKGROUND backgroundAssignedQuarter(q, eq) PANEL 
-    PROPERTIES salary(ep, eq, eb) COLUMNS (eb) HEADER name(eb)
-    PROPERTIES salary(c, eq, q)
-    ORDERS name(eq)
+    //OBJECTS c = CostCenter
+    OBJECTS eq = Employee
+    PROPERTIES(eq) READONLY firstName, lastName, namePosition
+    PROPERTIES assignedQuarter(q, eq) BACKGROUND backgroundAssignedQuarter(q, eq) 
+    ORDERS lastName(eq), firstName(eq)
     FILTERS isSubstring(lower(firstName(eq)), lower(searchByName())) OR isSubstring(lower(lastName(eq)), lower(searchByName())) OR isSubstring(lower(namePosition(eq)), lower(searchByName())) OR NOT searchByName(),
-            ep == period(c,q),
-            NOT fromDate(ep) > fromDate(monthTo(eq)),
-            isAssignedQuarter(c,q,eq) OR afg(currentUser())
+            NOT fromDate(eb) > fromDate(monthTo(eq))
+    
+    OBJECTS ep = Period//c = CostCenter
+    PROPERTIES BACKGROUND backgroundProtected(q,ep) nameCostCenter(ep)//, quarterPlanned(c,q), plannedSalary(c,q)
+    //PROPERTIES BACKGROUND backgroundProtected(q,c) plannedSalary(c,eb) COLUMNS (eb) HEADER name(eb)
+    PROPERTIES(ep,eq) READONLYIF (readonlyProc(q, ep) OR NOT afg(currentUser())) assigned BACKGROUND backgroundProtected(q,ep)
+    PROPERTIES READONLYIF (readonlyProc(q, ep) OR NOT afg(currentUser())) assigned(ep, eb, eq) BACKGROUND backgroundProtected(q,ep) COLUMNS (eb) HEADER name(eb)
+    PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq, eb) COLUMNS (eb) HEADER name(eb)
+    PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq)
+    ORDERS nameCostCenter(ep)
+    FILTERS period(costCenter(ep),q) == ep
             
     PROPERTIES() searchByName
     
     FILTERGROUP myteam
-        FILTER 'Show the only assigned Team for the Cost Center this quarter' isAssignedQuarter(c,q,eq)
+        FILTER 'Show the only assigned Team for the Cost Center this quarter' isAssignedQuarter(ep,q,eq)
     FILTERGROUP mycostcenter
-        FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT
+        FILTER 'Hide archive Cost Centers' NOT archive(costCenter(ep)) DEFAULT
 ;
 
 DESIGN employees {
@@ -211,12 +214,18 @@ DESIGN employees {
                 type = CONTAINERH;
                 alignment = STRETCH;
                 fill = 1;
-                MOVE BOX (c) {fill = 1;}
-                NEW budgetingDetail {
-                    fill = 3;
-                    MOVE BOX (epe);
-                    MOVE PROPERTY (assignedQuarter(q, eq)) {alignment = STRETCH;}
+                NEW emplQ {
+                    width = 600;
+                    alignment = STRETCH;
+                    MOVE BOX (eq) {fill = 1;}
                 }
+                MOVE BOX (ep) {fill = 1; alignment = STRETCH;}
+                //MOVE BOX (c) {fill = 1;}
+                //NEW budgetingDetail {
+                //    fill = 3;
+                //    MOVE BOX (epe);
+                //    MOVE PROPERTY (assignedQuarter(q, eq)) {alignment = STRETCH;}
+                //}
             }
         }
     }
