@@ -14,6 +14,8 @@ name 'Name' = DATA STRING[50] (Budget) CHARWIDTH 8;
 
 description 'Description' (Budget b) = CONCAT ' ', name(b), '(' + fromDate(b) + ' - ' + toDate(b) + ')' CHARWIDTH 35; 
 
+budget 'Budget by Date' (DATE date) = GROUP LAST Budget b IF fromDate(b) <= date AND toDate(b) >= date;
+
 FORM dialogBudgets 'Budget'
     OBJECTS o = Budget
     PROPERTIES(o) READONLY name, fromDate, toDate
