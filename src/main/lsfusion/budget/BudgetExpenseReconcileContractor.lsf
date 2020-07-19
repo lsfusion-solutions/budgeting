@@ -9,7 +9,7 @@ contractorManual 'Contractor' = DATA Contractor(Expense);
 
 contractorAutomate 'Automotive Search' (Expense e) = GROUP LAST contractor(AccountingName a) IF isSubstring(lower(note(e)), lower(name(a))) OR isSubstring(lower(reference(e)),lower(name(a)));
 
-contractor 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractorAutomate(e);
+contractor 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractorAutomate(e) MATERIALIZED;
 
 contractor(Expense e) += contractor(e);
 
@@ -26,7 +26,7 @@ paidUSD 'Paid, USD' (Contractor c) = GROUP SUM round2 (paidCurrency(c,Currency c
 noteText 'Note & Reference' (Expense e) = CONCAT '\nReference: ',TEXT (note(e)), TEXT (reference(e));
 assigned 'Assigned, %' (Expense x, Employee e) = (OVERRIDE dataAssigned(period(costCenter(x),budget(date(x))), budget(date(x)), e), 
     (assigned(period(costCenter(x),budget(date(x))), e) IF selected(period(costCenter(x),budget(date(x))), budget(date(x))))) 
-        IF NOT date(x) < fromDate(monthFrom(e)) AND NOT date(x) > fromDate(monthTo(e)); 
+        IF NOT date(x) < fromDate(monthFrom(e)) AND NOT date(x) > fromDate(monthTo(e)) MATERIALIZED; 
 
 EXTEND FORM expenses
     PROPERTIES (e) READONLY nameContractor
