@@ -23,8 +23,8 @@ EXTEND FORM costCenterBudget
     PROPERTIES () filterContractor
     
     OBJECTS cpc = (pc = Period, cc = Contractor)
-    PROPERTIES(cc) ON CHANGE editContractor(cc) name, nameCostItem, nameType, rate, nameCurrency
-    PROPERTIES hours(pc, cc), sum(pc, cc), contractors(pc, cc)
+    PROPERTIES(cc) READONLYIF readonlyProcAll(bm, c) ON CHANGE editContractor(cc) name, nameCostItem, nameType, rate, nameCurrency
+    PROPERTIES READONLYIF readonlyProcAll(bm, c) hours(pc, cc), sum(pc, cc), contractors(pc, cc)
     ORDERS name(cc)
     FILTERS isSubstring(lower(name(cc)), lower(filterContractor())) OR isSubstring(taxID(cc), filterContractor()) OR isSubstring(regID(cc), filterContractor()) OR NOT filterContractor(),
             pc == period(c,bm)

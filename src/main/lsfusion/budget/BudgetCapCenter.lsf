@@ -216,6 +216,7 @@ freeCostCenter 'Free budget' = DATA BOOLEAN (CostCenter);
 EXTEND FORM costCenter PROPERTIES freeCostCenter(c);
 DESIGN costCenter {flag{MOVE PROPERTY (freeCostCenter(c));}}
 readonlyProc (BudgetDetail d, CostCenter c) = (isProcessing(d) OR readonly(d, c)) AND NOT freeCostCenter(c);
+readonlyProcAll = GROUP SUM 1 IF readonlyProc(BudgetDetail d, CostCenter c) BY budget(d),c;
 
 EXTEND FORM costCenterBudget
     OBJECTS bm = Budget
