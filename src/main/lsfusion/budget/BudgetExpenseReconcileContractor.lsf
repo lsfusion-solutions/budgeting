@@ -22,7 +22,8 @@ selectContractor (Expense e)  {
 nameContractor 'Contractor' (ExpenseLedger e) = name(contractor(e));
 
 paidCurrency 'Paid Currency' = GROUP SUM amount(Expense e) BY contractor(e),currency(e) MATERIALIZED;
-paidUSD 'Paid, USD' (Contractor c) = GROUP SUM round2 (paidCurrency(c,Currency cur) / defaultRateOn(cur, currentDate())) MATERIALIZED;
+//paidUSD 'Paid, USD' (Contractor c) = GROUP SUM round2 (paidCurrency(c,Currency cur) / defaultRateOn(cur, currentDate())) MATERIALIZED;
+paidUSD 'Paid, USD' = GROUP SUM amountUSD(Expense e) BY contractor(e) MATERIALIZED;
 noteText 'Note & Reference' (Expense e) = CONCAT '\nReference: ',TEXT (note(e)), TEXT (reference(e));
 assigned 'Assigned, %' (Expense x, Employee e) = (OVERRIDE dataAssigned(period(costCenter(x),budget(date(x))), budget(date(x)), e), 
     (assigned(period(costCenter(x),budget(date(x))), e) IF selected(period(costCenter(x),budget(date(x))), budget(date(x))))) 
