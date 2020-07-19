@@ -105,9 +105,9 @@ spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budg
 childSpent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), CostItem p) AND NOT skip(l) BY budget(l), p CHARWIDTH 8; 
 
 planned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d), costCenter(d);
-optimizedPlanned 'Optimized, USD'  (Budget b, CostCenter cp) = GROUP  SUM optimizedPlanned(BudgetDetail d) IF NOT hidden(d) BY  budget(d), costCenter(d);
+optimizedPlanned 'Optimized, USD'  (Budget b, CostCenter cp) = GROUP  SUM optimizedPlanned(BudgetDetail d) IF NOT hidden(d) AND NOT profit(costCenter(d)) BY  budget(d), costCenter(d);
 optimized 'Optimized, %' (Budget b, CostCenter cp) = NUMERIC[16,2](100.0 - (optimizedPlanned(b, cp) * 100.0 / planned(b, cp)));
-insensitivePlanned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT sensitive(d) AND NOT hidden(d) BY budget(d), costCenter(d); 
+insensitivePlanned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT sensitive(d) AND NOT hidden(d) AND NOT profit(costCenter(d)) BY budget(d), costCenter(d); 
 spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costCenter(l); 
 spentInteger 'Spent, USD' (Budget b,CostCenter c) = INTEGER (spent(b,c));
 
