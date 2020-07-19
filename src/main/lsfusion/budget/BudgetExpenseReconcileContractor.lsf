@@ -26,7 +26,7 @@ paidUSD 'Paid, USD' (Contractor c) = GROUP SUM round2 (paidCurrency(c,Currency c
 noteText 'Note & Reference' (Expense e) = CONCAT '\nReference: ',TEXT (note(e)), TEXT (reference(e));
 assigned 'Assigned, %' (Expense x, Employee e) = (OVERRIDE dataAssigned(period(costCenter(x),budget(date(x))), budget(date(x)), e), 
     (assigned(period(costCenter(x),budget(date(x))), e) IF selected(period(costCenter(x),budget(date(x))), budget(date(x))))) 
-        IF NOT date(x) < fromDate(monthFrom(e)) AND NOT date(x) > fromDate(monthTo(e)) MATERIALIZED; 
+        IF NOT date(x) < fromDate(monthFrom(e)) AND NOT date(x) > fromDate(monthTo(e)) MATERIALIZED     ; 
 
 EXTEND FORM expenses
     PROPERTIES (e) READONLY nameContractor

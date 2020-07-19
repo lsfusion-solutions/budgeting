@@ -51,7 +51,7 @@ planned 'Budgeted, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
 balance 'Balance Remain, USD' (BudgetDetail d, DATE date) = IF date IS DATE THEN 
     ((OVERRIDE planned(d),0) - (IF getQuarter(date) == quarterNumber(budget(d)) THEN (OVERRIDE invoiced(d),0) ELSE (OVERRIDE spent(d),0))) ELSE NULL CHARWIDTH 10;
 balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),(OVERRIDE date(d),currentDate())) CHARWIDTH 10;
-CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
+//CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
 amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
 fullName 'Invoice name' (Invoice i) = CONCAT ' ',number(i),'dated',date(i),'for',amountName(i);
 
@@ -74,7 +74,7 @@ attachmentPayment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST 
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostItem);
 paidCash 'Paid' = DATA BOOLEAN (Invoice);
-passThreshold 'Limit' (Invoice i) = invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
+passThreshold 'Limit' (Invoice i) = balance(i) > 0 AND invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
 passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
 EXTEND FORM costCenters PROPERTIES (c) limit;
 EXTEND FORM costCenter PROPERTIES (c) limit;
