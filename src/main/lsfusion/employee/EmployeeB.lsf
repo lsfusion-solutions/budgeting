@@ -47,6 +47,10 @@ FORM employee 'Employee'
                   isCandidate, hiringDate, probationPeriod, passedProbation,
                   login, sha256Password ON CHANGE changeSHA256Password(e), email, nameMainRole, birthday
     
+    OBJECTS r = UserRole
+    PROPERTIES(r) READONLY name
+    PROPERTIES in(e, r)
+    
     EDIT Employee OBJECT e 
 ;
 
@@ -93,6 +97,10 @@ DESIGN employee {
         NEW tabbedPane {
             type = TABBED;
             fill = 1;
+            NEW roles {
+                caption = 'Roles';
+                MOVE BOX(r);
+            }
         }
     }
 }
