@@ -1,6 +1,6 @@
 MODULE EmployeeMyCompany;
 
-REQUIRE EmployeeB, Employee;
+REQUIRE EmployeeB, Employee, LocationEmployee;
 
 NAMESPACE Employee;
 
@@ -22,4 +22,24 @@ DESIGN employee {
 onStarted() + {
     firstName[Individual](Employee e) <- firstName[Contact](e) WHERE firstName[Contact](e); 
     lastName[Individual](Employee e) <- lastName[Contact](e) WHERE lastName[Contact](e); 
+}
+
+// location
+
+EXTEND FORM employee
+    TREE locations lt = Inventory.Location PARENT parent(lt)
+    PROPERTIES(lt) READONLY name, id
+    PROPERTIES hasAccess(e, lt) BACKGROUND (GROUP SUM 1 IF hasAccess(e, Inventory.Location cl) AND level(cl, lt)) 
+    ORDERS name(lt)
+;
+
+DESIGN employee {
+    tabbedPane {
+        MOVE BOX(TREE locations) {
+            caption = 'Места хранения';
+            PROPERTY(hasAccess(e, lt)) {
+                width = 40;
+            }
+        }
+    }
 }
