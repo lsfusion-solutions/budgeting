@@ -98,7 +98,7 @@ import1C 'Import from 1C' ()  {
 
         IMPORT XLS NOHEADER FROM f TO date = A;
         
-        FOR imported(INTEGER i) AND i > 9 ORDER i DO {
+        FOR imported(INTEGER i) AND i > 7 ORDER i DO { // previous version: i > 9
             IF date(i) AND creditAccount(i) == '51' THEN NEW e = Expense {
                 date(e) <- date(i);
                 currency(e) <- currencyName('RUR');
