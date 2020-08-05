@@ -30,12 +30,15 @@ countInvoices 'Number of Invoices in Purchase Order' = GROUP SUM 1 BY part(Invoi
 planned 'Planned, USD' (PurchaseOrder b) = GROUP SUM NUMERIC[16,2](invoiced(Invoice d)) BY part(d);
 currency 'Currency' (PurchaseOrder b) = GROUP LAST currency(Invoice d) BY part(d);
 numberCostCenter 'Number by Cost Center' (PurchaseOrder b, CostCenter c) = GROUP SUM 1 IF  part(Invoice d) == b AND costCenter(d) == c;
+numberContractor 'Number by Contractor' (PurchaseOrder b, Contractor c) = GROUP SUM 1 IF contractor(Invoice d) AND contractor(d) == c;
 numberEmployee 'Number by Employee' (PurchaseOrder b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF approve(c,e) OR owner(c) == e; 
 access 'Access' (PurchaseOrder b, Employee e) = TRUE IF numberEmployee(b,e) > 0; 
 
 author (PurchaseOrder b) <- currentUser() WHEN SET(b IS PurchaseOrder);
 dateTime(PurchaseOrder b) <- currentDateTime() WHEN CHANGED(planned(b));
-nameExplain 'Cost Centers involved' (PurchaseOrder b) = GROUP CONCAT name(CostCenter c),'; ' IF numberCostCenter(b,c) ORDER name(c) CHARWIDTH 50;
+nameExplainCostCenter 'Cost Centers involved' (PurchaseOrder b) = GROUP CONCAT name(CostCenter c),'; ' IF numberCostCenter(b,c) ORDER name(c) CHARWIDTH 50;
+nameExplainContractor 'Contractors involved' (PurchaseOrder b) = GROUP CONCAT name(Contractor c),'; ' IF numberContractor(b,c) ORDER name(c) CHARWIDTH 50;
+nameExplain 'Cost Center and Contractor' (PurchaseOrder b) = CONCAT ' - ',nameExplainCostCenter(b),nameExplainContractor(b) CHARWIDTH 50;
 
 // Extend basic items
 urgent 'Urgent' = DATA BOOLEAN (Invoice);
