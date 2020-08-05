@@ -164,7 +164,7 @@ copyFrom 'Copy from' (Budget bb, CostCenter c) {
                 sensitive(bd) <- sensitive(d);
             }
         }
-        ELSE MESSAGE 'Coping enabled into the next quarters only';
+        ELSE MESSAGE 'Coping enabled from the previous quarters only.\nFor operations within selected quarter use Move button.';
     }
 }
 
