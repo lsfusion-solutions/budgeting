@@ -153,16 +153,19 @@ FORM dialogCopyFromBudget 'Budgets'
 
 copyFrom 'Copy from' (Budget bb, CostCenter c) {
     DIALOG dialogCopyFromBudget OBJECTS c = c, b INPUT DO {
-        FOR budget(BudgetDetail d) == b AND costCenter(d) == c DO NEW bd = BudgetDetail {
-            budget(bd) <- bb;
-            costCenter(bd) <- c;
-            costItem(bd) <- costItem(d);
-            name(bd) <- name(d);
-            planned(bd) <- planned(d);
-            contractor(bd) <- contractor(d);
-            sensitive(bd) <- sensitive(d);
+        IF quarterNumber(bb) > quarterNumber(b) THEN {        
+            FOR budget(BudgetDetail d) == b AND costCenter(d) == c AND NOT sensitive(d) DO NEW bd = BudgetDetail {
+                budget(bd) <- bb;
+                costCenter(bd) <- c;
+                costItem(bd) <- costItem(d);
+                name(bd) <- name(d);
+                planned(bd) <- planned(d);
+                contractor(bd) <- contractor(d);
+                sensitive(bd) <- sensitive(d);
+            }
         }
+        ELSE MESSAGE 'Coping enabled into the next quarters only';
     }
 }
 
-//EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) copyFrom(bm, c) DRAW bmd TOOLBAR;
+EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) copyFrom(bm, c) DRAW bmd TOOLBAR; 
