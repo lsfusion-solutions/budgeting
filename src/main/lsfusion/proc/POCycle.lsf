@@ -117,6 +117,9 @@ EXTEND FORM notificationsForms PROPERTIES testNotification() DRAW notePo;
 paid 'Paid' (PurchaseOrder o) = TRUE IF step(o) == Step.pay;
 paid 'Paid' (Invoice i) = paid(part(i));
 
+paidDate 'Paid Date' = GROUP LAST DATE(dateTimeOut(StepLog l)) IF stepOut(l) == Step.pay BY sbj(l) MATERIALIZED;
+paidDate 'Paid Date' (Invoice i) = paidDate(part(i));
+
 //--- Execution forms ---
 
 FORM invoiceLoad 'Load Purchase invoice'
@@ -140,7 +143,7 @@ editPO 'Edit Invoice' (Invoice i) {
 META extendPurchaseOrder (form)
     EXTEND FORM ##form
         PROPERTIES(o) READONLY nameAuthor, planned, dateTime
-        PROPERTIES(o) datePlan
+        PROPERTIES(o) datePlan, paidDate
         
         OBJECTS d = Invoice
         PROPERTIES (d) ON CHANGE editPO(d)  urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail
@@ -166,7 +169,8 @@ META extendPurchaseOrder (form)
                 NEW headerPart {
                     alignment = STRETCH;
                     type = CONTAINERH;
-                    MOVE PROPERTY(datePlan(o)) {notNull = TRUE;}
+                    MOVE PROPERTY(datePlan(o)) {notNull = TRUE; hide = TRUE;}
+                    MOVE PROPERTY(paidDate(o)) {notNull = TRUE;}
                     MOVE PROPERTY(planned(o));
                     MOVE PROPERTY(nameAuthor(o)) { alignment = CENTER; }
                     MOVE PROPERTY(dateTime(o));
@@ -395,10 +399,10 @@ DESIGN purchaseOrder { TOOLBAR { MOVE PROPERTY(completeUpdate(o)); } }
 //--- Main Form ---
 
 EXTEND FORM purchaseOrders
-    PROPERTIES(o) READONLY nameExplain, budgetDetailSum SHOWIF afg(currentUser()), datePlan, planned, nameStep, passThreshold, searchSupply, dateTime, nameAuthor
+    PROPERTIES(o) READONLY nameExplain, budgetDetailSum SHOWIF afg(currentUser()), paidDate, planned, nameStep, passThreshold, searchSupply, dateTime, nameAuthor
     PROPERTIES newPart() 
     PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
-    ORDERS datePlan(o)
+    ORDERS paidDate(o) DESC
     FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
     
     OBJECTS d = Invoice
