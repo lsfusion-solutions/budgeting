@@ -331,16 +331,6 @@ FORM dialogMoveBudget 'Budgets'
     FILTERS selected(b, costCenter(d)), fromDate(b) >= monthReadonlyDate()
 ;
 
-moveBudgetDetail 'Move' (BudgetDetail d) {
-    DIALOG dialogMoveBudget OBJECTS d = d, b INPUT DO {
-        budget(d) <- b;
-        SEEK costCenterBudget.bm = b; 
-        SEEK costCenterBudget.bmd = d;
-    }
-}
-
-EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonlyProc(bmd, c) moveBudgetDetail(bmd) DRAW bmd TOOLBAR;
-
 addInvoice 'Add invoice' (BudgetDetail d) {
     NEWSESSION {
         NEW i = Invoice {
