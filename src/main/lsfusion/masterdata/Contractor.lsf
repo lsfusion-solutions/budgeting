@@ -1,6 +1,6 @@
 MODULE Contractor;
 
-REQUIRE MasterData, Currency, CostItem;
+REQUIRE MasterData, Currency, CostItem, Cycle;
 
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
@@ -59,6 +59,8 @@ changeCostItem (Contractor o)  {
 currency 'Currency' = DATA Currency (Contractor);
 nameCurrency 'Currency' (Contractor c) = name(currency(c));
 
+sensitive 'Sensitive' = DATA BOOLEAN (Contractor);
+
 rate 'Rate, per hour' = DATA NUMERIC[10,2] (Contractor);  
 // Формы
 
@@ -108,8 +110,9 @@ enableEditContract 'Edit Contractors' = DATA LOCAL BOOLEAN ();
 
 FORM contractors 'Contractors'
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLYIF NOT enableEditContract() name, regID, taxID, nameType, isRegular, nameCostItem, nameCurrency, rate
+    PROPERTIES(c) READONLYIF NOT enableEditContract() name, sensitive SHOWIF afg(currentUser()), regID, taxID, nameType, isRegular, nameCostItem, nameCurrency, rate
     ORDERS name(c)
+    FILTERS NOT sensitive(c) OR afg(currentUser())
 
     PROPERTIES(c) TOOLBAR SHOWIF enableEditContract() NEW, EDIT, DELETE 
     
