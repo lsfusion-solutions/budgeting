@@ -24,6 +24,7 @@ planned 'Planned payment' = DATA NUMERIC[16,2](Payment);
 
 sbj = ABSTRACT Payment (Assign) MATERIALIZED;
 part = DATA Payment(ExpensePayment); // Payment may contain multiple bank transactions
+dateTime 'Date Time' (Payment p) = DATETIME (datePlan(p));
 
 // Payment initialization
 
