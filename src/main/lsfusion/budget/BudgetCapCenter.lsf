@@ -214,7 +214,7 @@ DESIGN costCenterBudgetArch {
 spentLevel 'Spent, USD' (Budget b, CostItem i, CostCenter c) = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), i) AND NOT skip(l) BY budget(l), costCenter(l);
 freeCostCenter 'Free budget' = DATA BOOLEAN (CostCenter);
 EXTEND FORM costCenter PROPERTIES freeCostCenter(c);
-DESIGN costCenter {flag{MOVE PROPERTY (freeCostCenter(c));}}
+DESIGN costCenter {flag{MOVE PROPERTY (freeCostCenter(c)); MOVE PROPERTY (profit(c));}}
 readonlyProc (BudgetDetail d, CostCenter c) = (isProcessing(d) OR readonly(d, c)) AND NOT freeCostCenter(c);
 readonlyProcAll = GROUP SUM 1 IF readonlyProc(BudgetDetail d, CostCenter c) BY budget(d),c;
 
