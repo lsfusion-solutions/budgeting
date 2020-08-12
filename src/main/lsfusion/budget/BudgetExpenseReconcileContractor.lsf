@@ -1,6 +1,6 @@
 MODULE BudgetExpenseReconcileContractor;
 
-REQUIRE BudgetExpenseReconcile, BudgetContract, PaymentCycle;
+REQUIRE BudgetExpenseReconcile, BudgetContract, PaymentCycle, BudgetExpense;
 
 NAMESPACE Budget;
 
@@ -85,4 +85,17 @@ EXTEND FORM contractors
 ;
     
 DESIGN contractors { detailContractor { MOVE BOX (e) FIRST; } }
+
+reconcileAuto() + { 
+    LOCAL locRec = BOOLEAN (Expense);
+    locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e);
+    
+    LOCAL locInv = Invoice (Expense);
+    locInv (Expense e) <- (GROUP LAST Invoice i IF contractor(i) == contractor(e) AND amount(i) == amount(e) AND paid(i)) WHERE locRec(e);
+    
+    purchaseInvoice(Expense e) <- locInv(e) WHERE locInv(e);
+    budgetDetail(Expense e) <- budgetDetail(purchaseInvoice(e)) WHERE locInv(e);
+    costItem(Expense e) <- costItem(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
+    costCenter(Expense e) <- costCenter(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
+}
 
