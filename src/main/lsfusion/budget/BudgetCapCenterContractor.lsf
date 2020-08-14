@@ -128,7 +128,7 @@ sum 'Fixed amount' (Contractor c) = GROUP SUM sum(Period p, c);
 contractors 'Total amount, USD' (Contractor c) = GROUP SUM contractors(Period p, c);
 
 EXTEND FORM contractors
-    PROPERTIES(c) READONLY hours, sum, contractors
+    PROPERTIES(c) PANEL READONLY hours, sum, contractors
     
     OBJECTS p = Period
     PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate

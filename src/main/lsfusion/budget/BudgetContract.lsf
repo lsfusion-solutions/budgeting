@@ -95,7 +95,7 @@ EXTEND FORM contractors
     PROPERTIES (ct) readFile SHOWIF fileLink(ct)
     
     OBJECTS ctl = Contract
-    PROPERTIES (ctl) READONLY number, date, validity, note, regularity, nameCurrency, amount, amountUSD
+    PROPERTIES (ctl) READONLY number, date, validity, note, regularity, nameCurrency, amount, amountUSD, fileLink
     PROPERTIES (ctl) readFile SHOWIF fileLink(ct)
     FILTERS contractor(ctl) == c
 ;
@@ -110,6 +110,7 @@ DESIGN contractors {
                 caption = 'Contractors';
                 fill = 1;
                 alignment = STRETCH;
+                type = CONTAINERH;
                 MOVE BOX (c);
                 NEW detailContractor {
                     type = TABBED;
@@ -118,6 +119,22 @@ DESIGN contractors {
                     MOVE BOX (ctl);
                     MOVE BOX (an);
                     MOVE BOX (p);
+                    NEW details {
+                        caption = 'Details';
+                        fill = 1;
+                        alignment = STRETCH;
+                        type = CONTAINERV;
+                        MOVE PROPERTY (sensitive(c));
+                        MOVE PROPERTY (regID(c));
+                        MOVE PROPERTY (nameType(c));
+                        MOVE PROPERTY (isRegular(c));
+                        MOVE PROPERTY (nameCostItem(c));
+                        MOVE PROPERTY (nameCurrency(c));
+                        MOVE PROPERTY (rate(c));
+                        MOVE PROPERTY (hours(c));
+                        MOVE PROPERTY (sum(c));
+                        MOVE PROPERTY (contractors(c));
+                    }
                 }
             }
             NEW contracts {

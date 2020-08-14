@@ -110,7 +110,8 @@ enableEditContract 'Edit Contractors' = DATA LOCAL BOOLEAN ();
 
 FORM contractors 'Contractors'
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLYIF NOT enableEditContract() name, sensitive SHOWIF afg(currentUser()), regID, taxID, nameType, isRegular, nameCostItem, nameCurrency, rate
+    PROPERTIES(c) READONLYIF NOT enableEditContract() name, taxID
+    PROPERTIES (c) PANEL READONLYIF NOT enableEditContract() sensitive SHOWIF afg(currentUser()), regID, nameType, isRegular, nameCostItem, nameCurrency, rate
     ORDERS name(c)
     FILTERS NOT sensitive(c) OR afg(currentUser())
 
@@ -119,12 +120,12 @@ FORM contractors 'Contractors'
     PROPERTIES enableEditContract() TOOLBAR DRAW c
     
     OBJECTS an = AccountingName
-    PROPERTIES (an) READONLYIF NOT enableEditContract() name
-    PROPERTIES(an) TOOLBAR SHOWIF enableEditContract() NEW, DELETE 
+    PROPERTIES (an) SHOWIF afg(currentUser()) READONLYIF NOT enableEditContract() name
+    PROPERTIES(an)  TOOLBAR SHOWIF (enableEditContract() AND afg(currentUser())) NEW, DELETE 
     FILTERS contractor(an) == c
     
     OBJECTS al = AccountingName
-    PROPERTIES (al) nameContractor, name, NEW, DELETE 
+    PROPERTIES (al) SHOWIF afg(currentUser()) nameContractor, name, NEW, DELETE 
     
     FILTERGROUP account
     FILTER 'Show not linked names only' NOT contractor(al) DEFAULT 

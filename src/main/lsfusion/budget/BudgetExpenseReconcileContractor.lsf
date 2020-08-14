@@ -77,6 +77,9 @@ DESIGN expenses {
 }
 
 EXTEND FORM contractors
+    OBJECTS cc = Currency
+    
+    PROPERTIES paidCurrency(c,cc) COLUMNS (cc) HEADER name(cc)
     PROPERTIES (c) paidUSD
 
     OBJECTS e = Expense
