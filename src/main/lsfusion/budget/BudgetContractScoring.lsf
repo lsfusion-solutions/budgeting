@@ -1,0 +1,102 @@
+MODULE BudgetContractScoring;
+
+REQUIRE BudgetExpenseReconcileContractor;
+
+NAMESPACE Budget;
+
+CLASS Scoring 'Contractors Scoring';
+TABLE scoring (Scoring);
+
+number '#' = DATA INTEGER (Scoring);
+criteria 'Criteria' = DATA ISTRING (Scoring) CHARWIDTH 50;
+criteriaText 'Criteria' (Scoring s) = TEXT (criteria(s));
+short 'Criteria name' = DATA ISTRING[15] (Scoring) CHARWIDTH 15;
+
+criteriaAmountNum 'Amount of Criteria' = DATA INTEGER ();
+
+TABLE assessmentOverall (Contractor, Employee);
+TABLE assessmentScore (Contractor, Employee, Scoring);
+
+comment 'Comment' = DATA TEXT (Contractor, Employee);
+assessmentScoreNum 'Assessment' = DATA INTEGER (Contractor, Employee, Scoring);
+
+votedCriteria 'Number of criteria voted' = GROUP SUM 1 IF assessmentScoreNum (Contractor c, Employee e, Scoring s) BY c,e;
+votedAllCriteria (Contractor c, Employee e) = votedCriteria(c,e) == criteriaAmountNum();
+
+voted 'Voted' = GROUP SUM 1 IF votedAllCriteria(Contractor c, Employee e) BY c; 
+assessmentOverall 'Overall' = GROUP SUM assessmentScoreNum(Contractor c, Employee e, Scoring s) IF votedAllCriteria(c,e) BY c;
+assessment 'Assessment' (Contractor c) = assessmentOverall(c) / voted(c) / criteriaAmountNum();
+
+commentOverall 'Overall Comment' = GROUP CONCAT '\n', name(Employee e) + ': ' + comment(Contractor c, e) IF votedAllCriteria(c,e) BY c;
+
+showScoring = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c BY c,e;
+
+// Managers of the Contractor
+CLASS Manager 'Managers';
+TABLE manager (Manager);
+
+name 'Name' = DATA ISTRING[30] (Manager);
+email 'Email' = DATA ISTRING[30] (Manager);
+phone 'Phone' = DATA ISTRING[30] (Manager);
+comment 'Comment' = DATA ISTRING[30] (Manager);
+
+EXTEND FORM contractors
+    OBJECTS em = Employee
+    FILTERS em == currentUser()
+
+    PROPERTIES(c) assessment , commentOverall PANEL 
+    
+    OBJECTS s = Scoring
+    PROPERTIES (s)  READONLY criteriaText // SHOWIF showScoring(c,em)
+    PROPERTIES  assessmentScoreNum(c,em,s), comment(c,em) PANEL // SHOWIF showScoring(c,em)
+    
+    OBJECTS m = Manager
+    PROPERTIES (m)  name, email, phone, comment, NEW, DELETE // READONLYIF NOT showScoring(c,em) // SHOWIF showScoring(c,em)
+;
+
+DESIGN contractors {
+    detailContractor {    
+        NEW scoring AFTER BOX (e) {
+            caption = 'Scoring';
+            fill = 1;
+            MOVE BOX (s) { fill = 1; }
+            NEW scoreTab {
+                caption = 'Experience';
+                type = TABBED;
+                fill = 1;
+                alignment = STRETCH;
+                NEW commentEmployee {
+                    caption = 'Your Comment';
+                    fill = 1;
+                    alignment = STRETCH;
+                    MOVE PROPERTY (comment(c,em)) { caption = ''; alignment = STRETCH; fill = 1; }
+                }
+                NEW commentOverall {
+                    caption = 'Overall Comment';
+                    fill = 1;
+                    alignment = STRETCH;
+                    MOVE PROPERTY (commentOverall(c)) { caption = ''; alignment = STRETCH; fill = 1;}
+                }
+                MOVE BOX (m) {
+                    fill = 1;
+                    alignment = STRETCH;
+                }
+            }
+        }
+    }
+}
+
+FORM criteria
+    PROPERTIES criteriaAmountNum()
+    
+    OBJECTS s = Scoring
+    PROPERTIES (s) number, criteria, short, NEW , DELETE 
+;
+
+NAVIGATOR { 
+    masterData {
+        cycles {
+            NEW criteria;
+        }
+    }
+}
