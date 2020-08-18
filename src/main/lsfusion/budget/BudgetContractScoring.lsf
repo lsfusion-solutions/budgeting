@@ -7,7 +7,7 @@ NAMESPACE Budget;
 CLASS Scoring 'Contractors Scoring';
 TABLE scoring (Scoring);
 
-number '#' = DATA INTEGER (Scoring);
+number '#' = DATA INTEGER (Scoring) CHARWIDTH 2;
 criteria 'Criteria' = DATA ISTRING (Scoring) CHARWIDTH 50;
 criteriaText 'Criteria' (Scoring s) = TEXT (criteria(s));
 short 'Criteria name' = DATA ISTRING[15] (Scoring) CHARWIDTH 15;
@@ -44,11 +44,12 @@ EXTEND FORM contractors
     OBJECTS em = Employee
     FILTERS em == currentUser()
 
-    PROPERTIES(c) assessment , commentOverall PANEL 
+    PROPERTIES(c) assessment AFTER name(c), commentOverall PANEL 
     
     OBJECTS s = Scoring
-    PROPERTIES (s)  READONLY criteriaText // SHOWIF showScoring(c,em)
+    PROPERTIES (s)  READONLY number, criteria // criteriaText // SHOWIF showScoring(c,em)
     PROPERTIES  assessmentScoreNum(c,em,s), comment(c,em) PANEL // SHOWIF showScoring(c,em)
+    ORDERS number(s)
     
     OBJECTS m = Manager
     PROPERTIES (m)  name, email, phone, comment, NEW, DELETE // READONLYIF NOT showScoring(c,em) // SHOWIF showScoring(c,em)

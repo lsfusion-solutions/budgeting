@@ -114,11 +114,11 @@ DESIGN contractors {
                 MOVE BOX (c);
                 NEW detailContractor {
                     type = TABBED;
-                    fill = 1;
+                    fill = 2;
                     alignment = STRETCH;
                     MOVE BOX (ctl);
                     MOVE BOX (an);
-                    MOVE BOX (p);
+                    //MOVE BOX (p);
                     NEW details {
                         caption = 'Details';
                         fill = 1;

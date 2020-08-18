@@ -5,7 +5,7 @@ REQUIRE MasterData, Currency, CostItem, Cycle;
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
 
-CLASS AccountingName 'Name in Accounting system';
+CLASS AccountingName 'Name in Xero/1C';
 TABLE accountingname (AccountingName);
 contractor 'Contractor' = DATA Contractor(AccountingName);
 
@@ -110,7 +110,7 @@ enableEditContract 'Edit Contractors' = DATA LOCAL BOOLEAN ();
 
 FORM contractors 'Contractors'
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLYIF NOT enableEditContract() name, taxID
+    PROPERTIES(c) READONLYIF NOT enableEditContract() name//, taxID
     PROPERTIES (c) PANEL READONLYIF NOT enableEditContract() sensitive SHOWIF afg(currentUser()), regID, nameType, isRegular, nameCostItem, nameCurrency, rate
     ORDERS name(c)
     FILTERS NOT sensitive(c) OR afg(currentUser())
