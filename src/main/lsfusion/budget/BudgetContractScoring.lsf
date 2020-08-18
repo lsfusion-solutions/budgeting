@@ -55,6 +55,10 @@ WHEN LOCAL SETCHANGED (assessment(Contractor c, Employee em, Scoring s, INTEGER 
     }
 }
 
+WHEN LOCAL DROPPED (assessment(Contractor c, Employee em, Scoring s, INTEGER i)) DO {
+    assessmentScoreNum(c,em,s) <- NULL;
+}
+
 EXTEND FORM contractors
     OBJECTS em = Employee
     FILTERS em == currentUser()
