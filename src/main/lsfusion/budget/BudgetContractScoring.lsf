@@ -16,6 +16,7 @@ criteriaAmountNum 'Amount of Criteria' = DATA INTEGER ();
 
 TABLE assessmentOverall (Contractor, Employee);
 TABLE assessmentScore (Contractor, Employee, Scoring);
+TABLE assessmentScoreLog (Contractor, Employee, Scoring, INTEGER);
 
 comment 'Comment' = DATA TEXT (Contractor, Employee);
 assessmentScoreNum 'Assessment' = DATA INTEGER (Contractor, Employee, Scoring);
@@ -25,7 +26,7 @@ votedAllCriteria (Contractor c, Employee e) = votedCriteria(c,e) == criteriaAmou
 
 voted 'Voted' = GROUP SUM 1 IF votedAllCriteria(Contractor c, Employee e) BY c; 
 assessmentOverall 'Overall' = GROUP SUM assessmentScoreNum(Contractor c, Employee e, Scoring s) IF votedAllCriteria(c,e) BY c;
-assessment 'Assessment' (Contractor c) = assessmentOverall(c) / voted(c) / criteriaAmountNum();
+assessment 'Assessment' (Contractor c) = NUMERIC[17,2](NUMERIC[17,2](assessmentOverall(c)) / voted(c) / criteriaAmountNum());
 
 commentOverall 'Overall Comment' = GROUP CONCAT '\n', name(Employee e) + ': ' + comment(Contractor c, e) IF votedAllCriteria(c,e) BY c;
 
@@ -40,15 +41,35 @@ email 'Email' = DATA ISTRING[30] (Manager);
 phone 'Phone' = DATA ISTRING[30] (Manager);
 comment 'Comment' = DATA ISTRING[30] (Manager);
 
+assessment 'Search' = DATA BOOLEAN (Contractor, Employee, Scoring, INTEGER);
+range 'Range for assessment' (INTEGER i) = GROUP MAX i IF iterate(i, 1, 5);
+ballVal 'Value' (INTEGER i) = STRING[1](i);
+
+WHEN LOCAL SETCHANGED (assessment(Contractor c, Employee em, Scoring s, INTEGER i)) DO {
+    FOR iterate(INTEGER var, 1, 5) DO {
+        IF i == var THEN {
+            IF assessment(c,em,s,i) THEN assessmentScoreNum(c,em,s) <- i;
+            ELSE assessmentScoreNum(c,em,s) <- NULL;
+        } 
+        ELSE assessment(c,em,s,var) <- NULL;
+    }
+}
+
 EXTEND FORM contractors
     OBJECTS em = Employee
     FILTERS em == currentUser()
 
     PROPERTIES(c) assessment AFTER name(c), commentOverall PANEL 
     
+    OBJECTS ball = INTEGER
+    PROPERTIES range(ball) SHOWIF NULL
+    ORDERS range(ball)
+    FILTERS range(ball)
+    
     OBJECTS s = Scoring
     PROPERTIES (s)  READONLY number, criteria // criteriaText // SHOWIF showScoring(c,em)
-    PROPERTIES  assessmentScoreNum(c,em,s), comment(c,em) PANEL // SHOWIF showScoring(c,em)
+    PROPERTIES assessment(c,em,s,ball) COLUMNS (ball) HEADER range(ball)
+    PROPERTIES  comment(c,em) PANEL // assessmentScoreNum(c,em,s),  // SHOWIF showScoring(c,em)
     ORDERS number(s)
     
     OBJECTS m = Manager
