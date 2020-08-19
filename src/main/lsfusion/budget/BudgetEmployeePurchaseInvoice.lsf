@@ -1,0 +1,24 @@
+MODULE BudgetEmployeePurchaseInvoice;
+
+REQUIRE BudgetEmployee, PurchaseInvoice, BudgetPurchaseInvoiceExpense;
+
+employee 'Connetcion to Employee for reimbursements' = DATA Employee(Invoice);
+nameEmployee 'Reimbursement to Employee' (Invoice i) = name(employee(i)) CHARWIDTH 20;
+
+EXTEND FORM invoice
+    PROPERTIES(i) nameEmployee
+;
+
+FORM selectEmployee 'Select Employee'
+    OBJECTS e = Employee
+    PROPERTIES (e) READONLY name, namePosition
+    ORDERS name(e)
+    FILTERS NOT inactive(e)
+    
+    LIST Employee OBJECT e
+;
+
+DESIGN selectEmployee {
+    PROPERTY (name(e)) {charWidth = 30; }
+    PROPERTY (namePosition(e)) {charWidth = 30; }
+}
