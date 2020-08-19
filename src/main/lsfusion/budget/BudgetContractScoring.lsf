@@ -12,6 +12,8 @@ criteria 'Criteria' = DATA ISTRING (Scoring) CHARWIDTH 50;
 criteriaText 'Criteria' (Scoring s) = TEXT (criteria(s));
 short 'Criteria name' = DATA ISTRING[15] (Scoring) CHARWIDTH 15;
 
+noScoring 'No Scoring' = DATA BOOLEAN (Contractor);
+
 criteriaAmountNum 'Amount of Criteria' = DATA INTEGER ();
 
 TABLE assessmentOverall (Contractor, Employee);
@@ -30,7 +32,7 @@ assessment 'Assessment' (Contractor c) = NUMERIC[17,2](NUMERIC[17,2](assessmentO
 
 commentOverall 'Overall Comment' = GROUP CONCAT '\n', name(Employee e) + ': ' + comment(Contractor c, e) IF votedAllCriteria(c,e) BY c;
 
-showScoring = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c BY c,e;
+showScoring = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c AND NOT noScoring(c) BY c,e;
 
 // Managers of the Contractor
 CLASS Manager 'Managers';
@@ -64,6 +66,7 @@ EXTEND FORM contractors
     FILTERS em == currentUser()
 
     PROPERTIES(c) assessment AFTER name(c), commentOverall PANEL 
+    PROPERTIES(c) READONLYIF NOT enableEditContract() noScoring AFTER sensitive(c) SHOWIF afg(currentUser())
     
     OBJECTS ball = INTEGER
     PROPERTIES range(ball) SHOWIF NULL
