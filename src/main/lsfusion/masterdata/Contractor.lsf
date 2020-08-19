@@ -1,6 +1,6 @@
 MODULE Contractor;
 
-REQUIRE MasterData, Currency, CostItem, Cycle;
+REQUIRE MasterData, Currency, CostItem, CostCenter, Cycle;
 
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
@@ -14,6 +14,8 @@ regID 'Registration ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
 taxID 'Tax ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
 name 'Name' = DATA ISTRING(AccountingName) IN id CHARWIDTH 20 NONULL;
 nameContractor 'Contractor' (AccountingName a) = name(contractor(a));
+
+autoReconcile 'Auto Reconcile' = DATA BOOLEAN (Contractor);
 
 CONSTRAINT regID(Contractor c) AND NOT onlyDigits(regID(c)) CHECKED BY regID[Contractor] MESSAGE 'Registration ID must contain only digits';
 CONSTRAINT taxID(Contractor c) AND NOT onlyDigits(taxID(c)) CHECKED BY taxID[Contractor] MESSAGE 'Tax ID must contain only digits';
@@ -43,6 +45,12 @@ nameType 'Type' (Contractor c) = name(type(c));
 isRegular 'Regular Contractor (Monthly Labour)' = DATA BOOLEAN (Contractor);
 costItem 'Cost type' = DATA CostItem (Contractor); //NONULL;
 nameCostItem 'Cost type' (Contractor c) = canonicalName(costItem(c));
+
+costItemReconcile 'Cost type for Reconcile' = DATA CostItem (Contractor); 
+nameCostItemReconcile 'Cost type for Reconcile' (Contractor c) = canonicalName(costItemReconcile(c));
+
+costCenter 'Cost Center' = DATA CostCenter(Contractor);
+nameCostCenter 'Cost Center' (Contractor c) = name(costCenter(c));
 
 contractor 'For other contractors' = DATA BOOLEAN (CostItem);
 EXTEND FORM costItem
@@ -122,6 +130,7 @@ FORM contractors 'Contractors'
     OBJECTS an = AccountingName
     PROPERTIES (an) SHOWIF afg(currentUser()) READONLYIF NOT enableEditContract() name
     PROPERTIES(an)  TOOLBAR SHOWIF (enableEditContract() AND afg(currentUser())) NEW, DELETE 
+    PROPERTIES (c) DRAW an PANEL autoReconcile, nameCostItemReconcile, nameCostCenter
     FILTERS contractor(an) == c
     
     OBJECTS al = AccountingName

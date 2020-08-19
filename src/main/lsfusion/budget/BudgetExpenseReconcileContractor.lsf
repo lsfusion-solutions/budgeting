@@ -102,3 +102,23 @@ reconcileAuto() + {
     costCenter(Expense e) <- costCenter(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
 }
 
+reconcileAuto () + { 
+    LOCAL locRec = BOOLEAN (Expense);
+    locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e);
+
+    LOCAL locCostItem = CostItem (Expense);
+    locCostItem (Expense e) <- (GROUP LAST costItemReconcile(Contractor i) IF i == contractor(e) AND autoReconcile(i)) WHERE locRec(e);
+    
+    costItem(Expense e) <- costItem(contractor(e)) WHERE locCostItem(e);
+}
+
+reconcileAuto () + { 
+    LOCAL locRec = BOOLEAN (Expense);
+    locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e);
+
+    LOCAL locCostCenter = CostCenter (Expense);
+    locCostCenter (Expense e) <- (GROUP LAST costCenter(Contractor i) IF i == contractor(e) AND autoReconcile(i)) WHERE locRec(e);
+    
+    costCenter(Expense e) <- costCenter(contractor(e)) WHERE locCostCenter(e);
+}
+
