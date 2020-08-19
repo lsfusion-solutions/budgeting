@@ -1,6 +1,6 @@
 MODULE POCycle;
 
-REQUIRE Step, BudgetContractPurchaseInvoice, CostCenterEmployee, BudgetPurchaseInvoice, BudgetCycle;
+REQUIRE Step, BudgetContractPurchaseInvoice, BudgetEmployeePurchaseInvoice, CostCenterEmployee, BudgetPurchaseInvoice, BudgetCycle;
 
 NAMESPACE Purchase;
 
@@ -151,7 +151,7 @@ META extendPurchaseOrder (form)
         OBJECTS d = Invoice
         PROPERTIES (d) ON CHANGE editPO(d)  urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail
         PROPERTIES (d) ON CHANGE editPO(d) planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold 
-        PROPERTIES (d) READONLYIF paid(d) PANEL costItemName, nameContractor, nameContract, text//, nameSupplier SHOWIF NOT supply(d)
+        PROPERTIES (d) READONLYIF paid(d) PANEL costItemName, nameContractor, nameContract, nameEmployee, text//, nameSupplier SHOWIF NOT supply(d)
         PROPERTIES (d) PANEL load READONLYIF paid(d), open SHOWIF hasFile(d),  loadPayment SHOWIF afg(currentUser()), openPayment SHOWIF hasPayment(d)
         PROPERTIES (o) TOOLBAR addPO DRAW d SHOWIF NOT paid(o)
         PROPERTIES (d) DELETE SHOWIF afg(currentUser()) // TOOLBAR NEWSESSION EDIT,
@@ -204,6 +204,7 @@ META extendPurchaseOrder (form)
                                 //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
                                 MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
                                 MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
+                                MOVE PROPERTY(nameEmployee(d)) {alignment = STRETCH; }
                             }
                             NEW files {
                                 type = CONTAINERH;
@@ -410,7 +411,7 @@ EXTEND FORM purchaseOrders
     
     OBJECTS d = Invoice
     PROPERTIES (d) READONLY urgent, nameCostCenter, budgetDetailName, amountName, passThreshold
-    PROPERTIES (d) READONLY PANEL costItemName, text, nameContractor, nameContract //, supply, nameSupplier SHOWIF NOT supply(d)
+    PROPERTIES (d) READONLY PANEL costItemName, text, nameContractor, nameContract, nameEmployee //, supply, nameSupplier SHOWIF NOT supply(d)
     PROPERTIES (d) PANEL open SHOWIF hasFile(d), load,  openPayment SHOWIF hasPayment(d), loadPayment SHOWIF afg(currentUser()) //SHOWIF NOT hasFile(d)
     FILTERS part(d) == o
     
@@ -464,6 +465,7 @@ DESIGN purchaseOrders {
                         //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
                         MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
                         MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
+                        MOVE PROPERTY(nameEmployee(d)) {alignment = STRETCH; }
                     }
                     NEW files {
                         type = CONTAINERH;
@@ -589,7 +591,7 @@ NAVIGATOR {
 EXTEND FORM invoiceLoad
     PROPERTIES(i) READONLYIF paid(i) urgent,date, number, nameCurrency, amount, text, paidCash
     //PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
-    PROPERTIES (i) READONLYIF paid(i) nameContractor, nameContract
+    PROPERTIES (i) READONLYIF paid(i) nameContractor, nameContract, nameEmployee
     PROPERTIES (i) READONLYIF paid(i) BACKGROUND backgroundFill() longBudgetDetailName
     PROPERTIES (i) READONLYIF paid(i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
     PROPERTIES(i) open SHOWIF hasFile(i), load READONLYIF paid(i), openPayment SHOWIF hasPayment(i), loadPayment SHOWIF afg(currentUser())
@@ -644,6 +646,7 @@ DESIGN invoiceLoad {
                 //MOVE PROPERTY (nameSupplier(i)) {caption = 'Name of new Supplier if it is not known'; alignment = STRETCH;  panelCaptionAbove = TRUE;}
                 MOVE PROPERTY (nameContractor(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
                 MOVE PROPERTY (nameContract(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
+                MOVE PROPERTY (nameEmployee(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
             }
             NEW file {
                 alignment = STRETCH;
