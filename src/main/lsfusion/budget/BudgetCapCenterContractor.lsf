@@ -168,4 +168,22 @@ copyFrom 'Copy from' (Budget bb, CostCenter c) {
     }
 }
 
+copyTo 'Copy to' (BudgetDetail bb) {
+    DIALOG dialogCopyFromBudget OBJECTS c = costCenter(bb), b INPUT DO {
+        IF quarterNumber(budget(bb)) < quarterNumber(b) AND NOT readonly(b, costCenter(bb)) THEN {        
+            NEW bd = BudgetDetail {
+                budget(bd) <- budget(bb);
+                costCenter(bd) <- costCenter(bb);
+                costItem(bd) <- costItem(bb);
+                name(bd) <- name(bb);
+                planned(bd) <- planned(bb);
+                contractor(bd) <- contractor(bb);
+                sensitive(bd) <- sensitive(bb);
+            }
+        }
+        ELSE MESSAGE 'Coping enabled into next quarters only\nand it should be opened for editing.\nFor operations within selected quarter use Move button.';
+    }
+}
+
 EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) copyFrom(bm, c) DRAW bmd TOOLBAR; 
+EXTEND FORM costCenterBudget PROPERTIES(bmd) copyTo TOOLBAR; 
