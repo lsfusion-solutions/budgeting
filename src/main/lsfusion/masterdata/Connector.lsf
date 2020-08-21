@@ -51,4 +51,8 @@ getEgrulData 'Get data from EGRUL' (Contractor c) {
     }
 }
 
+EXTEND FORM contractor PROPERTIES getEgrulData(c);
+
+DESIGN contractor { id { MOVE PROPERTY (getEgrulData(c)); } };
+
 //----------------- End of DaData.ru -------------------

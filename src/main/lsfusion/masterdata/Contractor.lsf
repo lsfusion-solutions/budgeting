@@ -1,6 +1,6 @@
 MODULE Contractor;
 
-REQUIRE MasterData, Currency, CostItem, CostCenter, Cycle, Connector;
+REQUIRE MasterData, Currency, CostItem, CostCenter, Cycle;
 
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
@@ -78,7 +78,6 @@ FORM contractor 'Contractor'
     OBJECTS c = Contractor PANEL
     PROPERTIES(c) name, regID, taxID, nameType, isRegular, nameCostItem ON CHANGE changeCostItem(c) SHOWIF isRegular(c), nameCurrency, rate
     PROPERTIES hideContracts()
-    PROPERTIES TOOLBAR getEgrulData(c)
 
     EDIT Contractor OBJECT c
 ;
@@ -111,7 +110,6 @@ DESIGN contractor {
         }
     }
     TOOLBAR {
-        MOVE PROPERTY (getEgrulData(c));
         MOVE PROPERTY (hideContracts());
     }
 }
