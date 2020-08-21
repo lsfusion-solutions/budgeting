@@ -1,0 +1,54 @@
+MODULE Connector;
+
+REQUIRE Contractor;
+
+//---------------- DaData.ru ------------------
+
+dadataEndpoint 'Dadata Endpoint' = DATA STRING ();
+dadataAPIkey 'API-ключ Dadata' = DATA STRING ();
+dadataAPIsecret 'Секретный ключ для стандартизации Dadata' = DATA STRING ();
+dadataAuth 'Authorization' = 'Token ' + dadataAPIkey();
+dadataHeader (STRING name) = CASE // in Comments Dadata fields
+    WHEN name == 'Authorization' THEN dadataAuth() // 
+    WHEN name == 'Content-Type' THEN 'application/json';
+
+EXTEND FORM integrationData
+    PROPERTIES() dadataEndpoint, dadataAPIkey, dadataAPIsecret
+;
+
+DESIGN integrationData {
+    pane {
+        NEW egrul {
+            caption = 'DaData.ru';
+            MOVE PROPERTY(dadataEndpoint());
+            MOVE PROPERTY(dadataAPIkey());
+            MOVE PROPERTY(dadataAPIsecret());
+        }
+    }
+}
+
+//--- Get EGRUL values from Dadata ---
+
+ogrn = DATA LOCAL ISTRING (INTEGER);
+legalShort = DATA LOCAL ISTRING(INTEGER);
+
+GROUP data;
+GROUP name : data;
+
+FORM dadata
+    OBJECTS suggestions = INTEGER 
+    PROPERTIES IN data ogrn = ogrn(suggestions)
+    PROPERTIES IN name short = legalShort(suggestions)
+;
+
+getEgrulData 'Get data from EGRUL' (Contractor c) {
+    LOCAL result = FILE();
+    EXTERNAL HTTP POST 'http://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party' HEADERS dadataHeader PARAMS JSONFILE ('\{"query": "'+taxID(c)+'"\}') TO result;
+    IMPORT dadata JSON FROM result();
+    FOR ogrn(INTEGER suggestions) DO {
+         regID(c) <- ogrn(suggestions);
+         name(c) <- ISTRING[50](legalShort(suggestions));
+    }
+}
+
+//----------------- End of DaData.ru -------------------
