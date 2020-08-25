@@ -64,6 +64,8 @@ WHEN SETCHANGED (comment(Contractor c, Employee e)) DO {
     dateTimeAssessment(c,e) <- currentDateTime();
 }
 
+CONSTRAINT votedAllCriteria(Contractor c,Employee e) AND NOT comment(c,e) MESSAGE 'Please provide Your Comment';
+
 EXTEND FORM contractors
     OBJECTS em = Employee
     FILTERS em == currentUser()
