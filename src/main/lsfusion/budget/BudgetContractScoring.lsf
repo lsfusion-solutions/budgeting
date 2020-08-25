@@ -21,6 +21,7 @@ TABLE assessmentScore (Contractor, Employee, Scoring);
 TABLE assessmentScoreLog (Contractor, Employee, Scoring, INTEGER);
 
 comment 'Comment' = DATA TEXT (Contractor, Employee);
+dateTimeAssessment 'Date/Time Assessment' = DATA DATETIME (Contractor, Employee);
 assessmentScoreNum 'Assessment' = DATA INTEGER (Contractor, Employee, Scoring);
 
 votedCriteria 'Number of criteria voted' = GROUP SUM 1 IF assessmentScoreNum (Contractor c, Employee e, Scoring s) BY c,e;
@@ -30,7 +31,7 @@ voted 'Voted' = GROUP SUM 1 IF votedAllCriteria(Contractor c, Employee e) BY c;
 assessmentOverall 'Overall' = GROUP SUM assessmentScoreNum(Contractor c, Employee e, Scoring s) IF votedAllCriteria(c,e) BY c;
 assessment 'Assessment' (Contractor c) = NUMERIC[17,2](NUMERIC[17,2](assessmentOverall(c)) / voted(c) / criteriaAmountNum());
 
-commentOverall 'Overall Comment' = GROUP CONCAT '\n\n', name(Employee e) + ':\n' + comment(Contractor c, e) IF votedAllCriteria(c,e) BY c;
+commentOverall 'Overall Comment' = GROUP CONCAT name(Employee e) + ', ' + dateTimeAssessment(Contractor c, e) + ':\n' + comment(c, e),'\n\n' IF votedAllCriteria(c,e) AND comment(c, e) BY c;
 
 assignSummary = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c AND scoring(c) BY c,e;
 assignScoring 'Ask Scoring' = DATA BOOLEAN (Contractor,Employee);
@@ -57,6 +58,10 @@ WHEN LOCAL SET (assessment(Contractor c, Employee em, Scoring s, INTEGER i)) OR 
         } 
         ELSE assessment(c,em,s,var) <- NULL;
     }
+}
+
+WHEN SETCHANGED (comment(Contractor c, Employee e)) DO {
+    dateTimeAssessment(c,e) <- currentDateTime();
 }
 
 EXTEND FORM contractors
