@@ -12,7 +12,7 @@ criteria 'Criteria' = DATA ISTRING (Scoring) CHARWIDTH 50;
 criteriaText 'Criteria' (Scoring s) = TEXT (criteria(s));
 short 'Criteria name' = DATA ISTRING[15] (Scoring) CHARWIDTH 15;
 
-noScoring 'No Scoring' = DATA BOOLEAN (Contractor);
+scoring 'Scoring' = DATA BOOLEAN (Contractor);
 
 criteriaAmountNum 'Amount of Criteria' = DATA INTEGER ();
 
@@ -30,9 +30,11 @@ voted 'Voted' = GROUP SUM 1 IF votedAllCriteria(Contractor c, Employee e) BY c;
 assessmentOverall 'Overall' = GROUP SUM assessmentScoreNum(Contractor c, Employee e, Scoring s) IF votedAllCriteria(c,e) BY c;
 assessment 'Assessment' (Contractor c) = NUMERIC[17,2](NUMERIC[17,2](assessmentOverall(c)) / voted(c) / criteriaAmountNum());
 
-commentOverall 'Overall Comment' = GROUP CONCAT '\n', name(Employee e) + ': ' + comment(Contractor c, e) IF votedAllCriteria(c,e) BY c;
+commentOverall 'Overall Comment' = GROUP CONCAT '\n\n', name(Employee e) + ':\n' + comment(Contractor c, e) IF votedAllCriteria(c,e) BY c;
 
-showScoring = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c AND NOT noScoring(c) BY c,e;
+assignSummary = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c AND scoring(c) BY c,e;
+assignScoring 'Ask Scoring' = DATA BOOLEAN (Contractor,Employee);
+showScoring 'Participate Scoring' (Contractor c,Employee em) = assignSummary(c,em) > 0 OR assignScoring(c,em);
 
 // Managers of the Contractor
 CLASS Manager 'Managers';
@@ -47,7 +49,7 @@ assessment 'Search' = DATA BOOLEAN (Contractor, Employee, Scoring, INTEGER);
 range 'Range for assessment' (INTEGER i) = GROUP MAX i IF iterate(i, 1, 5);
 ballVal 'Value' (INTEGER i) = STRING[1](i);
 
-WHEN LOCAL SETCHANGED (assessment(Contractor c, Employee em, Scoring s, INTEGER i)) DO {
+WHEN LOCAL SET (assessment(Contractor c, Employee em, Scoring s, INTEGER i)) OR DROPCHANGED (assessment(c, em, s, i)) DO {
     FOR iterate(INTEGER var, 1, 5) DO {
         IF i == var THEN {
             IF assessment(c,em,s,i) THEN assessmentScoreNum(c,em,s) <- i;
@@ -57,16 +59,12 @@ WHEN LOCAL SETCHANGED (assessment(Contractor c, Employee em, Scoring s, INTEGER 
     }
 }
 
-WHEN LOCAL DROPPED (assessment(Contractor c, Employee em, Scoring s, INTEGER i)) DO {
-    assessmentScoreNum(c,em,s) <- NULL;
-}
-
 EXTEND FORM contractors
     OBJECTS em = Employee
     FILTERS em == currentUser()
 
     PROPERTIES(c) assessment AFTER name(c), commentOverall PANEL 
-    PROPERTIES(c) READONLYIF NOT enableEditContract() noScoring AFTER sensitive(c) SHOWIF afg(currentUser())
+    PROPERTIES(c) READONLYIF NOT enableEditContract() scoring AFTER assessment(c) SHOWIF afg(currentUser())
     
     OBJECTS ball = INTEGER
     PROPERTIES range(ball) SHOWIF NULL
