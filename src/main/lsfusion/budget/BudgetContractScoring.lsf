@@ -27,13 +27,16 @@ assessmentScoreNum 'Assessment' = DATA INTEGER (Contractor, Employee, Scoring);
 votedCriteria 'Number of criteria voted' = GROUP SUM 1 IF assessmentScoreNum (Contractor c, Employee e, Scoring s) BY c,e;
 votedAllCriteria (Contractor c, Employee e) = votedCriteria(c,e) == criteriaAmountNum();
 
+voted 'Voted' = GROUP SUM 1 IF votedAllCriteria(Contractor c, Employee e) BY c,e;
 voted 'Voted' = GROUP SUM 1 IF votedAllCriteria(Contractor c, Employee e) BY c; 
-assessmentOverall 'Overall' = GROUP SUM assessmentScoreNum(Contractor c, Employee e, Scoring s) IF votedAllCriteria(c,e) BY c;
-assessment 'Assessment' (Contractor c) = NUMERIC[17,2](NUMERIC[17,2](assessmentOverall(c)) / voted(c) / criteriaAmountNum());
+assessmentOverall 'Overall' = GROUP SUM assessmentScoreNum(Contractor c, Employee e, Scoring s) IF votedAllCriteria(c,e) BY c,e;
+assessment 'Assessment' (Contractor c, Employee e) = NUMERIC[17,2](NUMERIC[17,2](assessmentOverall(c,e)) / voted(c,e) / criteriaAmountNum());
+assessmentOverall 'Assessment' = GROUP SUM assessment(Contractor c, Employee e) IF votedAllCriteria(c,e) BY c;
+assessment 'Assessment' (Contractor c) = assessmentOverall(c) / voted(c);
 
 commentOverall 'Overall Comment' = GROUP CONCAT name(Employee e) + ', ' + dateTimeAssessment(Contractor c, e) + ':\n' + comment(c, e),'\n\n' IF votedAllCriteria(c,e) AND comment(c, e) BY c;
 
-assignSummary = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c AND scoring(c) BY c,e;
+assignSummary 'Number of Expenses linked' = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c AND scoring(c) BY c,e;
 assignScoring 'Ask Scoring' = DATA BOOLEAN (Contractor,Employee);
 showScoring 'Participate Scoring' (Contractor c,Employee em) = assignSummary(c,em) > 0 OR assignScoring(c,em);
 
@@ -86,6 +89,14 @@ EXTEND FORM contractors
     
     OBJECTS m = Manager
     PROPERTIES (m)  name, email, phone, comment, NEW, DELETE // READONLYIF NOT showScoring(c,em) // SHOWIF showScoring(c,em)
+    
+    OBJECTS eml = Employee
+    PROPERTIES READONLY name(eml)
+    PROPERTIES(c,eml) SHOWIF afg(currentUser()) assignSummary, assignScoring, showScoring
+    PROPERTIES(c,eml) assessment//, comment PANEL
+    PROPERTIES READONLY assessmentScoreNum(c,eml,s) COLUMNS (s) HEADER short(s)
+    ORDERS name(eml)
+    FILTERS afg(currentUser()) OR assessment(c,eml)
 ;
 
 DESIGN contractors {
@@ -112,6 +123,10 @@ DESIGN contractors {
                     MOVE PROPERTY (commentOverall(c)) { caption = ''; alignment = STRETCH; fill = 1;}
                 }
                 MOVE BOX (m) {
+                    fill = 1;
+                    alignment = STRETCH;
+                }
+                MOVE BOX (eml) {
                     fill = 1;
                     alignment = STRETCH;
                 }

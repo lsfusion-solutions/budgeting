@@ -130,7 +130,7 @@ FORM contractors 'Contractors'
     OBJECTS an = AccountingName
     PROPERTIES (an) SHOWIF afg(currentUser()) READONLYIF NOT enableEditContract() name
     PROPERTIES(an)  TOOLBAR SHOWIF (enableEditContract() AND afg(currentUser())) NEW, DELETE 
-    PROPERTIES (c) DRAW an PANEL autoReconcile, nameCostItemReconcile, nameCostCenter
+    PROPERTIES (c) SHOWIF afg(currentUser()) DRAW an PANEL autoReconcile, nameCostItemReconcile, nameCostCenter
     FILTERS contractor(an) == c
     
     OBJECTS al = AccountingName
