@@ -44,6 +44,7 @@ showScoring 'Participate Scoring' (Contractor c,Employee em) = assignSummary(c,e
 CLASS Manager 'Managers';
 TABLE manager (Manager);
 
+contractor 'Contractor' = DATA Contractor(Manager);
 name 'Name' = DATA ISTRING[30] (Manager);
 email 'Email' = DATA ISTRING[30] (Manager);
 phone 'Phone' = DATA ISTRING[30] (Manager);
@@ -89,6 +90,7 @@ EXTEND FORM contractors
     
     OBJECTS m = Manager
     PROPERTIES (m)  name, email, phone, comment, NEW, DELETE // READONLYIF NOT showScoring(c,em) // SHOWIF showScoring(c,em)
+    FILTERS contractor(m) == c
     
     OBJECTS eml = Employee
     PROPERTIES READONLY name(eml)
