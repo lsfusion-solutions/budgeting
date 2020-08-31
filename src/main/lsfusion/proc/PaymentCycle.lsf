@@ -61,7 +61,7 @@ payments 'Reserved, USD' = GROUP SUM plannedUSD(Payment p) IF NOT (budgetDetail(
 EXTEND FORM costCenterBudget PROPERTIES (bmd) payments SHOWIF afg(currentUser()) AFTER invoiced(bmd);
 
 CONSTRAINT sumExpenses(Payment i) > planned(i) CHECKED BY amountProc[ExpensePayment] MESSAGE 'Transaction amount exceeds the Payment sum';
-CONSTRAINT sumPayments(Invoice i) > amount(i)  CHECKED BY planned[Payment]           MESSAGE 'Planned Payment exceeds sum by the Invoice';
+//CONSTRAINT sumPayments(Invoice i) > amount(i)  CHECKED BY planned[Payment]           MESSAGE 'Planned Payment exceeds sum by the Invoice';
 
 // Attachment
 attachmentName (Payment p) = IF countExpenses(p) == 1 THEN 'Payment Confirmation' ELSE 'InvoicesArchive';
