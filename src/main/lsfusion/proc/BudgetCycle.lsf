@@ -672,7 +672,6 @@ EXTEND FORM costCenterBudget PROPERTIES moveBudgetDetail(bmd) DRAW bmd TOOLBAR; 
 
 quarterProposal 'Budgeting status' (CostCenter c, INTEGER q) = GROUP LAST nameStep(part(BudgetDetail d)) IF q == quarterNumber(budget(d)) AND c == costCenter(d) ORDER dateTime(part(d)) CHARWIDTH 10;
 spentLevel 'Spent, USD' = GROUP SUM spentLevel(Budget b, CostItem i, CostCenter c) BY quarterNumber(b),i,c;
-invoiced 'Invoiced, USD' = GROUP SUM invoiced(Budget b, CostCenter cp) BY cp,quarterNumber(b);
 
 filterCostCenter = DATA LOCAL NESTED CostCenter();
 nameFilterCostCenter 'CostCenter' () = name(filterCostCenter());
@@ -683,12 +682,12 @@ realQuarter 'The Integer fits quarter' = GROUP SUM 1 BY quarterNumber(Budget b);
 EXTEND FORM costCenterBudget
     OBJECTS q = INTEGER
     PROPERTIES(q) quarterName // VALUE SHOWIF NULL 
-    PROPERTIES (c,q) quarterPlannedInteger, invoiced, quarterSpentInteger
+    PROPERTIES (c,q) quarterPlannedInteger, quarterSpentInteger // , invoiced
     ORDERS quarterName(q) DESC
     FILTERS quarterPlanned(c,q) > 0
     
     OBJECTS bqd = BudgetDetail
-    PROPERTIES(bqd) READONLY nameBudget, canonicalNameCostItem, name, planned, invoiced, spentInteger, description PANEL, sensitive
+    PROPERTIES(bqd) READONLY nameBudget, canonicalNameCostItem, name, planned, spentInteger, description PANEL, sensitive // , invoiced
     FILTERS costCenter(bqd) == c,
             quarterNumber(budget(bqd)) == q,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bqd)) OR NOT hideSensitive(mainRole(currentUser()))

@@ -51,22 +51,6 @@ longBudgetDetailName 'Budget Item' (Invoice d) = longBudgetName(budgetDetail(d))
 costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
 planned 'Budgeted, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
 //spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
-balance 'Balance Remain, USD' (BudgetDetail d, DATE date) = IF date IS DATE THEN 
-    ((OVERRIDE planned(d),0) - (IF getQuarter(date) == quarterNumber(budget(d)) THEN (OVERRIDE invoiced(d),0) ELSE (OVERRIDE spent(d),0))) ELSE NULL CHARWIDTH 10;
-balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),(OVERRIDE date(d),currentDate())) CHARWIDTH 10;
-//CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
-amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
-fullName 'Invoice name' (Invoice i) = CONCAT ' ',number(i),'dated',date(i),'for',amountName(i);
-
-budgetDetailSum 'Budget Items' = GROUP CONCAT budgetDetailNameSum(Invoice i),', ' BY part(i);
-
-quarterInvoiced 'Invoiced, USD' (CostCenter c, INTEGER q) = GROUP SUM invoiced(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
-quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balance(BudgetDetail d, currentDate()) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
-EXTEND FORM budgetPortionsOverview 
-PROPERTIES(c,q) AFTER quarterPlannedInteger(c,q) quarterInvoiced, quarterBalance BACKGROUND RGB (200,250,200)
-PROPERTIES invoiced(d), balanceItem=balance(d,currentDate()) DRAW d BACKGROUND RGB (200,250,200), spent(d)
-; 
-DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Remain, USD'; }}
 
 // Attachment
 attachmentName (PurchaseOrder p) = IF countInvoices(p) == 1 THEN 'Invoice' ELSE 'InvoicesArchive';
@@ -77,8 +61,6 @@ attachmentPayment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST 
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostItem);
 paidCash 'Paid' = DATA BOOLEAN (Invoice);
-passThreshold 'Limit' (Invoice i) = balance(i) > 0 AND invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
-passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
 EXTEND FORM costCenters PROPERTIES (c) limit;
 EXTEND FORM costCenter PROPERTIES (c) limit;
 DESIGN costCenter {flag{MOVE PROPERTY (limit(c));}}
@@ -97,6 +79,41 @@ EXTEND CLASS Step
     update 'Update',
     pay 'Paid'
 }
+
+// Summing up
+
+gotApproval 'In the loop' (Invoice i) = TRUE IF NOT (step(part(i)) == Step.reject); //  OR tep(part(i)) == Step.update OR step(part(i)) == Step.enter
+invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM NUMERIC[14,2](round0(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate())))) IF gotApproval(i) BY budgetDetail(i); 
+invoiced 'Invoiced, USD' (Budget b, CostCenter cp) = GROUP SUM invoiced(BudgetDetail d) BY budget(d), costCenter(d);
+invoiced 'Invoiced, USD' = GROUP SUM invoiced(Budget b, CostCenter cp) BY cp,quarterNumber(b);
+//EXTEND FORM budgetDetails PROPERTIES(d) READONLY invoiced;
+EXTEND FORM costCenterBudget PROPERTIES invoiced(bm,c), invoiced(bmd), invoiced(c,q), invoiced(bqd);
+WHEN CHANGED(amount(Invoice i)) OR CHANGED(currency(i)) DO {
+    approved(i) <- invoiced(budgetDetail(i)) <= planned(budgetDetail(i)); 
+}
+left 'Left' (BudgetDetail d) = planned(d) (-) invoiced(d);
+
+balance 'Balance Remain, USD' (BudgetDetail d, DATE date) = IF date IS DATE THEN 
+    ((OVERRIDE planned(d),0) - (IF getQuarter(date) == quarterNumber(budget(d)) THEN (OVERRIDE invoiced(d),0) ELSE (OVERRIDE spent(d),0))) ELSE NULL CHARWIDTH 10;
+balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),(OVERRIDE date(d),currentDate())) CHARWIDTH 10;
+//CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
+amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
+fullName 'Invoice name' (Invoice i) = CONCAT ' ',number(i),'dated',date(i),'for',amountName(i);
+
+budgetDetailSum 'Budget Items' = GROUP CONCAT budgetDetailNameSum(Invoice i),', ' BY part(i);
+
+quarterInvoiced 'Invoiced, USD' (CostCenter c, INTEGER q) = GROUP SUM invoiced(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balance(BudgetDetail d, currentDate()) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+EXTEND FORM budgetPortionsOverview 
+PROPERTIES(c,q) AFTER quarterPlannedInteger(c,q) quarterInvoiced, quarterBalance BACKGROUND RGB (200,250,200)
+PROPERTIES invoiced(d), balanceItem=balance(d,currentDate()) DRAW d BACKGROUND RGB (200,250,200), spent(d)
+; 
+DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Remain, USD'; }}
+
+passThreshold 'Limit' (Invoice i) = balance(i) > 0 AND invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
+passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
+
+// Continue initialization
 
 budgetItem 'Budget detail full name' (Invoice i) = CONCAT '<br>',nameCostCenter(i),costItemName(i),budgetDetailName(i);
 budgetItems 'Budget details involved' (PurchaseOrder o) = GROUP CONCAT TEXT(budgetItem(Invoice i) + ': <b>' + amountName(i)),'</b><br><br>' BY part(i);
