@@ -80,7 +80,7 @@ EXTEND FORM contractors
     OBJECTS cc = Currency
     
     PROPERTIES paidCurrency(c,cc) COLUMNS (cc) HEADER name(cc)
-    PROPERTIES (c) paidUSD
+    //PROPERTIES (c) paidUSD
 
     OBJECTS e = Expense
     PROPERTIES (e) expenseType, date, nameGLAccount, note, reference, nameCurrency, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail, descriptionPurchaseInvoice
