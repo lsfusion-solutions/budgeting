@@ -71,6 +71,10 @@ WHEN SETCHANGED (comment(Contractor c, Employee e)) DO {
 CONSTRAINT votedAllCriteria(Contractor c,Employee e) AND NOT comment(c,e) MESSAGE 'Please provide Your Comment';
 
 EXTEND FORM contractors
+    FILTERGROUP scoring
+        FILTER 'Show Contractors to Score' showScoring(c,currentUser())
+        FILTER 'Show remaining Contractors to Score' showScoring(c,currentUser()) AND NOT votedAllCriteria(c,currentUser())
+
     OBJECTS em = Employee
     FILTERS em == currentUser()
 
@@ -83,9 +87,9 @@ EXTEND FORM contractors
     FILTERS range(ball)
     
     OBJECTS s = Scoring
-    PROPERTIES (s)  READONLY number, criteria // criteriaText // SHOWIF showScoring(c,em)
-    PROPERTIES assessment(c,em,s,ball) COLUMNS (ball) HEADER range(ball)
-    PROPERTIES  comment(c,em) PANEL // assessmentScoreNum(c,em,s),  // SHOWIF showScoring(c,em)
+    PROPERTIES (s) SHOWIF showScoring(c,em) READONLY number, criteria // criteriaText //
+    PROPERTIES SHOWIF showScoring(c,em) assessment(c,em,s,ball) COLUMNS (ball) HEADER range(ball)
+    PROPERTIES SHOWIF showScoring(c,em) comment(c,em) PANEL // assessmentScoreNum(c,em,s)
     ORDERS number(s)
     
     OBJECTS m = Manager
@@ -103,7 +107,7 @@ EXTEND FORM contractors
 
 DESIGN contractors {
     detailContractor {    
-        NEW scoring AFTER BOX (e) {
+        NEW scoring FIRST { //  AFTER BOX (e)
             caption = 'Scoring';
             fill = 1;
             MOVE BOX (s) { fill = 1; }
@@ -137,7 +141,7 @@ DESIGN contractors {
     }
 }
 
-FORM criteria
+FORM criteria 'Scoring Criteria'
     PROPERTIES criteriaAmountNum()
     
     OBJECTS s = Scoring
