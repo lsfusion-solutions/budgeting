@@ -121,7 +121,6 @@ FORM contractors 'Contractors'
     PROPERTIES(c) READONLYIF NOT enableEditContract() name//, taxID
     PROPERTIES (c) PANEL READONLYIF NOT enableEditContract() sensitive SHOWIF afg(currentUser()), regID, nameType, isRegular, nameCostItem, nameCurrency, rate
     ORDERS name(c)
-    FILTERS NOT sensitive(c) OR afg(currentUser())
 
     PROPERTIES(c) TOOLBAR SHOWIF enableEditContract() NEW, EDIT, DELETE 
     

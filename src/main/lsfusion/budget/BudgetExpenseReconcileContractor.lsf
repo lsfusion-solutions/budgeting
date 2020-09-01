@@ -81,6 +81,7 @@ EXTEND FORM contractors
     
     PROPERTIES paidCurrency(c,cc) COLUMNS (cc) HEADER name(cc)
     //PROPERTIES (c) paidUSD
+    FILTERS (NOT sensitive(c) AND paidUSD(c) > 0) OR afg(currentUser())
 
     OBJECTS e = Expense
     PROPERTIES (e) expenseType, date, nameGLAccount, note, reference, nameCurrency, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail, descriptionPurchaseInvoice

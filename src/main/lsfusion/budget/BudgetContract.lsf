@@ -63,7 +63,7 @@ EXTEND FORM contractor
     PROPERTIES (ct) SHOWIF NOT hideContracts() READONLYIF NOT enableEdit() PANEL note
     PROPERTIES (ct) SHOWIF NOT hideContracts() TOOLBAR SHOWIF enableEdit() NEW, DELETE
     PROPERTIES (ct) SHOWIF NOT hideContracts() readFile SHOWIF fileLink(ct)
-    FILTERS contractor(ct) == c
+    FILTERS contractor(ct) == c AND (NOT sensitive(contractor(ct)) OR afg(currentUser()))
     
     PROPERTIES SHOWIF NOT hideContracts() enableEdit() TOOLBAR DRAW ct
 ;
@@ -87,12 +87,13 @@ DESIGN contractor {
 }
 
 EXTEND FORM contractors
-    PROPERTIES enableEdit() TOOLBAR
+    PROPERTIES SHOWIF afg(currentUser()) enableEdit() TOOLBAR
     
     OBJECTS ct = Contract
-    PROPERTIES (ct) READONLYIF NOT enableEdit() number, date, validity, nameContractor, taxIDcontractor, note, regularity, nameCurrency, amount, amountUSD, fileLink
-    PROPERTIES (ct) TOOLBAR  SHOWIF enableEdit() NEW, DELETE
-    PROPERTIES (ct) readFile SHOWIF fileLink(ct)
+    PROPERTIES (ct) SHOWIF afg(currentUser()) READONLYIF NOT enableEdit() number, date, validity, nameContractor, taxIDcontractor, note, regularity, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) TOOLBAR  SHOWIF (enableEdit() AND afg(currentUser())) NEW, DELETE
+    PROPERTIES (ct) readFile SHOWIF (fileLink(ct) AND afg(currentUser()))
+    FILTERS (ct IS Contract AND afg(currentUser()))
     
     OBJECTS ctl = Contract
     PROPERTIES (ctl) READONLY number, date, validity, note, regularity, nameCurrency, amount, amountUSD, fileLink
