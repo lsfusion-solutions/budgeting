@@ -10,6 +10,7 @@ nameContractor 'Contractor' (Invoice i) = name(contractor(i)) CHARWIDTH 20;
 contract = DATA Contract(Invoice);
 nameContract 'Contract' (Invoice i) = number(contract(i)) CHARWIDTH 20;
 
+CONSTRAINT NOT nameContractor(Invoice i) AND amount(i) MESSAGE 'Please specify contractor';
 CONSTRAINT contractor(contract(Invoice i)) != contractor(i) CHECKED BY contract[Invoice],contractor[Invoice] MESSAGE 'Contract\'s contractor doesn\'t match invoice\'s contractor';
 //CONSTRAINT contractor(Invoice i) AND NOT contractor(budgetDetail(i)) == contractor(i) CHECKED BY budgetDetail[Invoice] MESSAGE 'Budget Detail\'s contractor doesn\'t match invoice\'s contractor';
 

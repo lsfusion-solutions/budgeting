@@ -41,6 +41,7 @@ nameExplainContractor 'Contractors involved' (PurchaseOrder b) = GROUP CONCAT na
 nameExplain 'Cost Center and Contractor' (PurchaseOrder b) = CONCAT ' - ',nameExplainCostCenter(b),nameExplainContractor(b) CHARWIDTH 50;
 
 // Extend basic items
+existInvoices 'Exist invoices' (PurchaseOrder o) = TRUE IF [GROUP SUM 1 IF amount(Invoice i) BY part(i)](o);
 urgent 'Urgent' = DATA BOOLEAN (Invoice);
 color 'Color' (PurchaseOrder o) = RGB(250,200,200) IF [GROUP SUM 1 IF urgent(Invoice i) BY part(i)](o);
 supply 'Known Supplier' = DATA BOOLEAN (Invoice);
@@ -112,6 +113,8 @@ DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Rema
 
 passThreshold 'Limit' (Invoice i) = balance(i) > 0 AND invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
 passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
+
+CONSTRAINT NOT existInvoices(PurchaseOrder p) AND step(p) MESSAGE 'Please add at list one item into Purchase';
 
 // Continue initialization
 

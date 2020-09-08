@@ -73,6 +73,8 @@ planned 'Planned, USD' = DATA NUMERIC[16,3] (BudgetDetail);
 optimizedPlanned 'Optimized, USD' = DATA NUMERIC[16,3] (BudgetDetail);
 optimized 'Optimized, %' (BudgetDetail d) = NUMERIC[16,2](100.0 - (optimizedPlanned(d) * 100.0 / planned(d)));
 
+CONSTRAINT NOT name(BudgetDetail d) AND planned(d) MESSAGE 'Please specify Budget item name';
+
 CONSTRAINT (SETCHANGED(planned(BudgetDetail d)) OR CHANGED(name(d))) AND 
             mandatoryNameBudgetDetail(costItem(d)) AND planned(d) >= 5000 AND NOT name(d)
             MESSAGE 'Budget detail\'s name is required for spendings more then 5000';
