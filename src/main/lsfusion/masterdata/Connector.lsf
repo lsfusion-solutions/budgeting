@@ -48,6 +48,12 @@ getEgrulData 'Get data from EGRUL' (Contractor c) {
     FOR ogrn(INTEGER suggestions) DO {
          regID(c) <- ogrn(suggestions);
          name(c) <- ISTRING[50](legalShort(suggestions));
+         IF NOT accountingName(name(c)) THEN {
+            NEW n = AccountingName {
+                contractor(n) <- c;
+                name(n) <- name(c);
+            }
+         }
     }
 }
 

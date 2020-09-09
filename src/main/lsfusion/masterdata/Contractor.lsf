@@ -22,7 +22,7 @@ CONSTRAINT taxID(Contractor c) AND NOT onlyDigits(taxID(c)) CHECKED BY taxID[Con
 // @ToDo TaxID viewer depending on its format 
 contractorReg 'Contractor' = GROUP AGGR Contractor c BY regID(c);
 contractorTax 'Contractor' = GROUP AGGR Contractor c BY taxID(c);
-accountingName 'Accounting Name' = GROUP AGGR AccountingName c BY name(c);
+accountingName 'Accounting Name' = GROUP AGGR AccountingName c BY lower(name(c));
 accountingContractor 'Contractor by Accounting Name' (ISTRING c) = contractor(accountingName(c));
 
 // Type
