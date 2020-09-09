@@ -117,6 +117,9 @@ WHEN SET (Purchase.stepApprove(PurchaseOrder o)) DO {
 WHEN SET (Purchase.stepReject(PurchaseOrder o)) DO {
     FOR Payment p IF part(invoice(p)) == o DO stepOut(stepLog(p)) <- Step.reject;
 }
+WHEN SET (Purchase.isPayed(PurchaseOrder o)) DO {
+    FOR Payment p IF part(invoice(p)) == o AND NOT (step(p) == Step.pay OR step(p) == Step.reconcile) DO stepOut(stepLog(p)) <- Step.pay;
+}
 schedulerPaymentUpdate 'Resume actual payments from pause mode' () {
     FOR Payment p IF stepIn(stepLog(p)) == Step.pause AND currentDate() >= datePlan(p) DO stepOut(stepLog(p)) <- Step.wait;
 }
