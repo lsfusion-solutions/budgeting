@@ -31,14 +31,16 @@ DESIGN integrationData {
 
 ogrn = DATA LOCAL ISTRING (INTEGER);
 legalShort = DATA LOCAL ISTRING(INTEGER);
+legalLong = DATA LOCAL ISTRING(INTEGER);
+legalType = DATA LOCAL ISTRING(INTEGER);
 
 GROUP data;
 GROUP name : data;
 
 FORM dadata
     OBJECTS suggestions = INTEGER 
-    PROPERTIES IN data ogrn = ogrn(suggestions)
-    PROPERTIES IN name short = legalShort(suggestions)
+    PROPERTIES IN data ogrn = ogrn(suggestions), type = legalType(suggestions)
+    PROPERTIES IN name short = legalShort(suggestions), full = legalLong(suggestions)
 ;
 
 getEgrulData 'Get data from EGRUL' (Contractor c) {
@@ -47,7 +49,9 @@ getEgrulData 'Get data from EGRUL' (Contractor c) {
     IMPORT dadata JSON FROM result();
     FOR ogrn(INTEGER suggestions) DO {
          regID(c) <- ogrn(suggestions);
-         name(c) <- ISTRING[50](legalShort(suggestions));
+         name(c) <- ISTRING[50](OVERRIDE legalShort(suggestions), legalLong(suggestions));
+         IF legalType(suggestions) == 'INDIVIDUAL' THEN type(c) <- Type.individual;
+         ELSE type(c) <- Type.company;
          IF NOT accountingName(name(c)) THEN {
             NEW n = AccountingName {
                 contractor(n) <- c;
