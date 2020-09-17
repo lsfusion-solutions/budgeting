@@ -1,6 +1,6 @@
 MODULE BudgetExpenseReconcileContractor;
 
-REQUIRE BudgetExpenseReconcile, BudgetContract, PaymentCycle, BudgetExpense;
+REQUIRE BudgetExpenseReconcile, BudgetContract, BudgetExpense, PaymentCycle;
 
 NAMESPACE Budget;
 
@@ -100,12 +100,17 @@ reconcileAuto() + {
     locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e);
     
     LOCAL locInv = Invoice (Expense);
-    locInv (Expense e) <- (GROUP LAST Invoice i IF contractor(i) == contractor(e) AND amount(i) == amount(e) AND paid(i)) WHERE locRec(e);
+    //locInv (Expense e) <- (GROUP LAST Invoice i IF contractor(i) == contractorAutomate(e) AND amount(i) == amount(e) AND paid(i)) WHERE locRec(e);
+    locInv (Expense e) <- (GROUP LAST Invoice i IF amount(i) == amount(e) AND paid(i) ORDER date(i)) WHERE locRec(e) AND NOT purchaseInvoice(e);
     
     purchaseInvoice(Expense e) <- locInv(e) WHERE locInv(e);
     budgetDetail(Expense e) <- budgetDetail(purchaseInvoice(e)) WHERE locInv(e);
     costItem(Expense e) <- costItem(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
     costCenter(Expense e) <- costCenter(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
+}
+
+WHEN SETCHANGED (purchaseInvoice(Expense e)) DO {
+    contractorManual(e) <- contractor(purchaseInvoice(e));
 }
 
 reconcileAuto () + { 
