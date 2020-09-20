@@ -13,7 +13,7 @@ REQUIRE Time, Utils, I18n, EvalScript, Security, Service, Scheduler, SQLUtils, C
         BudgetExecution, BudgetExecutionCostItemGroup,
         BudgetPurchaseInvoice, BudgetPurchaseInvoiceExpense, PurchaseInvoiceEmail, BudgetPurchaseInvoiceEmail,
         BudgetProjectStatus, BudgetEmployeePurchaseInvoice,
-        BudgetBI, CashFlowBI,
+        BudgetBI, CashFlowBI, Dashboard,
         CostCenter, CostItem, CostItemEmployee, CostCenterEmployee,
         Expense, ExpenseLedger, ExpensePayment, BudgetExpenseReconcileContractor, BudgetContractScoring,
         LocationB, Contractor, Connector,

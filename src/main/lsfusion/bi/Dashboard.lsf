@@ -1,0 +1,64 @@
+MODULE Dashboard;
+
+REQUIRE CashFlowBI, Expense;
+
+NAMESPACE BudgetBI;
+
+// Months
+
+budget = budget(date(Expense e));
+
+indexMonth 'Month ID' = PARTITION SUM 1 ORDER fromDate(Budget b) BY b MATERIALIZED;
+
+// Metrics
+
+monthExpenses 'Expences by Cost Center in Currecy by Month, USD' = GROUP SUM amountUSD(Expense e) BY budget(date(e)), currency(e), costCenter(e);
+
+monthExpenses 'Expences by Cost Type by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency cur, CostCenter c) BY b,c;
+
+monthExpenses 'Expences by Cost Type in Currecy by Month, USD' = GROUP SUM amountUSD(Expense e) BY budget(date(e)), currency(e), costItem(e);
+            
+monthExpenses 'Expences in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, c;
+
+monthExpenses 'Expences in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c) BY b;
+
+monthCostItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, c, costItem3(t);
+monthCostItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, costItem3(t);
+
+monthCostRootItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, c, costItem2(t);
+monthCostRootItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, costItem2(t);
+
+// ---- Dashboard ----
+
+FORM dashboard
+    OBJECTS b = Budget PANEL 
+    PROPERTIES name(b) SELECTOR, sumUSD=monthExpenses(b,currencyName('USD')), sumRUR=monthExpenses(b,currencyName('RUR')) , monthExpenses(b)
+    
+    OBJECTS t = CostItem 
+    PROPERTIES READONLY name(t), sumRootUSD=monthCostRootItem(b,currencyName('USD'),t), sumRootRUB=monthCostRootItem(b,currencyName('RUR'),t), monthCostRootItem(b,t), orderLevel(t) SHOWIF NULL
+    ORDERS orderLevel(t)
+    FILTERS costItem2(t) == t AND monthCostRootItem(b,t) > 0
+    
+    OBJECTS i = CostItem 
+    PROPERTIES READONLY nameCostItem2(i), name(i), sumItemUSD=monthCostItem(b,currencyName('USD'),i), sumItemRUB=monthCostItem(b,currencyName('RUR'),i), orderLevel(i) SHOWIF NULL
+    ORDERS orderLevel(i)
+    FILTERS costItem3(i) == i AND monthCostItem(b,i) > 0
+    
+    OBJECTS c = CostCenter 
+    PROPERTIES READONLY name(c), sumCenterUSD=monthExpenses(b,currencyName('USD'),c), sumCenterRUB=monthExpenses(b,currencyName('RUR'),c)
+    ORDERS name(c)
+    FILTERS monthExpenses(b,c) > 0
+    
+    OBJECTS bm = Budget
+    PROPERTIES (bm) READONLY name, indexMonth SHOWIF NULL, monthExpenses
+    ORDERS indexMonth(bm)
+    FILTERS indexMonth(bm) >= (indexMonth(b) - 2) AND indexMonth(bm) <= (indexMonth(b) + 1)
+;
+
+DESIGN dashboard {
+    
+}
+
+NAVIGATOR {
+    NEW dashboard BEFORE budgets;
+}

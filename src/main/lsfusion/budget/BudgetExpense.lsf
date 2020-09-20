@@ -25,7 +25,7 @@ CONSTRAINT budgetDetail(Expense e) AND costItem(e) AND costItem(budgetDetail(e))
     MESSAGE 'Selected cost type is not equal to budget detail\'s cost type'; 
 
 budget = DATA Budget (Expense) NONULL;
-nameBudget 'Budget' (Expense e) = name(budget(e));;
+nameBudget 'Budget' (Expense e) = name(budget(e));
 budget (Expense e) += budget(e);
 
 WHEN LOCAL SETCHANGED(budget(budgetDetail(Expense e))) DO {

@@ -154,7 +154,7 @@ FORM dialogCopyFromBudget 'Budgets'
 copyFrom 'Copy from' (Budget bb, CostCenter c) {
     DIALOG dialogCopyFromBudget OBJECTS c = c, b INPUT DO {
         IF quarterNumber(bb) > quarterNumber(b) THEN {        
-            FOR budget(BudgetDetail d) == b AND costCenter(d) == c AND NOT sensitive(d) DO NEW bd = BudgetDetail {
+            FOR budget(BudgetDetail d) == b AND costCenter(d) == c AND NOT sensitive(d) NEW bd = BudgetDetail DO {
                 budget(bd) <- bb;
                 costCenter(bd) <- c;
                 costItem(bd) <- costItem(d);
