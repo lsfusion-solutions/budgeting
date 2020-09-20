@@ -57,32 +57,36 @@ FORM dashboard 'Dashboard'
 
 DESIGN dashboard {
     OBJECTS {
-        type = SPLITV;
-        MOVE PROPERTY (name(b)) { caption = 'Select Month'; }
+        type = CONTAINERV ;
+        MOVE PROPERTY (name(b)) FIRST { caption = 'Select Month'; }
         NEW headdata {
             type = CONTAINERH;
-            PROPERTY (sumUSD) { caption = 'Amount in U.S.'; }
-            PROPERTY (sumRUR) { caption = 'Amount in Russia'; }
-            PROPERTY (monthExpenses(b)) { caption = 'Total Amount'; }
+            PROPERTY (sumUSD) { caption = 'U.S. Amount, USD'; }
+            PROPERTY (sumRUR) { caption = 'Russia Amount, USD'; }
+            PROPERTY (monthExpenses(b)) { caption = 'Total Amount, USD'; }
         }
         NEW deassetails {
+            alignment = STRETCH;
             type = CONTAINERH;
             MOVE BOX (bm);
             MOVE BOX (t) {
-                PROPERTY (sumRootUSD) { caption = 'Amount in U.S.'; }
-                PROPERTY (sumRootRUB) { caption = 'Amount in Russia'; }
-                PROPERTY (monthCostRootItem(b,t)) { caption = 'Total Amount'; }
+                PROPERTY (sumRootUSD) { caption = 'U.S. Amount, USD'; }
+                PROPERTY (sumRootRUB) { caption = 'Russia Amount, USD'; }
+                PROPERTY (monthCostRootItem(b,t)) { caption = 'Total Amount, USD'; }
             }
         }
         NEW details {
+            alignment = STRETCH;
+            fill = 1;
             type = CONTAINERH;
             MOVE BOX (i) {
-                PROPERTY (sumItemUSD) { caption = 'Amount in U.S.'; }
-                PROPERTY (sumItemRUB) { caption = 'Amount in Russia'; }
+                PROPERTY (nameCostItem2(i)) { caption = 'Category'; }
+                PROPERTY (sumItemUSD) { caption = 'U.S. Amount, USD'; }
+                PROPERTY (sumItemRUB) { caption = 'Russia Amount, USD'; }
             }
             MOVE BOX (c) {
-                PROPERTY (sumCenterUSD) { caption = 'Amount in U.S.'; }
-                PROPERTY (sumCenterRUB) { caption = 'Amount in Russia'; }
+                PROPERTY (sumCenterUSD) { caption = 'U.S. Amount, USD'; }
+                PROPERTY (sumCenterRUB) { caption = 'Russia Amount, USD'; }
             }
         }
     }
