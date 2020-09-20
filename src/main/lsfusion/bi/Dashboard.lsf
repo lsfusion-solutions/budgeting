@@ -8,7 +8,7 @@ NAMESPACE BudgetBI;
 
 budget = budget(date(Expense e));
 
-indexMonth 'Month ID' = PARTITION SUM 1 ORDER fromDate(Budget b) BY b MATERIALIZED;
+indexMonth 'Month ID' (Budget b) = PARTITION SUM 1 IF b IS Budget ORDER fromDate(b);
 
 // Metrics
 
@@ -58,17 +58,20 @@ FORM dashboard 'Dashboard'
 DESIGN dashboard {
     OBJECTS {
         type = CONTAINERV ;
-        MOVE PROPERTY (name(b)) FIRST { caption = 'Select Month'; }
         NEW headdata {
             type = CONTAINERH;
-            PROPERTY (sumUSD) { caption = 'U.S. Amount, USD'; }
-            PROPERTY (sumRUR) { caption = 'Russia Amount, USD'; }
-            PROPERTY (monthExpenses(b)) { caption = 'Total Amount, USD'; }
+            MOVE PROPERTY (name(b)) { caption = 'Select Month'; background = RGB (255,255,224);}
+            MOVE PROPERTY (sumUSD) { caption = 'U.S. Amount, USD'; }
+            MOVE PROPERTY (sumRUR) { caption = 'Russia Amount, USD'; }
+            MOVE PROPERTY (monthExpenses(b)) { caption = 'Total Amount, USD'; }
         }
         NEW deassetails {
             alignment = STRETCH;
             type = CONTAINERH;
-            MOVE BOX (bm);
+            height = 200;
+            MOVE BOX (bm) {
+                PROPERTY (monthExpenses(bm)) { caption = 'Total Amount, USD'; }
+            }
             MOVE BOX (t) {
                 PROPERTY (sumRootUSD) { caption = 'U.S. Amount, USD'; }
                 PROPERTY (sumRootRUB) { caption = 'Russia Amount, USD'; }
