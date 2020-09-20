@@ -30,7 +30,7 @@ monthCostRootItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP S
 
 // ---- Dashboard ----
 
-FORM dashboard
+FORM dashboard 'Dashboard'
     OBJECTS b = Budget PANEL 
     PROPERTIES name(b) SELECTOR, sumUSD=monthExpenses(b,currencyName('USD')), sumRUR=monthExpenses(b,currencyName('RUR')) , monthExpenses(b)
     
@@ -56,7 +56,36 @@ FORM dashboard
 ;
 
 DESIGN dashboard {
-    
+    OBJECTS {
+        type = SPLITV;
+        MOVE PROPERTY (name(b)) { caption = 'Select Month'; }
+        NEW headdata {
+            type = CONTAINERH;
+            PROPERTY (sumUSD) { caption = 'Amount in U.S.'; }
+            PROPERTY (sumRUR) { caption = 'Amount in Russia'; }
+            PROPERTY (monthExpenses(b)) { caption = 'Total Amount'; }
+        }
+        NEW deassetails {
+            type = CONTAINERH;
+            MOVE BOX (bm);
+            MOVE BOX (t) {
+                PROPERTY (sumRootUSD) { caption = 'Amount in U.S.'; }
+                PROPERTY (sumRootRUB) { caption = 'Amount in Russia'; }
+                PROPERTY (monthCostRootItem(b,t)) { caption = 'Total Amount'; }
+            }
+        }
+        NEW details {
+            type = CONTAINERH;
+            MOVE BOX (i) {
+                PROPERTY (sumItemUSD) { caption = 'Amount in U.S.'; }
+                PROPERTY (sumItemRUB) { caption = 'Amount in Russia'; }
+            }
+            MOVE BOX (c) {
+                PROPERTY (sumCenterUSD) { caption = 'Amount in U.S.'; }
+                PROPERTY (sumCenterRUB) { caption = 'Amount in Russia'; }
+            }
+        }
+    }
 }
 
 NAVIGATOR {
