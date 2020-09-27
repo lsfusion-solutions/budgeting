@@ -14,7 +14,7 @@ WHEN SETCHANGED (note(Expense e)) OR SETCHANGED (reference(e)) AND NOT contracto
 }
 
 contractorCandidate 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractor(purchaseInvoice(e)), contractorAutomate(e) MATERIALIZED;
-contractor 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))) MATERIALIZED;
+contractor 'Contractor' (Expense e) = OVERRIDE contractor(purchaseInvoice(e)), contractorManual(e), contractor(invoice(part(e))) MATERIALIZED;
 
 contractor(Expense e) += contractor(e);
 
@@ -96,6 +96,20 @@ EXTEND FORM contractors
     
 DESIGN contractors { detailContractor { MOVE BOX (e) FIRST; } }
 
+//WHEN SETCHANGED (purchaseInvoice(Expense e)) DO {
+//    contractorManual(e) <- contractor(purchaseInvoice(e));
+//}
+
+reconcileAuto () + {
+    costItem(Expense e) <- costItemReconcile(contractorCandidate(e)) 
+            WHERE toReconcile(e) AND costItemReconcile(contractorCandidate(e)) AND autoReconcile(contractorCandidate(e)) AND [ FILTER expenses.ie](e);
+}
+
+reconcileAuto () + { 
+    costCenter(Expense e) <- costCenter(contractorCandidate(e)) 
+            WHERE toReconcile(e) AND costCenter(contractorCandidate(e)) AND autoReconcile(contractorCandidate(e)) AND [ FILTER expenses.ie](e);
+}
+
 reconcileAuto() + { 
     LOCAL locRec = BOOLEAN (Expense);
     locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e);
@@ -108,29 +122,5 @@ reconcileAuto() + {
     budgetDetail(Expense e) <- budgetDetail(purchaseInvoice(e)) WHERE locInv(e);
     costItem(Expense e) <- costItem(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
     costCenter(Expense e) <- costCenter(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
-}
-
-WHEN SETCHANGED (purchaseInvoice(Expense e)) DO {
-    contractorManual(e) <- contractor(purchaseInvoice(e));
-}
-
-reconcileAuto () + { 
-    LOCAL locRec = BOOLEAN (Expense);
-    locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e);
-
-    LOCAL locCostItem = CostItem (Expense);
-    locCostItem (Expense e) <- (GROUP LAST costItemReconcile(Contractor i) IF i == contractorAutomate(e) AND autoReconcile(i)) WHERE locRec(e);
-    
-    costItem(Expense e) <- costItem(contractor(e)) WHERE locCostItem(e);
-}
-
-reconcileAuto () + { 
-    LOCAL locRec = BOOLEAN (Expense);
-    locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e);
-
-    LOCAL locCostCenter = CostCenter (Expense);
-    locCostCenter (Expense e) <- (GROUP LAST costCenter(Contractor i) IF i == contractorAutomate(e) AND autoReconcile(i)) WHERE locRec(e);
-    
-    costCenter(Expense e) <- costCenter(contractor(e)) WHERE locCostCenter(e);
 }
 

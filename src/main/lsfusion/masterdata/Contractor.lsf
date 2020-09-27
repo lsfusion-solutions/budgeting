@@ -49,8 +49,8 @@ nameCostItem 'Cost type' (Contractor c) = canonicalName(costItem(c));
 costItemReconcile 'Cost type for Reconcile' = DATA CostItem (Contractor); 
 nameCostItemReconcile 'Cost type for Reconcile' (Contractor c) = canonicalName(costItemReconcile(c));
 
-costCenter 'Cost Center' = DATA CostCenter(Contractor);
-nameCostCenter 'Cost Center' (Contractor c) = name(costCenter(c));
+costCenter 'Cost Center for Reconcile' = DATA CostCenter(Contractor);
+nameCostCenter 'Cost Center for Reconcile' (Contractor c) = name(costCenter(c));
 
 contractor 'For other contractors' = DATA BOOLEAN (CostItem);
 EXTEND FORM costItem

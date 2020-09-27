@@ -133,7 +133,8 @@ split 'Split' (Expense e)  {
         } 
     } 
 }
-toReconcile (Expense e) = e IS Expense AND NOT costItem(e) AND NOT skip(e); 
+//toReconcile (Expense e) = e IS Expense AND NOT costItem(e) AND NOT skip(e); 
+toReconcile (Expense e) = e IS Expense AND NOT budgetDetail(e) AND NOT skip(e); 
 
 FORM reconcileBudgetDetail 'Reconcile budget detail'
     OBJECTS dt = DATE PANEL
