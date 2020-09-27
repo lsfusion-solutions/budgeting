@@ -8,12 +8,12 @@ selected 'Selected' = DATA LOCAL BOOLEAN (Budget);
 
 cap 'Cap, USD' (CostItem i) = GROUP SUM childCap(Budget b, i) IF selected(b);
 
-costCenterCap 'Cost center cap, USD' (CostItem i) = GROUP SUM totalChildCap(Budget b, i) IF selected(b);
+costCenterCap 'Cost center cap, USD' (CostItem i) = NUMERIC[17,2](GROUP SUM totalChildCap(Budget b, i) IF selected(b));
 
-planned 'Planned, USD' (CostItem i) = GROUP SUM planned(Budget b, i) IF selected(b);
+planned 'Planned, USD' (CostItem i) = NUMERIC[17,2](GROUP SUM planned(Budget b, i) IF selected(b));
 
 spent 'Spent, USD' (CostItem i) = GROUP SUM spent(Budget b, i) IF selected(b);
-childSpent 'Spent, USD' (CostItem i) = GROUP SUM childSpent(Budget b, i) IF selected(b);
+childSpent 'Spent, USD' (CostItem i) = NUMERIC[17,2](GROUP SUM childSpent(Budget b, i) IF selected(b));
 
 FORM budgetExecution 'Budget execution'
     OBJECTS b = Budget
