@@ -13,7 +13,7 @@ WHEN SETCHANGED (note(Expense e)) OR SETCHANGED (reference(e)) AND NOT contracto
     contractorManual(e) <- contractorAutomate(e);
 }
 
-//contractor 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractorAutomate(e) MATERIALIZED;
+contractorCandidate 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractor(purchaseInvoice(e)), contractorAutomate(e) MATERIALIZED;
 contractor 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))) MATERIALIZED;
 
 contractor(Expense e) += contractor(e);
@@ -24,6 +24,7 @@ selectContractor (Expense e)  {
     }
 }
 
+nameContractorCandidate 'Contractor' (Expense e) = name(contractorCandidate(e));
 nameContractor 'Contractor' (ExpenseLedger e) = name(contractor(e));
 
 paidCurrency 'Paid Currency' = GROUP SUM amount(Expense e) BY contractor(e),currency(e) MATERIALIZED;
@@ -36,7 +37,7 @@ assigned 'Assigned, %' (Expense x, Employee e) = (OVERRIDE dataAssigned(period(c
 
 EXTEND FORM expenses
     PROPERTIES (e) READONLY nameContractor
-    PROPERTIES (ie) ON CHANGE selectContractor(ie) nameContractor
+    PROPERTIES (ie) ON CHANGE selectContractor(ie) nameContractorCandidate
     
     OBJECTS cc = Currency
     
