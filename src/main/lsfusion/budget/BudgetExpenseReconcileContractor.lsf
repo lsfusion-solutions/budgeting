@@ -35,9 +35,42 @@ assigned 'Assigned, %' (Expense x, Employee e) = (OVERRIDE dataAssigned(period(c
     (assigned(period(costCenter(x),budget(date(x))), e) IF selected(period(costCenter(x),budget(date(x))), budget(date(x))))) 
         IF NOT date(x) < fromDate(monthFrom(e)) AND NOT date(x) > fromDate(monthTo(e)) MATERIALIZED     ; 
 
+searchInvoiceByName 'Search' = DATA LOCAL NESTED ISTRING ();
+
+FORM reconcilePurchaseOrder 'Reconcile Purchase Invoice'
+    PROPERTIES() searchByName
+    OBJECTS amount = NUMERIC[16,2] PANEL
+    
+    OBJECTS d = Invoice
+    PROPERTIES(d) READONLY date, number, completeNameBudgetDetail, nameContractor, amountName, paid
+    ORDERS date(d) DESC 
+    FILTERS isSubstring(lower(completeNameBudgetDetail(d)), lower(searchByName())) OR isSubstring(lower(nameContractor(d)), lower(searchByName())) OR NOT searchByName()
+    
+    FILTERGROUP amount
+        FILTER 'Same amount' amount == amount(d) DEFAULT
+        
+    FILTERGROUP paid
+        FILTER 'Paid' paid(d) DEFAULT
+;
+DESIGN reconcilePurchaseOrder {
+    size = (1200, 480);
+    OBJECTS {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        fill = 1;
+        MOVE PROPERTY (searchByName()) { alignment = STRETCH; }
+        MOVE BOX (d) {
+            PROPERTY (amountName(d)) { charWidth = 20; }
+        }
+    }
+}
+changePurchaseOrder (Expense e)  { 
+    DIALOG reconcilePurchaseOrder OBJECTS d = purchaseInvoice(e) CHANGE, amount = amount(e);
+}
+
 EXTEND FORM expenses
     PROPERTIES (e) READONLY nameContractor
-    PROPERTIES (ie) ON CHANGE selectContractor(ie) nameContractorCandidate
+    PROPERTIES (ie) descriptionPurchaseInvoice ON CHANGE changePurchaseOrder(ie), nameContractorCandidate ON CHANGE selectContractor(ie)
     
     OBJECTS cc = Currency
     
@@ -119,8 +152,10 @@ reconcileAuto() + {
     locInv (Expense e) <- (GROUP LAST Invoice i IF amount(i) == amount(e) AND paid(i) ORDER date(i)) WHERE locRec(e) AND NOT purchaseInvoice(e);
     
     purchaseInvoice(Expense e) <- locInv(e) WHERE locInv(e);
-    budgetDetail(Expense e) <- budgetDetail(purchaseInvoice(e)) WHERE locInv(e);
-    costItem(Expense e) <- costItem(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
-    costCenter(Expense e) <- costCenter(budgetDetail(purchaseInvoice(e))) WHERE locInv(e);
 }
 
+WHEN LOCAL CHANGED (purchaseInvoice(Expense e)) DO {
+    budgetDetail(e) <- budgetDetail(purchaseInvoice(e));
+    costItem(e) <- costItem(budgetDetail(purchaseInvoice(e)));
+    costCenter(e) <- costCenter(budgetDetail(purchaseInvoice(e)));  
+}
