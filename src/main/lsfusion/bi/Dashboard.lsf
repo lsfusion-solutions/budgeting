@@ -51,8 +51,12 @@ FORM dashboard 'Dashboard'
     
     OBJECTS bm = Budget
     PROPERTIES (bm) READONLY name, indexMonth SHOWIF NULL, monthExpenses
-    ORDERS indexMonth(bm)
+    ORDERS indexMonth(bm) DESC
     FILTERS indexMonth(bm) >= (indexMonth(b) - 2) AND indexMonth(bm) <= (indexMonth(b) + 1)
+    
+    EVENTS ON INIT {
+        SEEK dashboard.b = budget(currentDate());
+    }
 ;
 
 DESIGN dashboard {
