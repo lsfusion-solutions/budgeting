@@ -62,7 +62,7 @@ importXero 'Import from Xero' ()  {
         
         expense(INTEGER i) <- [GROUP MAX Expense e BY date(e), amount(e), note(e)](date(i), (debit(i) (-) credit(i)), note(i));
         
-        FOR imported(INTEGER i) AND i > 4 ORDER i DO {
+        FOR imported(INTEGER i) AND i > 3 ORDER i DO {
             IF NOT debit(i) AND NOT credit(i) AND NOT note(i) AND NOT reference(i) THEN {
                 IF dateRow(i) != '' AND NOT GLAccount(dateRow(i)) THEN NEW g = GLAccount {
                     name(g) <- dateRow(i);
