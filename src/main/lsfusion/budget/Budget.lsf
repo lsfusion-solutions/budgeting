@@ -16,6 +16,8 @@ description 'Description' (Budget b) = CONCAT ' ', name(b), '(' + fromDate(b) + 
 
 budget 'Budget by Date' (DATE date) = GROUP LAST Budget b IF fromDate(b) <= date AND toDate(b) >= date;
 
+indexMonth 'Month ID' (Budget b) = PARTITION SUM 1 IF b IS Budget ORDER fromDate(b);
+
 FORM dialogBudgets 'Budget'
     OBJECTS o = Budget
     PROPERTIES(o) READONLY name, fromDate, toDate

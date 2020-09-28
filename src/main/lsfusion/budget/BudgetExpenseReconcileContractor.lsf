@@ -149,7 +149,7 @@ reconcileAuto() + {
     
     LOCAL locInv = Invoice (Expense);
     //locInv (Expense e) <- (GROUP LAST Invoice i IF contractor(i) == contractorAutomate(e) AND amount(i) == amount(e) AND paid(i)) WHERE locRec(e);
-    locInv (Expense e) <- (GROUP LAST Invoice i IF amount(i) == amount(e) AND paid(i) ORDER date(i)) WHERE locRec(e) AND NOT purchaseInvoice(e);
+    locInv (Expense e) <- (GROUP LAST Invoice i IF amount(i) == amount(e) AND budget(budgetDetail(i)) == budget(date(e)) AND paid(i) AND NOT purchaseInvoice(e) ORDER date(i)) WHERE locRec(e);
     
     purchaseInvoice(Expense e) <- locInv(e) WHERE locInv(e);
 }
