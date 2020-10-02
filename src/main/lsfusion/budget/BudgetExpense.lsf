@@ -4,7 +4,7 @@ REQUIRE Budget, Expense;
 
 NAMESPACE Budget;
 
-budgetDetail = DATA BudgetDetail (Expense);
+budgetDetail = DATA BudgetDetail (Expense) INDEXED;
 budgetDetail (Expense e) += budgetDetail(e);
 
 nameBudgetDetail 'Budget detail' (Expense e) = name(budgetDetail(e));
@@ -27,6 +27,8 @@ CONSTRAINT budgetDetail(Expense e) AND costItem(e) AND costItem(budgetDetail(e))
 budget = DATA Budget (Expense) NONULL;
 nameBudget 'Budget' (Expense e) = name(budget(e));
 budget (Expense e) += budget(e);
+
+INDEX budget(Expense e), currency(e);
 
 WHEN LOCAL SETCHANGED(budget(budgetDetail(Expense e))) DO {
     budget(e) <- budget(budgetDetail(e));

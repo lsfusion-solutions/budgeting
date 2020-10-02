@@ -40,7 +40,7 @@ WHEN LOCAL CHANGED (location(Employee e)) DO {
 }
 
 dataCostItem = DATA CostItem(Employee, Budget);
-costItem (Employee e, Budget b) = OVERRIDE dataCostItem(e, b), (costItem(e) IF b IS Budget) MATERIALIZED;
+costItem (Employee e, Budget b) = OVERRIDE dataCostItem(e, b), (costItem(e) IF b IS Budget) MATERIALIZED INDEXED;
 canonicalNameCostItem 'Cost type' (Employee e, Budget b) = canonicalName(costItem(e, b));
 
 WHEN LOCAL CHANGED (costItem(Employee e)) DO {
