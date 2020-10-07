@@ -57,6 +57,7 @@ quarterBudgeting 'Quarter Budgeting' =  ABSTRACT BOOLEAN (BudgetPortion);
 quarterBudgeting 'Quarterly Budgeting' = DATA BOOLEAN (INTEGER); // Enable automated quarterly budgeting
 
 quarterName 'Quarter' (INTEGER q) =  STRING[4](floor(q/10)) + ' \'Q' + STRING[1] (q - floor(q/10)*10);
+quarterName 'Quarter' (Budget b) = quarterName(quarterNumber(b));
 
 quarterPlanned 'Planned, USD' (CostCenter c, Budget q) = GROUP SUM planned(BudgetDetail d) IF quarterNumber(q) == quarterNumber(budget(d)) AND c == costCenter(d) AND NOT sensitive(d);
 quarterPlanned 'Planned, USD' (CostCenter c, INTEGER q) = GROUP SUM planned(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d) AND NOT sensitive(d);

@@ -168,9 +168,13 @@ plannedSalary 'Salary planned, USD' = GROUP SUM plannedSalary(CostCenter c, Budg
 // Flow editor
 showSensitiveColumns 'Show sensitive columns' = DATA LOCAL NESTED BOOLEAN ();
 EXTEND FORM employees
+    OBJECTS bq = BudgetQuarter PANEL 
+    PROPERTIES(bq) quarterName SELECTOR
+    
     OBJECTS q = INTEGER PANEL 
-    PROPERTIES quarterName(q) //SELECTOR 
-    FILTERS quarterBudgeting(q)
+    //PROPERTIES quarterName(q) //SELECTOR 
+    //FILTERS quarterBudgeting(q)
+    FILTERS quarter(bq) == q
     
     OBJECTS eb = Budget
     FILTERS quarterNumber(eb) == q
@@ -208,7 +212,7 @@ DESIGN employees {
             alignment = STRETCH;
             fill = 1;
             type = CONTAINERV;
-            MOVE PROPERTY (quarterName(q)) { caption = 'Select Quarter for budgeting'; }
+            MOVE PROPERTY (quarterName(bq)) { caption = 'Select Quarter for budgeting'; }
             MOVE PROPERTY (searchByName());
             NEW flow {
                 type = CONTAINERH;

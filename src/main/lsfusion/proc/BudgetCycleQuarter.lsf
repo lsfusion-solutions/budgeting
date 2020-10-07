@@ -23,6 +23,15 @@ period (CostCenter c, INTEGER q) = GROUP LAST period(c,Budget b) IF quarterNumbe
 
 quarter(BudgetQuarter b) += quarter(b);
 quarterBudgeting(BudgetQuarter b) += quarterBudgeting(quarter(b));
+quarterName 'Quarter' (BudgetQuarter b) = quarterName(quarter(b));
+
+FORM dialogQuarter
+    OBJECTS b = BudgetQuarter
+    PROPERTIES READONLY quarterName(b)
+    FILTERS costCq(b) = [GROUP LAST CostCenter c IF budgetingQuarterCostCenter(c,INTEGER i) BY i](quarter(b))
+    
+    LIST BudgetQuarter OBJECT b
+;
 
 WHEN SETCHANGED(partQuarter[BudgetDetail](BudgetDetail d)) DO
     part[BudgetDetail](d) <- partQuarter[BudgetDetail](d);
