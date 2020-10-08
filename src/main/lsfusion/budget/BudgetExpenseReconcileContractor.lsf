@@ -5,16 +5,16 @@ REQUIRE BudgetExpenseReconcile, BudgetContract, BudgetExpense, PaymentCycle;
 NAMESPACE Budget;
 
 contractor 'Contractor' = ABSTRACT Contractor(ExpenseLedger);
-contractorManual 'Contractor' = DATA Contractor(Expense);
+contractorManual 'Contractor' = DATA Contractor(Expense) INDEXED;
 
-contractorAutomate 'Automotive Search' (Expense e) = GROUP LAST contractor(AccountingName a) IF isSubstring(lower(note(e)), lower(name(a))) OR isSubstring(lower(reference(e)),lower(name(a)));
+contractorAutomate 'Automotive Search' (Expense e) = GROUP LAST contractor(AccountingName a) IF isSubstring(lower(note(e)), lower(name(a))) OR isSubstring(lower(reference(e)),lower(name(a))) ORDER a MATERIALIZED;
 
 WHEN SETCHANGED (note(Expense e)) OR SETCHANGED (reference(e)) AND NOT contractorManual(e) DO {
     contractorManual(e) <- contractorAutomate(e);
 }
 
-contractorCandidate 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractor(purchaseInvoice(e)), contractorAutomate(e) MATERIALIZED;
-contractor 'Contractor' (Expense e) = OVERRIDE contractor(purchaseInvoice(e)), contractorManual(e), contractor(invoice(part(e))) MATERIALIZED;
+contractorCandidate 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractor(purchaseInvoice(e)), contractorAutomate(e) MATERIALIZED INDEXED;
+contractor 'Contractor' (Expense e) = OVERRIDE contractor(purchaseInvoice(e)), contractorManual(e), contractor(invoice(part(e))) MATERIALIZED INDEXED;
 
 contractor(Expense e) += contractor(e);
 

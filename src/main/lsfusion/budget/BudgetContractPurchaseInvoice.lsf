@@ -4,7 +4,7 @@ REQUIRE PurchaseInvoice, Contractor, BudgetContract, BudgetPurchaseInvoiceExpens
 
 NAMESPACE Budget;
 
-contractor = DATA Contractor(Invoice);
+contractor = DATA Contractor(Invoice) INDEXED;
 nameContractor 'Contractor' (Invoice i) = name(contractor(i)) CHARWIDTH 20;
 
 contract = DATA Contract(Invoice);

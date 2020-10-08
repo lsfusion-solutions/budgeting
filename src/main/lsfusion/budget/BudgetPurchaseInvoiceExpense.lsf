@@ -4,7 +4,7 @@ REQUIRE BudgetPurchaseInvoice, BudgetExpense;
 
 NAMESPACE Budget;
 
-purchaseInvoice 'Purchase Invoice' = DATA Invoice (Expense);
+purchaseInvoice 'Purchase Invoice' = DATA Invoice (Expense) INDEXED;
 
 descriptionPurchaseInvoice 'Purchase Invoice' (Expense e) = description(purchaseInvoice(e));
 
