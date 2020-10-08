@@ -7,7 +7,7 @@ TABLE contractor(Contractor);
 
 CLASS AccountingName 'Name in Xero/1C';
 TABLE accountingname (AccountingName);
-contractor 'Contractor' = DATA Contractor(AccountingName);
+contractor 'Contractor' = DATA Contractor(AccountingName) INDEXED;
 
 name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 20 NONULL;
 regID 'Registration ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
