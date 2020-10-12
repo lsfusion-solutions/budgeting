@@ -1,6 +1,6 @@
 MODULE Budgeting;
 
-REQUIRE Time, Utils, I18n, EvalScript, Security, Service, Scheduler, SQLUtils, Chat, Backup,
+REQUIRE Time, Utils, I18n, Eval, Security, Service, Scheduler, SQLUtils, Chat, Backup,
         BudgetPlan, BudgetLocation, BudgetRent,
         BudgetEmployee, BudgetEmployeeLocation,
         BudgetRunway, BudgetRunwayCapItem,
