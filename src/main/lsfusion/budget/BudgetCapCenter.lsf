@@ -226,7 +226,7 @@ EXTEND FORM costCenterBudget
     FILTERS selected(bm, c)
     
     OBJECTS bmd = BudgetDetail
-    PROPERTIES(bmd) READONLYIF readonlyProc(bmd, c) canonicalNameCostItem, name, planned, spentInteger, description PANEL, sensitive, NEW, DELETE // , invoiced
+    PROPERTIES(bmd) READONLYIF readonlyProc(bmd, c) canonicalNameCostItem, name, planned, optimizedPlanned, spentInteger, description PANEL, sensitive, NEW, DELETE // , invoiced
     //PROPERTIES(bmd) optimizedPlanned AFTER spent(bmd)
     //PROPERTIES(bmd) optimized AFTER optimizedPlanned(bmd)
     FILTERS costCenter(bmd) == c,

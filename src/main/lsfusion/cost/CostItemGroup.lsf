@@ -7,8 +7,8 @@ NAMESPACE Cost;
 CLASS CostItemGroup 'Cost type group';
 TABLE costItemGroup (CostItemGroup);
 
-name 'Наименование' = DATA ISTRING[100] (CostItemGroup) CHARWIDTH 15;
-order 'Порядок' = DATA INTEGER (CostItemGroup) CHARWIDTH 2;
+name 'Cost Type Group Name' = DATA ISTRING[100] (CostItemGroup) CHARWIDTH 15;
+order 'Order' = DATA INTEGER (CostItemGroup) CHARWIDTH 2;
 
 FORM costItemGroup 'Cost type group'
     OBJECTS o = CostItemGroup PANEL

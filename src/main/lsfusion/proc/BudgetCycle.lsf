@@ -218,7 +218,7 @@ FORM budgetPortions 'Budget Proposals'
     PROPERTIES (b) READONLY name
     PROPERTIES (c) READONLY name
     PROPERTIES (i) READONLY canonicalName
-    PROPERTIES(d) READONLY name, planned, description PANEL, authorName SHOWIF afg(currentUser()), dateTime SHOWIF afg(currentUser())
+    PROPERTIES(d) READONLY name, planned, optimizedPlanned, description PANEL, authorName SHOWIF afg(currentUser()), dateTime SHOWIF afg(currentUser())
     FILTERS o == part(d) AND b == budget(d) AND c == costCenter(d) AND i == costItem(d),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT archive(c)
@@ -504,7 +504,7 @@ META extendBudgetPortion (form)
         
     OBJECTS d = BudgetDetail
     PROPERTIES (d) READONLYIF readonlyRun(o,d) nameBudget, canonicalNameCostItem
-    PROPERTIES (d) READONLYIF readonlyRun(o,d) BACKGROUND background(d,o) name, planned, description PANEL
+    PROPERTIES (d) READONLYIF readonlyRun(o,d) BACKGROUND background(d,o) name, planned, optimizedPlanned, description PANEL
     //PROPERTIES (d) READONLYIF readonlyRun(o,d) PANEL description, historyValue SHOWIF prevLog(d)
     PROPERTIES (d) PANEL newComment, addComment
     PROPERTIES TOOLBAR pushBudgetDetail(o,d) SHOWIF readonlyRun(o,d), addBudgetDetail(o) DRAW d, DELETE (d)
@@ -688,7 +688,7 @@ EXTEND FORM costCenterBudget
     FILTERS quarterPlanned(c,q) > 0
     
     OBJECTS bqd = BudgetDetail
-    PROPERTIES(bqd) READONLY nameBudget, canonicalNameCostItem, name, planned, spentInteger, description PANEL, sensitive // , invoiced
+    PROPERTIES(bqd) READONLY nameBudget, canonicalNameCostItem, name, planned, optimizedPlanned, spentInteger, description PANEL, sensitive // , invoiced
     FILTERS costCenter(bqd) == c,
             quarterNumber(budget(bqd)) == q,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bqd)) OR NOT hideSensitive(mainRole(currentUser()))
