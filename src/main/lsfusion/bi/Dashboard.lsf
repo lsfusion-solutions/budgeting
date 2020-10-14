@@ -6,15 +6,15 @@ NAMESPACE BudgetBI;
 
 // Months
 
-budget = budget(date(Expense e));
+budget = budget(date(ExpenseLedger e));
 
 // Metrics
 
-monthExpenses 'Expences by Cost Center in Currecy by Month, USD' = GROUP SUM amountUSD(Expense e) BY budget(date(e)), currency(e), costCenter(e);
+monthExpenses 'Expences by Cost Center in Currecy by Month, USD' = GROUP SUM amountUSD(ExpenseLedger e) BY budget(date(e)), currency(e), costCenter(e);
 
 monthExpenses 'Expences by Cost Type by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency cur, CostCenter c) BY b,c;
 
-monthExpenses 'Expences by Cost Type in Currecy by Month, USD' = GROUP SUM amountUSD(Expense e) BY budget(date(e)), currency(e), costItem(e);
+monthExpenses 'Expences by Cost Type in Currecy by Month, USD' = GROUP SUM amountUSD(ExpenseLedger e) BY budget(date(e)), currency(e), costItem(e);
             
 monthExpenses 'Expences in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, c;
 
