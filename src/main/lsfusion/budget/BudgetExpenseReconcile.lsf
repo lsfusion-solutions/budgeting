@@ -160,8 +160,9 @@ EXTEND FORM expenses
     PROPERTIES(c) name SELECTOR 
     
     OBJECTS ie = Expense
-    PROPERTIES(ie) expenseType READONLY, date, nameGLAccount READONLY, note, reference, nameCurrency READONLY, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie), split TOOLBAR 
-    PROPERTIES(ie) DELETE
+    PROPERTIES(ie) expenseType READONLY, date, nameGLAccount READONLY, note, reference, nameCurrency READONLY, amount
+    PROPERTIES(ie) PANEL nameCostCenter, nameCostItem, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie)
+    PROPERTIES(ie) TOOLBAR split, DELETE  
     FILTERS date(ie) >= dFrom AND date(ie) <= dTo,
             currency(ie) == c,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(ie)) OR NOT hideSensitive(mainRole(currentUser())) 
@@ -231,18 +232,32 @@ DESIGN expenses {
                     fill = 2;
                 }
                 NEW expensePane {
-                    height = 150;
+                    //height = 150;
                     caption = 'Expense parameters';
-                    fill = 1;
+                    //fill = 1;
                     type = CONTAINERH;
                     NEW expenseMark {
+                        height = 120;
                         caption = 'Mark as';
                         type = CONTAINERV;
-                        MOVE PROPERTY(nameBudget(ie));
                         MOVE PROPERTY(markAsExpense(ie));
                     }
                     NEW expenseParams {
                         fill = 1;
+                        alignment = STRETCH;
+                        //height = 150;
+                        NEW budgetDetails {
+                            alignment = STRETCH;
+                            type = CONTAINERH;
+                            MOVE PROPERTY(nameBudget(ie)) {panelCaptionVertical = TRUE; }
+                            MOVE PROPERTY (nameCostCenter(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+                            MOVE PROPERTY (nameCostItem(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+                            MOVE PROPERTY (completeNameBudgetDetail(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+                        }
+                        NEW purchaseDetails AFTER budgetDetails {
+                            type = CONTAINERH;
+                            alignment = STRETCH;
+                        }
                     }
                 }
             }

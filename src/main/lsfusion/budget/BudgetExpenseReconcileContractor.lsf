@@ -70,7 +70,7 @@ changePurchaseOrder (Expense e)  {
 
 EXTEND FORM expenses
     PROPERTIES (e) READONLY nameContractor
-    PROPERTIES (ie) descriptionPurchaseInvoice ON CHANGE changePurchaseOrder(ie), nameContractorCandidate ON CHANGE selectContractor(ie)
+    PROPERTIES (ie) PANEL descriptionPurchaseInvoice ON CHANGE changePurchaseOrder(ie), nameContractorCandidate ON CHANGE selectContractor(ie)
     
     OBJECTS cc = Currency
     
@@ -111,6 +111,10 @@ DESIGN expenses {
                 MOVE PROPERTY (noteText(ec)) { panelCaptionAbove = TRUE; alignment = STRETCH; }
                 MOVE BOX (em);
             }
+        }
+        purchaseDetails {
+            MOVE PROPERTY (descriptionPurchaseInvoice(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+            MOVE PROPERTY (nameContractorCandidate(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
         }
     }
 }

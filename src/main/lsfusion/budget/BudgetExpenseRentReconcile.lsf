@@ -27,9 +27,8 @@ DESIGN expenses {
         expenseMark {
             MOVE PROPERTY(markAsRent(ie));
         }
-        NEW rentParameters {
-            type = CONTAINERH;
-            MOVE PROPERTY(nameLocation(ie));
+        purchaseDetails {
+            MOVE PROPERTY(nameLocation(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
         }
         MOVE BOX(ce);        
     }
