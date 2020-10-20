@@ -160,8 +160,8 @@ EXTEND FORM expenses
     PROPERTIES(c) name SELECTOR 
     
     OBJECTS ie = Expense
-    PROPERTIES(ie) expenseType READONLY, date, nameGLAccount READONLY, note, reference, nameCurrency READONLY, amount
-    PROPERTIES(ie) PANEL nameCostCenter, nameCostItem, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie)
+    PROPERTIES(ie) expenseType READONLY, date, nameGLAccount READONLY, note, nameCostCenter, nameCostItem, nameCurrency READONLY, amount
+    PROPERTIES(ie) PANEL reference, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie)
     PROPERTIES(ie) TOOLBAR split, DELETE  
     FILTERS date(ie) >= dFrom AND date(ie) <= dTo,
             currency(ie) == c,
@@ -249,9 +249,8 @@ DESIGN expenses {
                         NEW budgetDetails {
                             alignment = STRETCH;
                             type = CONTAINERH;
-                            MOVE PROPERTY(nameBudget(ie)) {panelCaptionVertical = TRUE; }
-                            MOVE PROPERTY (nameCostCenter(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
-                            MOVE PROPERTY (nameCostItem(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+                            MOVE PROPERTY (reference(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+                            MOVE PROPERTY (nameBudget(ie)) {panelCaptionVertical = TRUE; }
                             MOVE PROPERTY (completeNameBudgetDetail(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
                         }
                         NEW purchaseDetails AFTER budgetDetails {
