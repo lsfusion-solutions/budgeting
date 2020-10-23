@@ -79,6 +79,9 @@ dashUpBudget 'Expense Details by Month' (Budget b) {
 
 // ---- Dashboard ----
 
+filterBudgetMonths 'Do not filter Budget Months' = DATA LOCAL NESTED BOOLEAN ();
+filterBudgetMonths 'Show' = DATA LOCAL NESTED BOOLEAN (Budget);
+
 FORM dashboard 'Dashboard'
     OBJECTS b = Budget PANEL 
     PROPERTIES name(b) SELECTOR, sumUSD=monthExpenses(b,currencyName('USD')), sumRUR=monthExpenses(b,currencyName('RUR')) , monthExpenses(b)
@@ -99,9 +102,13 @@ FORM dashboard 'Dashboard'
     FILTERS monthExpenses(b,c) > 0
     
     OBJECTS bm = Budget
+    PROPERTIES (bm) filterBudgetMonths SHOWIF filterBudgetMonths()
     PROPERTIES (bm) ON CHANGE dashUpBudget(bm) name, indexMonth SHOWIF NULL, monthExpenses
     ORDERS indexMonth(bm) DESC
-    FILTERS indexMonth(bm) >= (indexMonth(b) - 2) AND indexMonth(bm) <= (indexMonth(b) + 1)
+    //FILTERS indexMonth(bm) >= (indexMonth(b) - 2) AND indexMonth(bm) <= (indexMonth(b) + 1)
+    FILTERS indexMonth(bm) == indexMonth(b),
+            filterBudgetMonths(bm) OR filterBudgetMonths ()
+    PROPERTIES filterBudgetMonths() DRAW bm TOOLBAR
     
     EVENTS ON INIT {
         SEEK dashboard.b = budget(currentDate());
