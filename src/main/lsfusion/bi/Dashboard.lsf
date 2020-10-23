@@ -106,8 +106,7 @@ FORM dashboard 'Dashboard'
     PROPERTIES (bm) ON CHANGE dashUpBudget(bm) name, planned, indexMonth SHOWIF NULL, monthExpenses
     ORDERS indexMonth(bm) DESC
     //FILTERS indexMonth(bm) >= (indexMonth(b) - 2) AND indexMonth(bm) <= (indexMonth(b) + 1)
-    FILTERS indexMonth(bm) == indexMonth(b),
-            filterBudgetMonths(bm) OR filterBudgetMonths ()
+    FILTERS indexMonth(bm) == indexMonth(b) OR filterBudgetMonths(bm) OR filterBudgetMonths ()
     PROPERTIES filterBudgetMonths() DRAW bm TOOLBAR
     
     EVENTS ON INIT {
