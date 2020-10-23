@@ -170,9 +170,9 @@ copyFrom 'Copy from' (Budget bb, CostCenter c) {
 
 copyTo 'Copy to' (BudgetDetail bb) {
     DIALOG dialogCopyFromBudget OBJECTS c = costCenter(bb), b INPUT DO {
-        IF quarterNumber(budget(bb)) < quarterNumber(b) AND NOT readonly(b, costCenter(bb)) THEN {        
+        IF quarterNumber(budget(bb)) <= quarterNumber(b) AND NOT readonly(b, costCenter(bb)) THEN {        
             NEW bd = BudgetDetail {
-                budget(bd) <- budget(bb);
+                budget(bd) <- b;
                 costCenter(bd) <- costCenter(bb);
                 costItem(bd) <- costItem(bb);
                 name(bd) <- name(bb);
@@ -181,7 +181,7 @@ copyTo 'Copy to' (BudgetDetail bb) {
                 sensitive(bd) <- sensitive(bb);
             }
         }
-        ELSE MESSAGE 'Coping enabled into next quarters only\nand it should be opened for editing.\nFor operations within selected quarter use Move button.';
+        ELSE MESSAGE 'Coping enabled into next quarters only\nand it should be opened for editing.';
     }
 }
 
