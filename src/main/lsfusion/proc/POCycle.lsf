@@ -143,6 +143,8 @@ paid 'Paid' (Invoice i) = paid(part(i));
 paidDate 'Paid Date' = GROUP LAST DATE(dateTimeOut(StepLog l)) IF stepOut(l) == Step.pay BY sbj(l) MATERIALIZED;
 paidDate 'Paid Date' (Invoice i) = paidDate(part(i));
 
+paid 'Paid, USD' (BudgetDetail d) = GROUP SUM NUMERIC[14,2](round0(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate())))) IF paid(i) BY budgetDetail(i); 
+
 //--- Execution forms ---
 
 FORM invoiceLoad 'Load Purchase invoice'

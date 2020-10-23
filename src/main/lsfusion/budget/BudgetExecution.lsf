@@ -25,7 +25,7 @@ FORM budgetExecution 'Budget execution'
     ORDERS order(c)
     
     OBJECTS bd = BudgetDetail // By Cost type -> Detials
-    PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, invoiced , optimizedPlanned, optimized // 
+    PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, invoiced , paid, optimizedPlanned, optimized // 
     FILTERS selected(budget(bd)),
             level(costItem(bd), c),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bd)) OR NOT hideSensitive(mainRole(currentUser())),
