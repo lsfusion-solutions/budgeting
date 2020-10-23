@@ -36,7 +36,7 @@ assessment 'Assessment' (Contractor c) = assessmentOverall(c) / voted(c);
 
 commentOverall 'All comments' = GROUP CONCAT name(Employee e) + ', ' + dateTimeAssessment(Contractor c, e) + ':\n' + comment(c, e),'\n\n' IF votedAllCriteria(c,e) AND comment(c, e) BY c;
 
-assignSummary 'Number of Expenses linked' = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c AND scoring(c) BY c,e;
+assignSummary 'Number of Expenses linked' = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c BY c,e; // AND scoring(c)
 assignScoring 'Ask Scoring' = DATA BOOLEAN (Contractor,Employee);
 showScoring 'Participate Scoring' (Contractor c,Employee em) = assignSummary(c,em) > 0 OR assignScoring(c,em);
 
