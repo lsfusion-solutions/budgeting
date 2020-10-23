@@ -84,26 +84,26 @@ filterBudgetMonths 'Show' = DATA LOCAL NESTED BOOLEAN (Budget);
 
 FORM dashboard 'Dashboard'
     OBJECTS b = Budget PANEL 
-    PROPERTIES name(b) SELECTOR, sumUSD=monthExpenses(b,currencyName('USD')), sumRUR=monthExpenses(b,currencyName('RUR')) , monthExpenses(b)
+    PROPERTIES name(b) SELECTOR, planned(b), sumUSD=monthExpenses(b,currencyName('USD')), sumRUR=monthExpenses(b,currencyName('RUR')) , monthExpenses(b)
     
     OBJECTS t = CostItem 
-    PROPERTIES ON CHANGE dashUpCostItem(b,t) name(t), sumRootUSD=monthCostRootItem(b,currencyName('USD'),t), sumRootRUB=monthCostRootItem(b,currencyName('RUR'),t), monthCostRootItem(b,t), orderLevel(t) SHOWIF NULL
+    PROPERTIES ON CHANGE dashUpCostItem(b,t) name(t), planned(b,t), monthCostRootItem(b,t), sumRootUSD=monthCostRootItem(b,currencyName('USD'),t), sumRootRUB=monthCostRootItem(b,currencyName('RUR'),t), orderLevel(t) SHOWIF NULL
     ORDERS orderLevel(t)
     FILTERS costItem2(t) == t AND monthCostRootItem(b,t) > 0
     
     OBJECTS i = CostItem 
-    PROPERTIES ON CHANGE dashUpCostItem(b,i) nameCostItem2(i), name(i), sumItemUSD=monthCostItem(b,currencyName('USD'),i), sumItemRUB=monthCostItem(b,currencyName('RUR'),i), orderLevel(i) SHOWIF NULL
+    PROPERTIES ON CHANGE dashUpCostItem(b,i) nameCostItem2(i), name(i), planned(b,i), sumItemUSD=monthCostItem(b,currencyName('USD'),i), sumItemRUB=monthCostItem(b,currencyName('RUR'),i), orderLevel(i) SHOWIF NULL
     ORDERS orderLevel(i)
     FILTERS costItem3(i) == i AND monthCostItem(b,i) > 0
     
     OBJECTS c = CostCenter 
-    PROPERTIES ON CHANGE dashUpCostCenter(b,c) name(c), sumCenterUSD=monthExpenses(b,currencyName('USD'),c), sumCenterRUB=monthExpenses(b,currencyName('RUR'),c)
+    PROPERTIES ON CHANGE dashUpCostCenter(b,c) name(c), planned(b,c), sumCenterUSD=monthExpenses(b,currencyName('USD'),c), sumCenterRUB=monthExpenses(b,currencyName('RUR'),c)
     ORDERS name(c)
     FILTERS monthExpenses(b,c) > 0
     
     OBJECTS bm = Budget
     PROPERTIES (bm) filterBudgetMonths SHOWIF filterBudgetMonths()
-    PROPERTIES (bm) ON CHANGE dashUpBudget(bm) name, indexMonth SHOWIF NULL, monthExpenses
+    PROPERTIES (bm) ON CHANGE dashUpBudget(bm) name, planned, indexMonth SHOWIF NULL, monthExpenses
     ORDERS indexMonth(bm) DESC
     //FILTERS indexMonth(bm) >= (indexMonth(b) - 2) AND indexMonth(bm) <= (indexMonth(b) + 1)
     FILTERS indexMonth(bm) == indexMonth(b),
@@ -121,13 +121,14 @@ DESIGN dashboard {
         NEW headdata {
             type = CONTAINERH;
             MOVE PROPERTY (name(b)) { caption = 'Select Month'; background = RGB (255,255,224);}
+            MOVE PROPERTY (planned(b)) { caption = 'Planned, USD'; }
             MOVE PROPERTY (sumUSD) { caption = 'U.S. Amount, USD'; }
             MOVE PROPERTY (sumRUR) { caption = 'Russia Amount, USD'; }
             MOVE PROPERTY (monthExpenses(b)) { caption = 'Total Amount, USD'; }
         }
         NEW deassetails {
             alignment = STRETCH;
-            type = CONTAINERH;
+            type = SPLITH;
             height = 200;
             MOVE BOX (bm) {
                 PROPERTY (monthExpenses(bm)) { caption = 'Total Amount, USD'; }
@@ -141,7 +142,7 @@ DESIGN dashboard {
         NEW details {
             alignment = STRETCH;
             fill = 1;
-            type = CONTAINERH;
+            type = SPLITH;
             MOVE BOX (i) {
                 PROPERTY (nameCostItem2(i)) { caption = 'Category'; }
                 PROPERTY (sumItemUSD) { caption = 'U.S. Amount, USD'; }
