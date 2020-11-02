@@ -271,7 +271,7 @@ DESIGN budgetPortions {
                     MOVE PROPERTY (description(d)) {
                         fill = 1;
                         alignment = STRETCH;
-                        panelCaptionAbove = TRUE;
+                        panelCaptionVertical = TRUE;
                     }                 
                 }
             }
@@ -590,7 +590,7 @@ META extendBudgetPortion (form)
                             MOVE PROPERTY (description(d)) { caption = ''; fill = 1;}
                         }
                     }
-                    MOVE PROPERTY(newComment(d)) { alignment = STRETCH; panelCaptionAbove = TRUE; }
+                    MOVE PROPERTY(newComment(d)) { alignment = STRETCH; panelCaptionVertical = TRUE; }
                     MOVE PROPERTY(addComment(d)) { alignment = CENTER; }
                 }
             }
@@ -631,7 +631,7 @@ DESIGN steplog {
             MOVE PROPERTY(description(d)) {
                 fill = 1;
                 alignment = STRETCH;
-                panelCaptionAbove = TRUE;
+                panelCaptionVertical = TRUE;
             }
         }
     }

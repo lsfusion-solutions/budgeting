@@ -71,7 +71,7 @@ DESIGN costCenterBudgetArch {
         MOVE BOX(d) {
             caption = 'Approval';
             MOVE PROPERTY(comment(d)) {
-                panelCaptionAbove = TRUE;
+                panelCaptionVertical = TRUE;
                 fill = 1;
             }
         }
@@ -108,7 +108,7 @@ DESIGN rejectForm {
     size = (600, 400);
     OBJECTS {
         MOVE PROPERTY(comment(d)) {
-            panelCaptionAbove = TRUE;
+            panelCaptionVertical = TRUE;
             fill = 1;
         }
     }
@@ -169,7 +169,7 @@ DESIGN periodApproval {
                 MOVE BOX(d) {
                     caption = 'Approval';
                     MOVE PROPERTY(comment(d)) {
-                        panelCaptionAbove = TRUE;
+                        panelCaptionVertical = TRUE;
                         fill = 1;
                     }
                 }

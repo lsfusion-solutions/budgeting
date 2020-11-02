@@ -223,7 +223,7 @@ META extendPurchaseOrder (form)
                                 alignment = STRETCH;
                                 caption = 'Supplier details';
                                 //MOVE PROPERTY (supply(d));
-                                //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                                //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionVertical = TRUE;
                                 MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
                                 MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
                                 MOVE PROPERTY(nameEmployee(d)) {alignment = STRETCH; }
@@ -253,7 +253,7 @@ META extendPurchaseOrder (form)
                                 MOVE PROPERTY (text(d)) {
                                     fill = 1;
                                     alignment = STRETCH;
-                                    //panelCaptionAbove = TRUE;
+                                    //panelCaptionVertical = TRUE;
                                     caption = '';
                                 }
                             }
@@ -478,13 +478,13 @@ DESIGN purchaseOrders {
                     caption = 'Details for purchase invoice';
                     width = 400;
                     alignment = STRETCH;
-                    MOVE PROPERTY (costItemName(d)) {alignment = STRETCH; panelCaptionAbove = TRUE;}
+                    MOVE PROPERTY (costItemName(d)) {alignment = STRETCH; panelCaptionVertical = TRUE;}
                     NEW contractor {
                         type = CONTAINERV;
                         alignment = STRETCH;
                         caption = 'Supplier details';
                         //MOVE PROPERTY (supply(d));
-                        //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                        //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionVertical = TRUE;
                         MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
                         MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
                         MOVE PROPERTY(nameEmployee(d)) {alignment = STRETCH; }
@@ -503,7 +503,7 @@ DESIGN purchaseOrders {
                     }
                     MOVE PROPERTY (text(d)) {
                         alignment = STRETCH;
-                        panelCaptionAbove = TRUE;
+                        panelCaptionVertical = TRUE;
                         fill = 1;
                     }                                
                 }
@@ -589,7 +589,7 @@ DESIGN steplog {
                 MOVE PROPERTY (text(d)) {
                     fill = 1;
                     alignment = STRETCH;
-                    panelCaptionAbove = TRUE;
+                    panelCaptionVertical = TRUE;
                 }
             }
         }
@@ -632,12 +632,12 @@ DESIGN invoiceLoad {
                 alignment = STRETCH;
                 caption = 'Parameters';
                 type = CONTAINERH;
-                MOVE PROPERTY(urgent(i)) { panelCaptionAbove = TRUE; fontStyle = 'bold';}
-                MOVE PROPERTY(date(i)) { notNull = TRUE; panelCaptionAbove = TRUE; flex = 2;}
-                MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionAbove = TRUE; flex = 4;}
-                MOVE PROPERTY(amount(i)) { notNull = TRUE; panelCaptionAbove = TRUE; flex = 1;}
-                MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; panelCaptionAbove = TRUE; flex = 1;}
-                MOVE PROPERTY (paidCash(i)) { panelCaptionAbove = TRUE; }
+                MOVE PROPERTY(urgent(i)) { panelCaptionVertical = TRUE; fontStyle = 'bold';}
+                MOVE PROPERTY(date(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 2;}
+                MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 4;}
+                MOVE PROPERTY(amount(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 1;}
+                MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 1;}
+                MOVE PROPERTY (paidCash(i)) { panelCaptionVertical = TRUE; }
             }
             NEW budget {
                 alignment = STRETCH;
@@ -647,16 +647,16 @@ DESIGN invoiceLoad {
                     fill = 1;
                     MOVE PROPERTY (longBudgetDetailName(i)) {
                         flex = 6;
-                        panelCaptionAbove = TRUE;
+                        panelCaptionVertical = TRUE;
                         fontStyle = 'bold';
                     }
-                    MOVE PROPERTY (balance(i)) {panelCaptionAbove = TRUE; flex = 1;}
+                    MOVE PROPERTY (balance(i)) {panelCaptionVertical = TRUE; flex = 1;}
                 }
                 NEW budgetItemDetails {
                     type = CONTAINERH;
                     fill = 1;
-                    MOVE PROPERTY (nameCostCenter(i)) {panelCaptionAbove = TRUE; flex = 1;}
-                    MOVE PROPERTY (costItemName(i)) {panelCaptionAbove = TRUE; flex = 1;}
+                    MOVE PROPERTY (nameCostCenter(i)) {panelCaptionVertical = TRUE; flex = 1;}
+                    MOVE PROPERTY (costItemName(i)) {panelCaptionVertical = TRUE; flex = 1;}
                 }
             }
             NEW contract {
@@ -664,11 +664,11 @@ DESIGN invoiceLoad {
                 caption = 'Supplier';
                 type = CONTAINERH;
                 alignment = STRETCH;
-                //MOVE PROPERTY (supply(i)) {caption = 'Known Supplier'; panelCaptionAbove = TRUE; }
-                //MOVE PROPERTY (nameSupplier(i)) {caption = 'Name of new Supplier if it is not known'; alignment = STRETCH;  panelCaptionAbove = TRUE;}
-                MOVE PROPERTY (nameContractor(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
-                MOVE PROPERTY (nameContract(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
-                MOVE PROPERTY (nameEmployee(i)) {alignment = STRETCH;  panelCaptionAbove = TRUE;}
+                //MOVE PROPERTY (supply(i)) {caption = 'Known Supplier'; panelCaptionVertical = TRUE; }
+                //MOVE PROPERTY (nameSupplier(i)) {caption = 'Name of new Supplier if it is not known'; alignment = STRETCH;  panelCaptionVertical = TRUE;}
+                MOVE PROPERTY (nameContractor(i)) {alignment = STRETCH;  panelCaptionVertical = TRUE;}
+                MOVE PROPERTY (nameContract(i)) {alignment = STRETCH;  panelCaptionVertical = TRUE;}
+                MOVE PROPERTY (nameEmployee(i)) {alignment = STRETCH;  panelCaptionVertical = TRUE;}
             }
             NEW file {
                 alignment = STRETCH;
@@ -679,7 +679,7 @@ DESIGN invoiceLoad {
                 MOVE PROPERTY(loadPayment(i)) { fill = 1; height = 40; }
                 MOVE PROPERTY(openPayment(i)) { fill = 1; height = 40; }
             }
-            MOVE PROPERTY (text(i)) { caption = 'Comment'; flex = 1; panelCaptionAbove = TRUE; }
+            MOVE PROPERTY (text(i)) { caption = 'Comment'; flex = 1; panelCaptionVertical = TRUE; }
         }
 
     }

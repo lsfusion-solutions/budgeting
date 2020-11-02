@@ -197,7 +197,7 @@ DESIGN budget {
                     type = TABBED;
                     NEW description {
                         caption = 'Description';
-                        MOVE PROPERTY(description(d)) { panelCaptionAbove = TRUE; fill = 1;}
+                        MOVE PROPERTY(description(d)) { panelCaptionVertical = TRUE; fill = 1;}
                     }
                     MOVE BOX(e);
                 }
@@ -312,7 +312,7 @@ DESIGN budgetDetailAdd {
         MOVE PROPERTY (descBudget(d)) { notNull = TRUE; alignment = STRETCH; }
         MOVE PROPERTY (name(d)) { notNull = TRUE; alignment = STRETCH; }
         MOVE PROPERTY (planned(d)) { notNull = TRUE; }
-        MOVE PROPERTY (description(d)) { alignment = STRETCH; fill = 1; panelCaptionAbove = TRUE; }
+        MOVE PROPERTY (description(d)) { alignment = STRETCH; fill = 1; panelCaptionVertical = TRUE; }
     }
 }
 

@@ -272,7 +272,7 @@ DESIGN costCenterBudget {
                         NEW description {
                             caption = 'Description';
                             MOVE PROPERTY(description(bmd)) {
-                                //panelCaptionAbove = TRUE;
+                                //panelCaptionVertical = TRUE;
                                 caption = '';
                                 fill = 1;
                             }

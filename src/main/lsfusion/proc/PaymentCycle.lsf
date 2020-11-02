@@ -280,7 +280,7 @@ META extendPayment (form)
                                 alignment = STRETCH;
                                 caption = 'Supplier details';
                                 //MOVE PROPERTY (supply(d));
-                                //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionAbove = TRUE;
+                                //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionVertical = TRUE;
                                 MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
                                 MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
                             }

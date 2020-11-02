@@ -112,12 +112,12 @@ META defineNotification (id,capName,ClassName,Category)
                 MOVE PROPERTY(text(note###id)) {
                     fill = 1;
                     alignment = STRETCH;
-                    panelCaptionAbove = TRUE;
+                    panelCaptionVertical = TRUE;
                 }
                 MOVE PROPERTY(details(note###id)) {
                     fill = 1;
                     alignment = STRETCH;
-                    panelCaptionAbove = TRUE;
+                    panelCaptionVertical = TRUE;
                 }
             }
         }
@@ -172,7 +172,7 @@ META extendDetails(form,pane,orientation)
                 MOVE PROPERTY(comment(l)) {
                     fill = 1;
                     alignment = STRETCH;
-                    panelCaptionAbove = TRUE;
+                    panelCaptionVertical = TRUE;
                 }
             }
         }
@@ -206,7 +206,7 @@ META defineAssignmentForm(subject,makeStep,header)
                 NEW decisionButtons {
                     type = CONTAINERV;
                     alignment = CENTER;
-                    //MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; caption = 'Overall comment for this Decision'; } //  height = 200;
+                    //MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionVertical = TRUE; caption = 'Overall comment for this Decision'; } //  height = 200;
                 }
                 //MOVE BOX (lc) {
                 //    fill = 3;
@@ -219,7 +219,7 @@ META defineAssignmentForm(subject,makeStep,header)
                     type = CONTAINERV;
                     alignment = STRETCH;
                     fill = 1;
-                    //MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionAbove = TRUE; } //  height = 200;
+                    //MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionVertical = TRUE; } //  height = 200;
                 }
             }
         }
@@ -282,7 +282,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
                 alignment = CENTER;
                 MOVE PROPERTY(plan) {alignment = STRETCH; caption = 'Total planned, USD';}
             }
-            MOVE PROPERTY(comment(l)) {panelCaptionAbove = TRUE;  alignment = STRETCH; fill = 1;}
+            MOVE PROPERTY(comment(l)) {panelCaptionVertical = TRUE;  alignment = STRETCH; fill = 1;}
         }
     }
     
