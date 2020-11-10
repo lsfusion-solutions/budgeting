@@ -35,25 +35,33 @@ assigned 'Assigned, %' (Budget b, CostCenter c, Employee e) =
     //GROUP SUM assigned(Period p, b, e) BY costCenter(p) MATERIALIZED;     
     assigned(period(c,b), b, e);
 
-salary 'Salary, USD' (Period p, Employee e, Budget b) = 
+salary 'Salary Gross, USD' (Period p, Employee e, Budget b) = 
     GROUP SUM NUMERIC[16,3](round0(salary(e, b, Currency c) * (OVERRIDE taxCoefficient(b, e), 1.0) * 
                                    assigned(p, b, e) / 100.0 
                                    / defaultRateOn(c, fromDate(b)))) MATERIALIZED;
 
-salary 'Salary, USD' (CostCenter c, Employee e, Budget b) = // salary of this Employee from this Cost Center in this month
+salary 'Salary Gross, USD' (CostCenter c, Employee e, Budget b) = // salary of this Employee from this Cost Center in this month
     GROUP SUM salary(Period p, e, b) IF selected(p, b) BY costCenter(p);     // through all periods
 
-salary 'Salary, USD' = // salary of this Employee from this Cost Center in this quarter
+salary 'Salary Gross, USD' = // salary of this Employee from this Cost Center in this quarter
     GROUP SUM salary(CostCenter c, Employee e, Budget b) BY c,e,quarterNumber(b);     // through all periods
 
-salary 'Salary, USD' (CostCenter c, CostItem i, Budget b) = 
+salary 'Salary Gross, USD' (CostCenter c, CostItem i, Budget b) = 
     GROUP SUM salary(c, Employee e, b) BY costItem(e, b);
 
-salary 'Salary, USD' (Period p, Employee e) = 
+salary 'Salary Gross, USD' (Period p, Employee e) = 
     GROUP SUM salary(p, e, Budget b) IF selected(p, b);
 
-salary 'Salary, USD' (Period p, CostItem i) = 
+salary 'Salary Gross, USD' (Period p, CostItem i) = 
     GROUP SUM salary(p, Employee e, Budget b) IF selected(p, b) BY costItem(e, b) MATERIALIZED;
+
+salaryNet 'Salary Net, USD' (Period p, Employee e, Budget b) = 
+    GROUP SUM NUMERIC[16,3](round0(salary(e, b, Currency c) * 
+                                   assigned(p, b, e) / 100.0 
+                                   / defaultRateOn(c, fromDate(b))));
+
+salaryNet 'Salary Net, USD' (Period p, Employee e) = 
+    GROUP SUM salaryNet(p, e, Budget b) IF selected(p, b);
 
 EXTEND CLASS ExtraCap {
     salary 'Salary'
@@ -193,7 +201,7 @@ EXTEND FORM employees
     PROPERTIES(ep,eq) READONLYIF (NOT afg(currentUser())) assigned BACKGROUND backgroundProtected(q,ep) // READONLYIF (readonlyProc(q, ep) OR NOT afg(currentUser()))
     PROPERTIES READONLYIF (NOT afg(currentUser())) assigned(ep, eb, eq) BACKGROUND backgroundProtected(q,ep) COLUMNS (eb) HEADER name(eb)
     PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq, eb) COLUMNS (eb) HEADER name(eb)
-    PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq)
+    PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq), salaryNet(ep, eq)
     ORDERS nameCostCenter(ep)
     FILTERS period(costCenter(ep),q) == ep
             

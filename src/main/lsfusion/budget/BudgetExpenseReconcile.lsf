@@ -13,7 +13,7 @@ name 'Name' = DATA STRING[200] (GLAccount) CHARWIDTH 30;
 GLAccount = GROUP AGGR GLAccount a BY name(a);  
 
 GLAccount 'General ledger account' = DATA GLAccount (Expense);
-nameGLAccount 'General ledger account' (Expense e) = name(GLAccount(e));
+nameGLAccount 'General ledger account' (Expense e) = name(GLAccount(e)) CHARWIDTH 6;
 
 costItem 'Cost type' = DATA CostItem (GLAccount);
 nameCostItem 'Cost type' (GLAccount a) = canonicalName(costItem(a));
