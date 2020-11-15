@@ -1,12 +1,176 @@
 MODULE Connector;
 
-REQUIRE Contractor;
+REQUIRE Contractor, Time;
+
+//------------ Google Sheets API --------------
+
+// https://developers.google.com/sheets/api/reference/rest
+gsssEndpoint 'GSheets API Endpoint' = DATA STRING ();
+gsssSpreadsheets 'REST Resource for Spreadsheets' = DATA STRING ();
+gsssDeveloperMetadata 'REST Resource for Develper Metadata' = DATA STRING ();
+gsssSheets 'REST Resource for Sheets' = DATA STRING ();
+gsssValues 'REST Resource for Values' = DATA STRING ();
+
+// Credentials from the API Console  https://console.developers.google.com/
+gsssLogin 'GSheets API Login' = DATA STRING ();
+gsssClientID 'GSheets API Client ID' = DATA STRING ();
+gsssProjectID 'GSheets API Project ID' = DATA STRING ();
+gsssAuthURI 'GSheets Authentication URI' = DATA STRING ();
+gsssTokenURI 'GSheets Token URI' = DATA STRING ();
+gsssAuthProvider 'GSheets Authentication Provider X509 Certificate URL' = DATA STRING ();
+gsssClientSecret 'Standartization Secret key GSheets API' = DATA STRING ();
+gsssRedirectURI 'Our Redirect URI' = DATA STRING ();
+
+// Our Spreadsheets
+gsssScope 'Authorization Scope' = DATA STRING (); // https://www.googleapis.com/auth/spreadsheets
+gsssTeam 'Team List' = DATA STRING ();
+gsssOrg 'Organigram' = DATA STRING ();
+// Add new Spreadsheets here
+
+//--- Basic methods ---
+// Authentication https://developers.google.com/identity/protocols/oauth2/web-server
+gsssAuthorizationCode 'GSheets API Authorization Code' = DATA STRING ();
+gsssAuthorizationCodeDatetime 'Date/Time of Authorization Code receipt' = DATA DATETIME();
+gsssAccessToken 'GSheets API Access Token' = DATA STRING ();
+gsssAccessTokenDatetime 'Date/Time of Access Token receipt' = DATA DATETIME();
+gsssAccessTokenValidity 'Date/Time of Access Token validity' = DATA DATETIME();
+gsssAccessTokenType 'GSheets API Access Token Authentication type' = DATA STRING ();
+gsssAccessTokenScope 'GSheets API Access Token Scope' = DATA STRING ();
+gsssAccessTokenRefresh 'GSheets API Refresh Access Token' = DATA STRING ();
+
+gsssAuthorizationCodeGet 'Request new Authorization Code from the Google Sheets API Authentication URI' () {
+    // https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient
+    // This function do not work from bare start (before consent accepted)
+    // Need to send this request manually from browser and copy the code from response into server parameters
+    IF gsssScope() THEN {
+        NEWSESSION {
+            LOCAL response = FILE();
+            EXTERNAL HTTP POST gsssAuthURI()
+                BODYURL 'scope=$1&access_type=online&include_granted_scopes=true&response_type=code&redirect_uri=$2&client_id=$3&login_hint=$4&prompt=none' // also here possible access_type=offline
+                PARAMS gsssScope(), gsssRedirectURI(), gsssClientID(), gsssLogin()
+                TO response;
+            fileToString(response(), 'UTF-8');
+            printToLog('Response to Authorization request received from the Google Sheets API Authentication URI: ' + resultString());
+                
+            LOCAL code = STRING();
+            LOCAL error = STRING();
+            IMPORT FROM response() TO() code,error; //,refresh_token;
+            IF NOT error() THEN {
+                gsssAuthorizationCode() <- code();
+                gsssAuthorizationCodeDatetime() <- currentDateTime();
+                printToLog('Google Sheets API Authorization Code: ' + gsssAuthorizationCode());
+            }
+            ELSE printToLog('Google Sheets API Authorization error: ' + error());
+            APPLY;
+        }
+    }
+    ELSE MESSAGE 'No Google Sheets API Parameters defined';
+}
+
+gsssAccessTokenGet 'Request new Access Token from the Google Sheets API OAuth2 authorization server' () {
+    // https://developers.google.com/identity/protocols/oauth2/web-server#exchange-authorization-code
+    // IF NOT gsssAuthorizationCode() THEN gsssAuthorizationCodeGet();
+    IF gsssAuthorizationCode() THEN {
+        IF gsssClientID() AND gsssClientSecret() AND gsssRedirectURI() THEN {
+            NEWSESSION {
+                LOCAL result = FILE();
+                EXTERNAL HTTP POST gsssTokenURI()
+                    BODYURL 'code=$1&client_id=$2&client_secret=$3&redirect_uri=$4&grant_type=authorization_code' 
+                    PARAMS gsssAuthorizationCode(), gsssClientID(), gsssClientSecret(), gsssRedirectURI() 
+                    TO result;
+                fileToString(result(), 'UTF-8');
+                printToLog('Response to Access Token request received from the Google Sheets API: ' + resultString());
+                    
+                LOCAL access_token = STRING();
+                LOCAL expires_in = INTEGER(); // The remaining lifetime of the access token in seconds.
+                LOCAL token_type = STRING(); // The type of token returned. At this time, this field's value is always set to Bearer.
+                LOCAL scope = STRING(); // The scopes of access granted by the access_token expressed as a list of space-delimited, case-sensitive strings.
+                //LOCAL refresh_token = STRING(); // This field is only present if the access_type parameter set to offline
+                IMPORT FROM result() TO() access_token,expires_in,token_type,scope; //,refresh_token;
+                gsssAccessToken() <- access_token();
+                gsssAccessTokenDatetime() <- currentDateTime();
+                gsssAccessTokenValidity() <- sumSeconds(gsssAccessTokenDatetime(),expires_in());
+                gsssAccessTokenType() <- token_type();
+                gsssAccessTokenScope() <- scope();
+                //gsssAccessTokenRefresh() <- refresh_token();
+                APPLY;
+            }
+        }
+        ELSE MESSAGE 'No Google Sheets API Parameters defined';
+    }
+    ELSE MESSAGE 'No GSheets API Authorization Code established';
+}
+
+
+EXTEND FORM integrationData
+    PROPERTIES() gsssEndpoint, gsssSpreadsheets, gsssDeveloperMetadata, gsssSheets, gsssValues
+    PROPERTIES() gsssLogin, gsssClientID, gsssProjectID, gsssAuthURI, gsssTokenURI, gsssAuthProvider, gsssClientSecret, gsssRedirectURI
+    PROPERTIES() gsssTeam, gsssOrg, gsssScope, gsssAuthorizationCodeGet, gsssAccessTokenGet
+    PROPERTIES() READONLY gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope, gsssAccessTokenRefresh
+;
+
+DESIGN integrationData {
+    pane {
+        NEW gsss {
+            caption = 'Google Sheets';
+            NEW gsssEndpoints {
+                type = CONTAINERV;
+                caption = 'API Endpoints';
+                alignment = STRETCH;
+                MOVE PROPERTY(gsssEndpoint());
+                MOVE PROPERTY(gsssSpreadsheets());
+                MOVE PROPERTY(gsssDeveloperMetadata());
+                MOVE PROPERTY(gsssSheets());
+                MOVE PROPERTY(gsssValues());
+            }
+            NEW gsssCredentials {
+                type = CONTAINERV;
+                caption = 'Our Credentials';
+                alignment = STRETCH;
+                MOVE PROPERTY(gsssLogin());
+                MOVE PROPERTY(gsssClientID());
+                MOVE PROPERTY(gsssProjectID());
+                MOVE PROPERTY(gsssAuthURI());
+                MOVE PROPERTY(gsssTokenURI());
+                MOVE PROPERTY(gsssAuthProvider());
+                MOVE PROPERTY(gsssClientSecret());
+                MOVE PROPERTY(gsssRedirectURI());
+            }
+            NEW gsssSpreadsheets {
+                type = CONTAINERV;
+                caption = 'Application';
+                alignment = STRETCH;
+                MOVE PROPERTY(gsssTeam());
+                MOVE PROPERTY(gsssOrg());
+                MOVE PROPERTY(gsssScope());
+                MOVE PROPERTY(gsssAuthorizationCodeGet());
+                MOVE PROPERTY(gsssAccessTokenGet());
+            }
+            NEW gsssAccess {
+                type = CONTAINERH;
+                caption = 'Methods';
+                alignment = STRETCH;
+                MOVE PROPERTY(gsssAuthorizationCode()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAuthorizationCodeDatetime()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessToken()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenDatetime()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenValidity()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenType()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenScope()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenRefresh()) { panelCaptionVertical = TRUE; }
+            }
+        }
+    }
+}
+
+//--------- End of Google Sheets API ----------
+
 
 //---------------- DaData.ru ------------------
 
 dadataEndpoint 'Dadata Endpoint' = DATA STRING ();
-dadataAPIkey 'API-ключ Dadata' = DATA STRING ();
-dadataAPIsecret 'Секретный ключ для стандартизации Dadata' = DATA STRING ();
+dadataAPIkey 'API-key Dadata' = DATA STRING ();
+dadataAPIsecret 'Standartization Secret key Dadata' = DATA STRING ();
 dadataAuth 'Authorization' = 'Token ' + dadataAPIkey();
 dadataHeader (STRING name) = CASE // in Comments Dadata fields
     WHEN name == 'Authorization' THEN dadataAuth() // 
