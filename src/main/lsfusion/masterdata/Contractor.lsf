@@ -1,6 +1,6 @@
 MODULE Contractor;
 
-REQUIRE MasterData, Currency, CostItem, CostCenter, Cycle;
+REQUIRE MasterData, Currency, CostItem, CostCenter, Cycle, Connector;
 
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
@@ -183,3 +183,41 @@ EXTEND FORM dialogContractor PROPERTIES addContractor() DRAW c,editContractor(c)
 NAVIGATOR {
     NEW contractors; 
 }
+
+//--- Get EGRUL values from Dadata ---
+
+ogrn = DATA LOCAL ISTRING (INTEGER);
+legalShort = DATA LOCAL ISTRING(INTEGER);
+legalLong = DATA LOCAL ISTRING(INTEGER);
+legalType = DATA LOCAL ISTRING(INTEGER);
+
+GROUP data;
+GROUP name : data;
+
+FORM dadata
+    OBJECTS suggestions = INTEGER 
+    PROPERTIES IN data ogrn = ogrn(suggestions), type = legalType(suggestions)
+    PROPERTIES IN name short = legalShort(suggestions), full = legalLong(suggestions)
+;
+
+getEgrulData 'Get data from EGRUL' (Contractor c) {
+    LOCAL result = FILE();
+    EXTERNAL HTTP POST 'http://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party' HEADERS dadataHeader PARAMS JSONFILE ('\{"query": "'+taxID(c)+'"\}') TO result;
+    IMPORT dadata JSON FROM result();
+    FOR ogrn(INTEGER suggestions) DO {
+         regID(c) <- ogrn(suggestions);
+         name(c) <- ISTRING[50](OVERRIDE legalShort(suggestions), legalLong(suggestions));
+         IF legalType(suggestions) == 'INDIVIDUAL' THEN type(c) <- Type.individual;
+         ELSE type(c) <- Type.company;
+         IF NOT accountingName(lower(name(c))) THEN {
+            NEW n = AccountingName {
+                contractor(n) <- c;
+                name(n) <- name(c);
+            }
+         }
+    }
+}
+
+EXTEND FORM contractor PROPERTIES getEgrulData(c);
+
+DESIGN contractor { id { MOVE PROPERTY (getEgrulData(c)); } };

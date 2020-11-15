@@ -1,6 +1,6 @@
 MODULE EmployeeHiring;
 
-REQUIRE EmployeeB, Country;
+REQUIRE EmployeeB, Country, Connector;
 
 NAMESPACE Employee;
 
@@ -40,6 +40,13 @@ END
 
 slackAccount 'Slack account' = DATA BOOLEAN (Employee);
 trelloEstablished 'Trello established' = DATA BOOLEAN (Employee);
+
+@gsssRowNumberGet (Employee, email, team, 'E:E');
+// Implementation of link to Google Spreadsheet by the following parameters:
+//      Employee - name of this Object
+//      email - key property for one-to-one link
+//      team - name of gsssTeam() global property, which contains the Spreadsheet spreadsheetId
+//      'E:E' - range address of the Spreadsheet' Column, which contains the key value
 
 // Citizenship
 
@@ -153,7 +160,7 @@ EXTEND FORM employees
 ;
 
 EXTEND FORM employee
-    PROPERTIES(e) slackAccount, trelloEstablished, 
+    PROPERTIES(e) slackAccount, trelloEstablished, gsssTeamRow, gsssTeamRowGet,
                   citizenships ON CHANGE changeCitizenships(e), nameLanguageLevel
                   
     PROPERTIES(e) laptop, pc, ielts
@@ -181,6 +188,8 @@ DESIGN employee {
             caption = 'Contact info';
             MOVE PROPERTY(slackAccount(e));
             MOVE PROPERTY(trelloEstablished(e));
+            MOVE PROPERTY(gsssTeamRow(e));
+            MOVE PROPERTY(gsssTeamRowGet(e));
         }
         NEW personalInfo {
             type = CONTAINERH;

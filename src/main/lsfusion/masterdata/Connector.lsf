@@ -1,6 +1,6 @@
 MODULE Connector;
 
-REQUIRE Contractor, Time;
+REQUIRE Utils, Time;
 
 //------------ Google Sheets API --------------
 
@@ -20,6 +20,7 @@ gsssTokenURI 'GSheets Token URI' = DATA STRING ();
 gsssAuthProvider 'GSheets Authentication Provider X509 Certificate URL' = DATA STRING ();
 gsssClientSecret 'Standartization Secret key GSheets API' = DATA STRING ();
 gsssRedirectURI 'Our Redirect URI' = DATA STRING ();
+gsssAccessTokenRefresh 'GSheets API Refresh Access Token' = DATA STRING ();
 
 // Our Spreadsheets
 gsssScope 'Authorization Scope' = DATA STRING (); // https://www.googleapis.com/auth/spreadsheets
@@ -36,40 +37,64 @@ gsssAccessTokenDatetime 'Date/Time of Access Token receipt' = DATA DATETIME();
 gsssAccessTokenValidity 'Date/Time of Access Token validity' = DATA DATETIME();
 gsssAccessTokenType 'GSheets API Access Token Authentication type' = DATA STRING ();
 gsssAccessTokenScope 'GSheets API Access Token Scope' = DATA STRING ();
-gsssAccessTokenRefresh 'GSheets API Refresh Access Token' = DATA STRING ();
+
+// Manual way to obtain Authorization Code is to copy the generated string and run it in the browser:
+gsssAuthorizationCodeRequestString 'GSheets API Authorization Code Request String' = gsssAuthURI() + 
+    '?scope=' + gsssScope() +               // https://www.googleapis.com/auth/spreadsheets
+    '&access_type=online' +                 // to enable refresh of access token use access_type=offline
+    '&include_granted_scopes=true' +        // optional
+    '&response_type=code' +                 // required by documentation
+    '&redirect_uri=' + gsssRedirectURI() +  // from Credentials
+    '&client_id=' + gsssClientID() +        // from Credentials
+    '&login_hint=' + gsssLogin() +          // the system' Google ID
+    '&prompt=none';                         // If consent hasn't accepted yet, then run with &prompt=consent
+
+gsssAuth 'Authorization' = IF gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime() THEN 'Bearer ' + gsssAccessToken() ELSE NULL;
+gsssHeader (STRING name) = CASE
+    WHEN name == 'Content-Type' THEN 'application/x-www-form-urlencoded';
+gsssAuthHeader (STRING name) = CASE
+    WHEN name == 'Authorization' THEN gsssAuth() // 
+    WHEN name == 'Content-Type' THEN 'application/x-www-form-urlencoded';
 
 gsssAuthorizationCodeGet 'Request new Authorization Code from the Google Sheets API Authentication URI' () {
     // https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient
     // This function do not work from bare start (before consent accepted)
-    // Need to send this request manually from browser and copy the code from response into server parameters
-    IF gsssScope() THEN {
+    // The Authorisation Code to be received via callback
+    IF gsssScope() AND gsssRedirectURI() AND gsssClientID() AND gsssLogin() THEN {
         NEWSESSION {
             LOCAL response = FILE();
             EXTERNAL HTTP POST gsssAuthURI()
-                BODYURL 'scope=$1&access_type=online&include_granted_scopes=true&response_type=code&redirect_uri=$2&client_id=$3&login_hint=$4&prompt=none' // also here possible access_type=offline
-                PARAMS gsssScope(), gsssRedirectURI(), gsssClientID(), gsssLogin()
-                TO response;
-            fileToString(response(), 'UTF-8');
-            printToLog('Response to Authorization request received from the Google Sheets API Authentication URI: ' + resultString());
-                
-            LOCAL code = STRING();
-            LOCAL error = STRING();
-            IMPORT FROM response() TO() code,error; //,refresh_token;
-            IF NOT error() THEN {
-                gsssAuthorizationCode() <- code();
-                gsssAuthorizationCodeDatetime() <- currentDateTime();
-                printToLog('Google Sheets API Authorization Code: ' + gsssAuthorizationCode());
-            }
-            ELSE printToLog('Google Sheets API Authorization error: ' + error());
-            APPLY;
+                BODYURL 'scope=$1&access_type=online&include_granted_scopes=true&response_type=code&redirect_uri=$2&client_id=$3&login_hint=$4&prompt=none' 
+                // access_type=offline allows obtain of a new access token if the access token expires and should be done only once
+                PARAMS gsssScope(), gsssRedirectURI(), gsssClientID(), gsssLogin();
         }
     }
     ELSE MESSAGE 'No Google Sheets API Parameters defined';
 }
 
+gsssAuthorizationCodeSet 'Receive new Authorization Code from the Google Sheets API' (STRING code, STRING scope, STRING error) {
+    IF NOT error THEN {
+        gsssAuthorizationCode() <- code;
+        gsssAuthorizationCodeDatetime() <- currentDateTime();
+        printToLog('Google Sheets API Authorization Code received: ' + gsssAuthorizationCode() + ' valid for scope '+scope);
+        EXPORT JSON FROM code = '1', message = 'OK';
+        APPLY;
+    }
+    ELSE {
+        printToLog('Google Sheets API Authorization error received: ' + error);
+        EXPORT JSON FROM code = '0', message = error;
+    }
+} @@api @@noauth;
+
 gsssAccessTokenGet 'Request new Access Token from the Google Sheets API OAuth2 authorization server' () {
     // https://developers.google.com/identity/protocols/oauth2/web-server#exchange-authorization-code
-    // IF NOT gsssAuthorizationCode() THEN gsssAuthorizationCodeGet();
+    // Used to refresh Access Token using online type of access from the Authorization step
+    // Offline case is described in commented code as well
+    
+    // Article on Troubleshooting with 404 response "error": "invalid_grant":
+    // https://blog.timekit.io/google-oauth-invalid-grant-nightmare-and-how-to-fix-it-9f4efaf1da35
+    
+    //IF NOT gsssAuthorizationCode() THEN gsssAuthorizationCodeGet(); // In case of online access type
     IF gsssAuthorizationCode() THEN {
         IF gsssClientID() AND gsssClientSecret() AND gsssRedirectURI() THEN {
             NEWSESSION {
@@ -77,6 +102,9 @@ gsssAccessTokenGet 'Request new Access Token from the Google Sheets API OAuth2 a
                 EXTERNAL HTTP POST gsssTokenURI()
                     BODYURL 'code=$1&client_id=$2&client_secret=$3&redirect_uri=$4&grant_type=authorization_code' 
                     PARAMS gsssAuthorizationCode(), gsssClientID(), gsssClientSecret(), gsssRedirectURI() 
+                    // The commented code below describes receive of offline based access token 
+                    //BODYURL 'client_id=$1&client_secret=$2&refresh_token=$3&grant_type=refresh_token' 
+                    //PARAMS gsssClientID(), gsssClientSecret(), gsssAccessTokenRefresh() 
                     TO result;
                 fileToString(result(), 'UTF-8');
                 printToLog('Response to Access Token request received from the Google Sheets API: ' + resultString());
@@ -86,19 +114,24 @@ gsssAccessTokenGet 'Request new Access Token from the Google Sheets API OAuth2 a
                 LOCAL token_type = STRING(); // The type of token returned. At this time, this field's value is always set to Bearer.
                 LOCAL scope = STRING(); // The scopes of access granted by the access_token expressed as a list of space-delimited, case-sensitive strings.
                 //LOCAL refresh_token = STRING(); // This field is only present if the access_type parameter set to offline
-                IMPORT FROM result() TO() access_token,expires_in,token_type,scope; //,refresh_token;
+                IMPORT FROM result() TO() access_token,expires_in,token_type,scope;
                 gsssAccessToken() <- access_token();
                 gsssAccessTokenDatetime() <- currentDateTime();
                 gsssAccessTokenValidity() <- sumSeconds(gsssAccessTokenDatetime(),expires_in());
                 gsssAccessTokenType() <- token_type();
                 gsssAccessTokenScope() <- scope();
-                //gsssAccessTokenRefresh() <- refresh_token();
+                printToLog('Google Sheets API Access Toke received: ' + gsssAccessToken());
+                
+                // Clean the used Authorisation Code
+                gsssAuthorizationCode() <- NULL;
                 APPLY;
             }
         }
         ELSE MESSAGE 'No Google Sheets API Parameters defined';
+        //ELSE printToLog('No Google Sheets API Parameters defined');
     }
-    ELSE MESSAGE 'No GSheets API Authorization Code established';
+    ELSE MESSAGE 'No Google Sheets API Authorization Code established';
+    //ELSE printToLog('No offline refresh Access Toke provided to access Google Sheets API.');
 }
 
 
@@ -106,7 +139,8 @@ EXTEND FORM integrationData
     PROPERTIES() gsssEndpoint, gsssSpreadsheets, gsssDeveloperMetadata, gsssSheets, gsssValues
     PROPERTIES() gsssLogin, gsssClientID, gsssProjectID, gsssAuthURI, gsssTokenURI, gsssAuthProvider, gsssClientSecret, gsssRedirectURI
     PROPERTIES() gsssTeam, gsssOrg, gsssScope, gsssAuthorizationCodeGet, gsssAccessTokenGet
-    PROPERTIES() READONLY gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope, gsssAccessTokenRefresh
+    PROPERTIES gsssAuthorizationCodeRequestText = TEXT(gsssAuthorizationCodeRequestString())
+    PROPERTIES() gsssAccessTokenRefresh, gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope
 ;
 
 DESIGN integrationData {
@@ -144,12 +178,14 @@ DESIGN integrationData {
                 MOVE PROPERTY(gsssOrg());
                 MOVE PROPERTY(gsssScope());
                 MOVE PROPERTY(gsssAuthorizationCodeGet());
+                MOVE PROPERTY(gsssAuthorizationCodeRequestText) { panelCaptionVertical = TRUE; }
                 MOVE PROPERTY(gsssAccessTokenGet());
             }
             NEW gsssAccess {
                 type = CONTAINERH;
-                caption = 'Methods';
+                caption = 'Access Tokens';
                 alignment = STRETCH;
+                MOVE PROPERTY(gsssAccessTokenRefresh()) { panelCaptionVertical = TRUE; }
                 MOVE PROPERTY(gsssAuthorizationCode()) { panelCaptionVertical = TRUE; }
                 MOVE PROPERTY(gsssAuthorizationCodeDatetime()) { panelCaptionVertical = TRUE; }
                 MOVE PROPERTY(gsssAccessToken()) { panelCaptionVertical = TRUE; }
@@ -157,11 +193,61 @@ DESIGN integrationData {
                 MOVE PROPERTY(gsssAccessTokenValidity()) { panelCaptionVertical = TRUE; }
                 MOVE PROPERTY(gsssAccessTokenType()) { panelCaptionVertical = TRUE; }
                 MOVE PROPERTY(gsssAccessTokenScope()) { panelCaptionVertical = TRUE; }
-                MOVE PROPERTY(gsssAccessTokenRefresh()) { panelCaptionVertical = TRUE; }
             }
         }
     }
 }
+
+//--- Search line by key value ---
+
+// Representation for Resource: ValueRange
+// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values?authuser=5#ValueRange
+majorDimension = DATA LOCAL STRING();
+valueRange = DATA LOCAL ISTRING(INTEGER);
+range = DATA LOCAL STRING();
+FORM gsssValueRange
+    PROPERTIES() majorDimension, range
+    OBJECTS values = INTEGER 
+    PROPERTIES(values) valueRange EXTID 'value'
+;
+
+META gsssRowNumberGet (List, key, sheets, column)
+    // Define link of Object to Google Spreadsheet by the following parameters:
+    //      List - name of Object
+    //      key - key property for one-to-one link
+    //      sheets - name of global property, which contains the Spreadsheet spreadsheetId
+    //      column - name of Column containing the key value, use Spreadsheets addressing notation 'A:A' 
+    gsss###sheets##Row 'Number of linked Row in Google Spreadsheet' = DATA INTEGER (List);
+    
+    gsss###sheets##RowGet 'Get Row number with linked object' (List obj) {
+        // The function returns current number of a Row, which kontains the Key value in given Column
+        // In basic realisation key value is an Email
+        gsss###sheets##Row(obj) <- NULL;
+        
+        //IF NOT gsssAuth() THEN gsssAccessTokenGet(); // NOT gsssAccessToken() OR gsssAccessTokenValidity() < currentDateTime()
+        
+        IF gsssAuth() THEN { // gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime()
+            NEWSESSION {
+                LOCAL response = FILE();
+                
+                EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + '/' + column
+                    HEADERS gsssAuthHeader
+                    TO response;
+                fileToString(response(), 'UTF-8');
+                printToLog('Column value received from spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+                IMPORT gsssValueRange JSON FROM response();
+                
+                
+                FOR valueRange(INTEGER i) DO {
+                    IF lower(valueRange(i)) == lower(key(obj)) THEN gsss###sheets##Row(obj) <- i;
+                    IF i < 6 THEN MESSAGE valueRange(i); // Enabled for debugging purposes only
+                }
+                APPLY;
+            }
+        }
+        ELSE MESSAGE 'The Google Sheets API Access Token is expired';
+    }
+END
 
 //--------- End of Google Sheets API ----------
 
@@ -190,43 +276,5 @@ DESIGN integrationData {
         }
     }
 }
-
-//--- Get EGRUL values from Dadata ---
-
-ogrn = DATA LOCAL ISTRING (INTEGER);
-legalShort = DATA LOCAL ISTRING(INTEGER);
-legalLong = DATA LOCAL ISTRING(INTEGER);
-legalType = DATA LOCAL ISTRING(INTEGER);
-
-GROUP data;
-GROUP name : data;
-
-FORM dadata
-    OBJECTS suggestions = INTEGER 
-    PROPERTIES IN data ogrn = ogrn(suggestions), type = legalType(suggestions)
-    PROPERTIES IN name short = legalShort(suggestions), full = legalLong(suggestions)
-;
-
-getEgrulData 'Get data from EGRUL' (Contractor c) {
-    LOCAL result = FILE();
-    EXTERNAL HTTP POST 'http://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party' HEADERS dadataHeader PARAMS JSONFILE ('\{"query": "'+taxID(c)+'"\}') TO result;
-    IMPORT dadata JSON FROM result();
-    FOR ogrn(INTEGER suggestions) DO {
-         regID(c) <- ogrn(suggestions);
-         name(c) <- ISTRING[50](OVERRIDE legalShort(suggestions), legalLong(suggestions));
-         IF legalType(suggestions) == 'INDIVIDUAL' THEN type(c) <- Type.individual;
-         ELSE type(c) <- Type.company;
-         IF NOT accountingName(lower(name(c))) THEN {
-            NEW n = AccountingName {
-                contractor(n) <- c;
-                name(n) <- name(c);
-            }
-         }
-    }
-}
-
-EXTEND FORM contractor PROPERTIES getEgrulData(c);
-
-DESIGN contractor { id { MOVE PROPERTY (getEgrulData(c)); } };
 
 //----------------- End of DaData.ru -------------------
