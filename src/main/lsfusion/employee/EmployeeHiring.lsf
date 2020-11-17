@@ -41,12 +41,31 @@ END
 slackAccount 'Slack account' = DATA BOOLEAN (Employee);
 trelloEstablished 'Trello established' = DATA BOOLEAN (Employee);
 
-@gsssRowNumberGet (Employee, email, team, 'E:E');
+@gsssRowNumberGet (Employee, email, team, 'D:E');
 // Implementation of link to Google Spreadsheet by the following parameters:
 //      Employee - name of this Object
 //      email - key property for one-to-one link
 //      team - name of gsssTeam() global property, which contains the Spreadsheet spreadsheetId
 //      'E:E' - range address of the Spreadsheet' Column, which contains the key value
+
+toDateUS = FORMULA STRING[10] 'to_char(($1),\'MM/DD/YYYY\')';
+
+gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
+    LOCAL valuesRange = TEXT();
+    valuesRange() <- '"' + (OVERRIDE firstName(e),' ') + '",' +
+                     '"' + (OVERRIDE lastName(e),' ') + '",' +
+                     '"' + (OVERRIDE responsibilities(e),' ') + '",' +
+                     '"' + (OVERRIDE nameMainRole(e),' ') + '",' + // @ToDo replace with Team logic
+                     '"' + (OVERRIDE email(e),' ') + '",' +
+                     '"yes",' + // Flag
+                     '"' + (OVERRIDE nameLocation(e),' ') + '",' +
+                     '"' + (OVERRIDE toDateUS(hiringDate(e)),' ') + '",' +
+                     '"' + (OVERRIDE toDateUS(probationDate(e)),' ') + '",' +
+                     '"' + (OVERRIDE toDateUS(birthday(e)),' ') + '",' +
+                     '" ",' + // @ToDo add data
+                     '" "'; // @ToDo add phone
+    gsssAppend(gsssTeam(),valuesRange());
+}
 
 // Citizenship
 
@@ -160,7 +179,7 @@ EXTEND FORM employees
 ;
 
 EXTEND FORM employee
-    PROPERTIES(e) slackAccount, trelloEstablished, gsssTeamRow, gsssTeamRowGet,
+    PROPERTIES(e) slackAccount, trelloEstablished, gsssAppendEmployee, //, gsssTeamRow, gsssTeamRowGet
                   citizenships ON CHANGE changeCitizenships(e), nameLanguageLevel
                   
     PROPERTIES(e) laptop, pc, ielts
@@ -188,8 +207,9 @@ DESIGN employee {
             caption = 'Contact info';
             MOVE PROPERTY(slackAccount(e));
             MOVE PROPERTY(trelloEstablished(e));
-            MOVE PROPERTY(gsssTeamRow(e));
-            MOVE PROPERTY(gsssTeamRowGet(e));
+            //MOVE PROPERTY(gsssTeamRow(e));
+            //MOVE PROPERTY(gsssTeamRowGet(e));
+            MOVE PROPERTY(gsssAppendEmployee(e));
         }
         NEW personalInfo {
             type = CONTAINERH;

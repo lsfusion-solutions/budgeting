@@ -54,7 +54,7 @@ gsssHeader (STRING name) = CASE
     WHEN name == 'Content-Type' THEN 'application/x-www-form-urlencoded';
 gsssAuthHeader (STRING name) = CASE
     WHEN name == 'Authorization' THEN gsssAuth() // 
-    WHEN name == 'Content-Type' THEN 'application/x-www-form-urlencoded';
+    WHEN name == 'Content-Type' THEN 'application/json';
 
 gsssAuthorizationCodeGet 'Request new Authorization Code from the Google Sheets API Authentication URI' () {
     // https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient
@@ -210,6 +210,24 @@ FORM gsssValueRange
     OBJECTS values = INTEGER 
     PROPERTIES(values) valueRange EXTID 'value'
 ;
+
+gsssAppend (STRING spreadsheetId, TEXT valuesRange) {
+    // Define link of Object to Google Spreadsheet by the following parameters:
+    //      List - name of Object
+    //      key - key property for one-to-one link
+    //      sheets - name of global property, which contains the Spreadsheet spreadsheetId
+    //      column - name of Column containing the key value, use Spreadsheets addressing notation 'A:A' 
+    LOCAL response = FILE();
+    
+    EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + '/A1:append?valueInputOption=USER_ENTERED' 
+        HEADERS gsssAuthHeader 
+        PARAMS JSONFILE ('\{"values": [['+ valuesRange + ']]\}') 
+        TO response;
+        
+    fileToString(response(), 'UTF-8');
+    printToLog('Data were successfully appended to Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+    MESSAGE 'Result of data append to Google Spreadsheet:\n' + resultString();
+}
 
 META gsssRowNumberGet (List, key, sheets, column)
     // Define link of Object to Google Spreadsheet by the following parameters:
