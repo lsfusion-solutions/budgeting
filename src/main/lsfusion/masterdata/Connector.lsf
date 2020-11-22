@@ -48,6 +48,7 @@ gsssAuthorizationCodeRequestString 'GSheets API Authorization Code Request Strin
     '&client_id=' + gsssClientID() +        // from Credentials
     '&login_hint=' + gsssLogin() +          // the system' Google ID
     '&prompt=none';                         // If consent hasn't accepted yet, then run with &prompt=consent
+                                            // If the access_type is offline, prompt must be consent
 
 gsssAuth 'Authorization' = IF gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime() THEN 'Bearer ' + gsssAccessToken() ELSE NULL;
 gsssHeader (STRING name) = CASE
@@ -73,6 +74,7 @@ gsssAuthorizationCodeGet 'Request new Authorization Code from the Google Sheets 
 }
 
 gsssAuthorizationCodeSet 'Receive new Authorization Code from the Google Sheets API' (STRING code, STRING scope, STRING error) {
+    // This function is not finished (and doesn't work)
     IF NOT error THEN {
         gsssAuthorizationCode() <- code;
         gsssAuthorizationCodeDatetime() <- currentDateTime();
@@ -86,10 +88,10 @@ gsssAuthorizationCodeSet 'Receive new Authorization Code from the Google Sheets 
     }
 } @@api @@noauth;
 
-gsssAccessTokenGet 'Request new Access Token from the Google Sheets API OAuth2 authorization server' () {
+gsssAccessTokenGet 'Request new Access Token (online) from the Google Sheets API OAuth2 authorization server' () {
     // https://developers.google.com/identity/protocols/oauth2/web-server#exchange-authorization-code
     // Used to refresh Access Token using online type of access from the Authorization step
-    // Offline case is described in commented code as well
+    // Offline case is in gsssAccessTokenUpdate
     
     // Article on Troubleshooting with 404 response "error": "invalid_grant":
     // https://blog.timekit.io/google-oauth-invalid-grant-nightmare-and-how-to-fix-it-9f4efaf1da35
@@ -134,13 +136,53 @@ gsssAccessTokenGet 'Request new Access Token from the Google Sheets API OAuth2 a
     //ELSE printToLog('No offline refresh Access Toke provided to access Google Sheets API.');
 }
 
+gsssAccessTokenUpdate 'Request new Access Token (offline) from the Google Sheets API OAuth2 authorization server' () {
+    // https://developers.google.com/identity/protocols/oauth2/web-server?authuser=5#offline
+    // Used to refresh Access Token using offline type of access from the Authorization step
+    // Online case is in gsssAccessTokenGet
+    
+    // Article on Troubleshooting with 404 response "error": "invalid_grant":
+    // https://blog.timekit.io/google-oauth-invalid-grant-nightmare-and-how-to-fix-it-9f4efaf1da35
+    
+    IF gsssAccessTokenRefresh() THEN {
+        IF gsssClientID() AND gsssClientSecret() THEN {
+            NEWSESSION {
+                LOCAL result = FILE();
+                EXTERNAL HTTP POST gsssTokenURI()
+                    BODYURL 'client_id=$1&client_secret=$2&refresh_token=$3&grant_type=refresh_token' 
+                    PARAMS gsssClientID(), gsssClientSecret(), gsssAccessTokenRefresh()
+                    TO result;
+                fileToString(result(), 'UTF-8');
+                printToLog('Response to Access Token refresh request received from the Google Sheets API: ' + resultString());
+                    
+                LOCAL access_token = STRING();
+                LOCAL expires_in = INTEGER(); // The remaining lifetime of the access token in seconds.
+                LOCAL token_type = STRING(); // The type of token returned. At this time, this field's value is always set to Bearer.
+                LOCAL scope = STRING(); // The scopes of access granted by the access_token expressed as a list of space-delimited, case-sensitive strings.
+                //LOCAL refresh_token = STRING(); // This field is only present if the access_type parameter set to offline
+                IMPORT FROM result() TO() access_token,expires_in,scope,token_type;
+                gsssAccessToken() <- access_token();
+                gsssAccessTokenDatetime() <- currentDateTime();
+                gsssAccessTokenValidity() <- sumSeconds(gsssAccessTokenDatetime(),expires_in());
+                gsssAccessTokenType() <- token_type();
+                gsssAccessTokenScope() <- scope();
+                printToLog('Google Sheets API Access Toke was refreshed: ' + gsssAccessToken());
+                APPLY;
+            }
+        }
+        ELSE MESSAGE 'No Google Sheets API Parameters defined';
+        //ELSE printToLog('No Google Sheets API Parameters defined');
+    }
+    ELSE MESSAGE 'No Google Sheets API Refresh Token established';
+    //ELSE printToLog('No offline refresh Access Toke provided to access Google Sheets API.');
+}
 
 EXTEND FORM integrationData
     PROPERTIES() gsssEndpoint, gsssSpreadsheets, gsssDeveloperMetadata, gsssSheets, gsssValues
     PROPERTIES() gsssLogin, gsssClientID, gsssProjectID, gsssAuthURI, gsssTokenURI, gsssAuthProvider, gsssClientSecret, gsssRedirectURI
-    PROPERTIES() gsssTeam, gsssOrg, gsssScope, gsssAuthorizationCodeGet, gsssAccessTokenGet
+    PROPERTIES() gsssTeam, gsssOrg, gsssScope, gsssAuthorizationCodeGet, gsssAccessTokenGet, gsssAccessTokenUpdate
     PROPERTIES gsssAuthorizationCodeRequestText = TEXT(gsssAuthorizationCodeRequestString())
-    PROPERTIES() gsssAccessTokenRefresh, gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope
+    PROPERTIES() READONLY gsssAccessTokenRefresh, gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope
 ;
 
 DESIGN integrationData {
@@ -180,6 +222,7 @@ DESIGN integrationData {
                 MOVE PROPERTY(gsssAuthorizationCodeGet());
                 MOVE PROPERTY(gsssAuthorizationCodeRequestText) { panelCaptionVertical = TRUE; }
                 MOVE PROPERTY(gsssAccessTokenGet());
+                MOVE PROPERTY(gsssAccessTokenUpdate());
             }
             NEW gsssAccess {
                 type = CONTAINERH;
@@ -219,14 +262,19 @@ gsssAppend (STRING spreadsheetId, TEXT valuesRange) {
     //      column - name of Column containing the key value, use Spreadsheets addressing notation 'A:A' 
     LOCAL response = FILE();
     
-    EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + '/A1:append?valueInputOption=USER_ENTERED' 
-        HEADERS gsssAuthHeader 
-        PARAMS JSONFILE ('\{"values": [['+ valuesRange + ']]\}') 
-        TO response;
-        
-    fileToString(response(), 'UTF-8');
-    printToLog('Data were successfully appended to Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
-    MESSAGE 'Result of data append to Google Spreadsheet:\n' + resultString();
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + '/A1:append?valueInputOption=USER_ENTERED' 
+            HEADERS gsssAuthHeader 
+            PARAMS JSONFILE ('\{"values": [['+ valuesRange + ']]\}') 
+            TO response;
+            
+        fileToString(response(), 'UTF-8');
+        printToLog('Data were successfully appended to Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+        MESSAGE 'Result of data append to Google Spreadsheet:\n' + resultString();
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired';
 }
 
 META gsssRowNumberGet (List, key, sheets, column)
@@ -242,7 +290,7 @@ META gsssRowNumberGet (List, key, sheets, column)
         // In basic realisation key value is an Email
         gsss###sheets##Row(obj) <- NULL;
         
-        //IF NOT gsssAuth() THEN gsssAccessTokenGet(); // NOT gsssAccessToken() OR gsssAccessTokenValidity() < currentDateTime()
+        IF NOT gsssAuth() THEN gsssAccessTokenUpdate(); // NOT gsssAccessToken() OR gsssAccessTokenValidity() < currentDateTime()
         
         IF gsssAuth() THEN { // gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime()
             NEWSESSION {
@@ -263,7 +311,7 @@ META gsssRowNumberGet (List, key, sheets, column)
                 APPLY;
             }
         }
-        ELSE MESSAGE 'The Google Sheets API Access Token is expired';
+        ELSE MESSAGE 'The Google Sheets API Access expired';
     }
 END
 
