@@ -54,16 +54,16 @@ gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
     LOCAL valuesRange = TEXT();
     valuesRange() <- '"' + (OVERRIDE firstName(e),' ') + '",' +
                      '"' + (OVERRIDE lastName(e),' ') + '",' +
-                     '"' + (OVERRIDE responsibilities(e),' ') + '",' +
-                     '"' + (OVERRIDE nameMainRole(e),' ') + '",' + // @ToDo replace with Team logic
+                     '"' + (OVERRIDE namePosition(e),' ') + '",' +
+                     '"' + (OVERRIDE nameManager(e),' ') + '",' + // @ToDo replace with Team logic
                      '"' + (OVERRIDE email(e),' ') + '",' +
                      '"yes",' + // Flag
                      '"' + (OVERRIDE nameLocation(e),' ') + '",' +
                      '"' + (OVERRIDE toDateUS(hiringDate(e)),' ') + '",' +
                      '"' + (OVERRIDE toDateUS(probationDate(e)),' ') + '",' +
                      '"' + (OVERRIDE toDateUS(birthday(e)),' ') + '",' +
-                     '" ",' + // @ToDo add data
-                     '" "'; // @ToDo add phone
+                     '" ",' + // No data is needed
+                     '"' + (OVERRIDE phone(e),' ') + '"';
     gsssAppend(gsssTeam(),valuesRange());
 }
 

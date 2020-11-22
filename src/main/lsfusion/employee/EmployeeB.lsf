@@ -45,7 +45,7 @@ FORM employee 'Employee'
     PROPERTIES(e) firstName, lastName, referenceName, namePosition, nameLocation, 
                   nameManager, responsibilities, inactive, isLocked, //RDOpenSpace,
                   isCandidate, hiringDate, probationPeriod, passedProbation,
-                  login, sha256Password ON CHANGE changeSHA256Password(e), email, nameMainRole, birthday
+                  login, sha256Password ON CHANGE changeSHA256Password(e), email, nameMainRole, birthday, phone
     
     OBJECTS r = UserRole
     PROPERTIES(r) READONLY name
@@ -66,7 +66,8 @@ DESIGN employee {
                 MOVE PROPERTY(email(e));
                 MOVE PROPERTY(namePosition(e));
                 MOVE PROPERTY(nameLocation(e));    
-                MOVE PROPERTY(birthday(e));                 
+                MOVE PROPERTY(birthday(e));
+                MOVE PROPERTY(phone(e));
             }
             NEW column2 {
                 NEW additional {
