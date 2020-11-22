@@ -64,7 +64,7 @@ gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
                      '"' + (OVERRIDE toDateUS(birthday(e)),' ') + '",' +
                      '" ",' + // No data is needed
                      '"' + (OVERRIDE phone(e),' ') + '"';
-    gsssAppend(gsssTeam(),valuesRange());
+    gsssAppend(gsssTeam(),gsssTeamSheet(),valuesRange());
 }
 
 // Citizenship
