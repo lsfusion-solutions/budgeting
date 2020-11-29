@@ -41,7 +41,8 @@ END
 slackAccount 'Slack account' = DATA BOOLEAN (Employee);
 trelloEstablished 'Trello established' = DATA BOOLEAN (Employee);
 
-@gsssRowNumberGet (Employee, email, team, 'D:E');
+//@gsssRowNumberGet (Employee, email, team, 'E:E');
+@gsssMetadataHandle (Employee, email, team, 'E');
 // Implementation of link to Google Spreadsheet by the following parameters:
 //      Employee - name of this Object
 //      email - key property for one-to-one link
@@ -50,21 +51,33 @@ trelloEstablished 'Trello established' = DATA BOOLEAN (Employee);
 
 toDateUS = FORMULA STRING[10] 'to_char(($1),\'MM/DD/YYYY\')';
 
+gsssValuesRange 'Data fields for Google Spreadsheet' (Employee e) = 
+    '"' + (OVERRIDE firstName(e),' ') + '",' +
+    '"' + (OVERRIDE lastName(e),' ') + '",' +
+    '"' + (OVERRIDE namePosition(e),' ') + '",' +
+    '"' + (OVERRIDE nameManager(e),' ') + '",' + // @ToDo replace with Team logic
+    '"' + (OVERRIDE email(e),' ') + '",' +
+    '"yes",' + // Flag
+    '"' + (OVERRIDE nameLocation(e),' ') + '",' +
+    '"' + (OVERRIDE toDateUS(hiringDate(e)),' ') + '",' +
+    '"' + (OVERRIDE toDateUS(probationDate(e)),' ') + '",' +
+    '"' + (OVERRIDE toDateUS(birthday(e)),' ') + '",' +
+    '" ",' + // No data is needed
+    '"' + (OVERRIDE phone(e),' ') + '"';
+
 gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
-    LOCAL valuesRange = TEXT();
-    valuesRange() <- '"' + (OVERRIDE firstName(e),' ') + '",' +
-                     '"' + (OVERRIDE lastName(e),' ') + '",' +
-                     '"' + (OVERRIDE namePosition(e),' ') + '",' +
-                     '"' + (OVERRIDE nameManager(e),' ') + '",' + // @ToDo replace with Team logic
-                     '"' + (OVERRIDE email(e),' ') + '",' +
-                     '"yes",' + // Flag
-                     '"' + (OVERRIDE nameLocation(e),' ') + '",' +
-                     '"' + (OVERRIDE toDateUS(hiringDate(e)),' ') + '",' +
-                     '"' + (OVERRIDE toDateUS(probationDate(e)),' ') + '",' +
-                     '"' + (OVERRIDE toDateUS(birthday(e)),' ') + '",' +
-                     '" ",' + // No data is needed
-                     '"' + (OVERRIDE phone(e),' ') + '"';
-    gsssAppend(gsssTeam(),gsssTeamSheet(),valuesRange());
+    IF NOT gsssMetadataId(e) THEN {
+        gsssAppend(gsssTeam(),gsssTeamSheet(),gsssValuesRange(e));
+        gsssMetadataCreate (e, gsssLastAppendedRow());
+    }
+    ELSE MESSAGE 'Data already exist on Google spreadsheet.\nUse Update record fuctionality';
+}
+
+gsssUpdateEmployee 'Update record on Google Spreadsheet' (Employee e) {
+    IF NOT gsssMetadataId(e) THEN gsssMetadataSync(e);
+    
+    IF gsssMetadataId(e) THEN  gsssUpdate(gsssTeam(),gsssMetadataId(e),gsssValuesRange(e));
+    ELSE MESSAGE 'There is no such Employee on Google spreadsheet List. Please append the new record';
 }
 
 // Citizenship
@@ -179,7 +192,7 @@ EXTEND FORM employees
 ;
 
 EXTEND FORM employee
-    PROPERTIES(e) slackAccount, trelloEstablished, gsssAppendEmployee, //, gsssTeamRow, gsssTeamRowGet
+    PROPERTIES(e) slackAccount, trelloEstablished, gsssAppendEmployee, gsssUpdateEmployee, gsssMetadataId, gsssMetadataSync,
                   citizenships ON CHANGE changeCitizenships(e), nameLanguageLevel
                   
     PROPERTIES(e) laptop, pc, ielts
@@ -207,9 +220,10 @@ DESIGN employee {
             caption = 'Contact info';
             MOVE PROPERTY(slackAccount(e));
             MOVE PROPERTY(trelloEstablished(e));
-            //MOVE PROPERTY(gsssTeamRow(e));
-            //MOVE PROPERTY(gsssTeamRowGet(e));
+            MOVE PROPERTY(gsssMetadataId(e));
+            MOVE PROPERTY(gsssMetadataSync(e));
             MOVE PROPERTY(gsssAppendEmployee(e));
+            MOVE PROPERTY(gsssUpdateEmployee(e));
         }
         NEW personalInfo {
             type = CONTAINERH;

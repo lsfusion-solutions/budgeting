@@ -245,25 +245,25 @@ DESIGN integrationData {
 
 //--- Set Spreadsheet properties ---
 
-batchUpdateRequest = DATA LOCAL TEXT ();
+batchUpdateRequest  = DATA LOCAL TEXT ();
+batchUpdateResponse = DATA LOCAL FILE ();
 
 gsssBatchUpdate (STRING spreadsheetId) {
     // Setup Spreadsheet parameters: e.g. filters
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate
     //      spreadsheetId - ID of the Google Spreadsheet
-    LOCAL response = FILE();
     
     IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
     
     IF gsssAuth() THEN {
         IF batchUpdateRequest() THEN {
-            fileToString(FILE(JSONFILE ('\{"requests": [\{'+ batchUpdateRequest() + '\}],"includeSpreadsheetInResponse":false\}')) , 'UTF-8');
+            //fileToString(FILE(JSONFILE ('\{"requests": ['+ batchUpdateRequest() + '],"includeSpreadsheetInResponse":false\}')) , 'UTF-8');
             EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + ':batchUpdate' 
                 HEADERS gsssAuthHeader 
-                PARAMS JSONFILE ('\{"requests": [\{'+ batchUpdateRequest() + '\}],"includeSpreadsheetInResponse":false\}') 
-                TO response;
+                PARAMS JSONFILE ('\{"requests": ['+ batchUpdateRequest() + '],"includeSpreadsheetInResponse":false\}') 
+                TO batchUpdateResponse;
                 
-            fileToString(response(), 'UTF-8');
+            fileToString(batchUpdateResponse(), 'UTF-8');
             printToLog('Google Spreadsheet Batch Update: ' + resultString());
         }
         ELSE MESSAGE 'Wrong data for Basic filter update';
@@ -276,7 +276,9 @@ gsssBatchUpdateFilter (STRING spreadsheetId, INTEGER sheetId, INTEGER rows, INTE
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#UpdateFilterViewRequest
     //      spreadsheetId - ID of the Google Spreadsheet
     
-    batchUpdateRequest() <- '"setBasicFilter":\{'+
+    batchUpdateResponse() <- NULL; // initialize interface
+    
+    batchUpdateRequest() <- '\{"setBasicFilter":\{'+
                                     '"filter":\{'+
                                                 '"range": \{'+
                                                     '"sheetId": ' + sheetId + ',' + 
@@ -288,14 +290,15 @@ gsssBatchUpdateFilter (STRING spreadsheetId, INTEGER sheetId, INTEGER rows, INTE
                                                 //'"sortSpecs": [\{\}],'+
                                                 //'"criteria": \{\},'+ // criteria field is deprecated in favor of filterSpecs
                                                 //'"filterSpecs": [\{\}]'+
-                                    '\}\}';
+                                    '\}\}\}';
     gsssBatchUpdate(spreadsheetId);
 }
 
-//--- Edit lines ---
+
+//--- Handle Spreadsheet metadata ---
 
 // Representation for Resource: ValueRange
-// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values?authuser=5#ValueRange
+// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values#ValueRange
 majorDimension = DATA LOCAL STRING();
 valueRange = DATA LOCAL ISTRING(INTEGER);
 range = DATA LOCAL STRING();
@@ -305,29 +308,209 @@ FORM gsssValueRange
     PROPERTIES(values) valueRange EXTID 'value'
 ;
 
-gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
+// Representation for Resource: DeveloperMetadata - shortened to necessary
+// not used either, because the Id is being generated in system itself with proper uniqueness control
+// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata
+GROUP developerMetadata;
+metadataId = DATA LOCAL INTEGER ();
+FORM gsssMetadataId PROPERTIES() IN developerMetadata metadataId;
+
+META gsssMetadataHandle (List, key, sheets, column)
     // Define link of Object to Google Spreadsheet by the following parameters:
+    //      List - name of Object
+    //      key - key property for one-to-one link
+    //      sheets - name of global property, which contains the Spreadsheet spreadsheetId
+    //      column - name of Column containing the key value, use Spreadsheets addressing notation 'A:A' 
+    
+gsssMetadataId 'Metadata ID' = DATA INTEGER (List);
+
+metadataId 'Object by Metadata ID' = GROUP AGGR List obj BY gsssMetadataId(obj); // Metadata ID must be unique
+
+// Resource: DeveloperMetadata
+// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata?authuser=5#DeveloperMetadata
+gsssMetadataGet 'Create Metadata JSON' (List obj, INTEGER index) = '\{"developerMetadata":\{'+
+                                                            '"metadataId": ' + gsssMetadataId(obj) + ',' + // alternative option, drop and let let Google to create the ID
+                                                            '"metadataKey": ' + '"LSFusionRows"' + ',' + // there may be multiple metadata in a spreadsheet with the same key
+                                                            '"metadataValue": ' + '"Row is synchronized with LSFusion ERP"' + ',' + // Data associated with the metadata's key.
+                                                            '"location": \{' + // there are several options of locations: row, column, sheet and spreadsheet
+                                                                //'"locationType": "ROW",' +  // is readonly and must not be specified.
+                                                                '"dimensionRange": \{' +    // used for rows and columns locations
+                                                                    '"sheetId": ' + gsss###sheets##Sheet() + ',' + 
+                                                                    '"dimension": "ROWS",' + // ROW is used for syncing link
+                                                                    '"startIndex": ' + index + ',' + // the start index is inclusive
+                                                                    '"endIndex": ' + (index + 1) + // the end index is exclusive
+                                                                '\}' +
+                                                                // '"spreadsheet": true' + // alternative location options cannot be combined with each other
+                                                                // '"sheetId": sheetId' +
+                                                            '\},'+
+                                                            '"visibility": "DOCUMENT"' +
+                                                    '\}\}';
+
+gsssMetadataCreate (List obj, INTEGER index) {
+    // Create Metadata for single record (row)
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#createdevelopermetadatarequest
+    //      spreadsheetId  - ID of the Google Spreadsheet
+    //      sheetId        - ID of working Sheet in the Spreadsheet
+    //      index          - ID of the Row to link with Metadata  
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    // metadataId() <- NULL; // Received Metadata
+    
+    IF NOT gsssMetadataId(obj) THEN {
+        NEWSESSION {
+            gsssMetadataId(obj) <- (GROUP LAST gsssMetadataId(List l) ORDER gsssMetadataId(l)) (+) 1;
+            
+            batchUpdateRequest() <- '\{"createDeveloperMetadata":' + gsssMetadataGet(obj, index) + '\}';
+
+            gsssBatchUpdate(gsss###sheets());
+            // When Metadata ID created by Google:
+            // IMPORT gsssMetadataId JSON FROM batchUpdateResponse();
+            // gsssMetadataId(obj) <- metadataId();
+            APPLY;
+        }
+    }
+    ELSE MESSAGE 'Meatadata ID is already set';
+}
+
+gsssMetadataSync 'Sync record with Google Spreadsheet' (List obj) {
+    // Synchronize data integration with a spreadsheet
+    // The link way is column, to be abstracted to other dimension types
+    // Obtains amount of records, searches first entry of the given data and assigns Metadata to it
+    // https://developers.google.com/sheets/api/guides/metadata#creating_new_metadata
+    
+    LOCAL indexIterate  = INTEGER();
+    LOCAL indexSearch   = INTEGER();
+    LOCAL indexRequest  = TEXT();
+    LOCAL indexResponse = FILE();
+    LOCAL indexRange    = FILE();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate(); // NOT gsssAccessToken() OR gsssAccessTokenValidity() < currentDateTime()
+    
+    IF gsssAuth() THEN { // gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime()
+        
+        EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + '/' + column + ':' + column + '?majorDimension=ROWS' 
+            // alternative option COLUMNS will put column' data in CSV-like format
+            HEADERS gsssAuthHeader
+            TO indexRange;
+        IMPORT gsssValueRange JSON FROM indexRange();
+        
+        indexIterate() <- 0;
+        indexSearch() <- NULL;
+        WHILE valueRange(indexIterate()) AND NOT indexSearch() DO {
+            indexIterate() <- indexIterate() + 1;
+        
+            indexRequest() <- '\{'+
+                                //'"majorDimension": "ROWS",' + 
+                                //'"valueRenderOption": "FORMATTED_VALUE",' + 
+                                //'"dateTimeRenderOption": "FORMATTED_STRING",' + 
+                                '"dataFilters": [' + // filter can be only one of three types, A1 range is used below
+                                    '\{'+
+                                        '"a1Range": "' + column + STRING (indexIterate()) + '"' +
+                                        //'"gridRange": \{'+ // alternative option: GridRange 
+                                        //    '"sheetId": ' + gsss###sheets##Sheet() + ',' + 
+                                        //    '"startRowIndex": ' + indexIterate()-1 + ','
+                                        //    '"endRowIndex": ' + indexIterate() + ',' + // valuable rows amount from append output
+                                        //    '"startColumnIndex": ' + columnInt + ',' + // integer representation of column name
+                                        //    '"endColumnIndex": ' + columnInt + 1 + // end index is exclusive, while start is included
+                                        //'\}'+
+                                    '\}' +
+                                ']\}';
+                                
+            IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+            
+            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + ':batchGetByDataFilter' 
+                HEADERS gsssAuthHeader 
+                PARAMS JSONFILE (indexRequest()) 
+                TO indexResponse;
+                
+            fileToString(indexResponse(), 'UTF-8');
+            
+            IF isSubstring(lower(resultString()), lower(key(obj))) THEN indexSearch() <- indexIterate() - 1; // GridRange enumerates starting from 0, while A1 range from 1
+        }
+        
+        IF indexSearch() THEN {
+            gsssMetadataCreate(obj,indexSearch());
+        }
+        ELSE printToLog('Google spreadsheet sync was requested for object, but it was not found in there: ' + lower(key(obj)));
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired';
+}
+END
+
+//--- Edit lines ---
+gsssLastAppendedRow = DATA INTEGER ();
+
+gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
+    // Append new line into Google Spreadsheet by the following parameters:
     //      spreadsheetId - ID of the Google Spreadsheet
-    //      valuesRange - data to be written (appended)
+    //      sheetId       - ID of the Sheet (List) within the Spreadsheet  
+    //      valuesRange   - data to be written (appended)
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/append
+    
     LOCAL response = FILE();
     LOCAL tableRange = STRING();
-    LOCAL rowsBorder = INTEGER();
     
     IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
     
     IF gsssAuth() THEN {
-        EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + '/A1:append?valueInputOption=USER_ENTERED' 
-            HEADERS gsssAuthHeader 
-            PARAMS JSONFILE ('\{"values": [['+ valuesRange + ']]\}') 
-            TO response;
+        NEWSESSION {
+            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + '/A1:append?valueInputOption=USER_ENTERED' 
+                HEADERS gsssAuthHeader 
+                PARAMS JSONFILE ('\{' + 
+                                    //'"range": "A1"' + // appending to the end of speadsheet, so the parameter is dropped
+                                    '"majorDimension": "ROWS",' + // default value as well, so the parameter ay be dropped 
+                                    '"values": [['+ valuesRange + ']]\}') 
+                TO response;
+                
+            IMPORT FROM response() TO() tableRange // Link by report on the range, which was defined before the apend
+            gsssLastAppendedRow() <- INTEGER (substrFrom(tableRange(),strpos(tableRange(),':')+2));
             
-        IMPORT FROM response() TO() tableRange
-        rowsBorder() <- INTEGER (substrFrom(tableRange(),strpos(tableRange(),':')+2));
+            fileToString(response(), 'UTF-8');
+            printToLog('Data were successfully appended to Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+            MESSAGE 'Data were successfully appended to Google Spreadsheet in row ' + (gsssLastAppendedRow()+1); // 
+            gsssBatchUpdateFilter(spreadsheetId, sheetId , gsssLastAppendedRow()+1 , 20); // Columns number is hardcoded
+            APPLY;
+        }
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired';
+}
+
+gsssUpdate (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange) {
+    // Update (replace) existing line in Google Spreadsheet by Metedata based link:
+    //      spreadsheetId - ID of the Google Spreadsheet
+    //      metadataId    - Metadata link created using @gsssMetadataHandle routines
+    //      valuesRange   - data to be written into the linked row
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdateByDataFilter
+    
+    LOCAL response = FILE();
+    LOCAL totalUpdatedRows = INTEGER();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + ':batchUpdateByDataFilter' 
+            HEADERS gsssAuthHeader 
+            PARAMS JSONFILE ('\{' +
+                                '"valueInputOption": "USER_ENTERED",' +
+                                '"data": [\{' + 
+                                    '"dataFilter": \{' + // use one of three options for addressing needed row, alternatives are A1 range and GridRange
+                                        '"developerMetadataLookup": \{' + // https://developers.google.com/sheets/api/reference/rest/v4/DataFilter?authuser=5#DeveloperMetadataLookup
+                                            '"metadataId": ' + metadataId + '\}\},' + // matching by matadataId only
+                                    '"majorDimension": "ROWS",' + 
+                                    '"values": [['+ valuesRange + ']]\}]\}') 
+            TO response;
+        
+        IMPORT FROM response() TO() totalUpdatedRows;
         
         fileToString(response(), 'UTF-8');
-        printToLog('Data were successfully appended to Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
-        MESSAGE 'Result of data append to Google Spreadsheet:\n' + resultString();
-        gsssBatchUpdateFilter(spreadsheetId, sheetId , rowsBorder()+1 , 20); // Columns number is hardcoded
+        IF totalUpdatedRows() == 1 THEN {
+            printToLog('Data were successfully updated on Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+            MESSAGE 'Data were successfully updated on Google Spreadsheet';
+        }
+        ELSE {
+            printToLog('Error accured during Google Spreadsheet update: ' + resultString());  // Enabled for debugging purposes only
+            MESSAGE 'Error accured during Google Spreadsheet update.\nContact Administrator';
+        }
     }
     ELSE MESSAGE 'The Google Sheets API Access expired';
 }
@@ -351,7 +534,8 @@ META gsssRowNumberGet (List, key, sheets, column)
             NEWSESSION {
                 LOCAL response = FILE();
                 
-                EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + '/' + column
+                EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + '/' + column + '?majorDimension=ROWS' 
+                    // alternative option COLUMNS will put column' data in CSV-like format
                     HEADERS gsssAuthHeader
                     TO response;
                 fileToString(response(), 'UTF-8');
@@ -361,7 +545,7 @@ META gsssRowNumberGet (List, key, sheets, column)
                 
                 FOR valueRange(INTEGER i) DO {
                     IF lower(valueRange(i)) == lower(key(obj)) THEN gsss###sheets##Row(obj) <- i;
-                    IF i < 6 THEN MESSAGE valueRange(i); // Enabled for debugging purposes only
+                    IF i < 6 THEN MESSAGE i + ': ' + valueRange(i); // Enabled for debugging purposes only
                 }
                 APPLY;
             }
