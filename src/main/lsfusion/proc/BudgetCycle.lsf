@@ -656,19 +656,6 @@ DESIGN budgetPortions {
 @showStepAttributes(budgetPortions,out);
 EXTEND FORM budgetPortions PROPERTIES(o) dropApproval SHOWIF isApprovedDrop(o) DRAW l, revokeBudget SHOWIF isRevokable(o) DRAW l;
 
-moveBudgetDetail 'Move' (BudgetDetail d) {
-    DIALOG dialogMoveBudget OBJECTS d = d, b INPUT DO {
-        IF quarterNumber(b) == quarterNumber(budget(d)) THEN {
-            budget(d) <- b;
-            SEEK costCenterBudget.bm = b; 
-            SEEK costCenterBudget.bmd = d;
-        }
-        ELSE MESSAGE 'Movement is enabled within the current Quarter only';
-    }
-}
-
-EXTEND FORM costCenterBudget PROPERTIES moveBudgetDetail(bmd) DRAW bmd TOOLBAR; // READONLYIF readonlyProc(bmd, c)
-
 // overview form 
 
 quarterProposal 'Budgeting status' (CostCenter c, INTEGER q) = GROUP LAST nameStep(part(BudgetDetail d)) IF q == quarterNumber(budget(d)) AND c == costCenter(d) ORDER dateTime(part(d)) CHARWIDTH 10;

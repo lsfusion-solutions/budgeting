@@ -25,7 +25,7 @@ countEmployees 'Employees count' (Location l) = GROUP SUM 1 BY location(Employee
 manager 'Manager' = DATA Employee (Employee);
 nameManager 'Manager' (Employee e) = name(manager(e));
 
-responsibilities 'Responsibilities' = DATA STRING[1000] (Employee) CHARWIDTH 40;
+responsibilities 'Responsibilities' = DATA STRING[1000] (Employee) CHARWIDTH 15;
 
 isCandidate 'Candidate or Vacancy' = DATA BOOLEAN (Employee);
 hiringDate 'Hiring date' = DATA DATE(Employee);

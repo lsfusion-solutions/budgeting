@@ -412,7 +412,7 @@ gsssMetadataSync 'Sync record with Google Spreadsheet' (List obj) {
                                         //    '"endRowIndex": ' + indexIterate() + ',' + // valuable rows amount from append output
                                         //    '"startColumnIndex": ' + columnInt + ',' + // integer representation of column name
                                         //    '"endColumnIndex": ' + columnInt + 1 + // end index is exclusive, while start is included
-                                        //'\}'+
+                                        //  '\}'+
                                     '\}' +
                                 ']\}';
                                 

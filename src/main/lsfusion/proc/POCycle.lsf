@@ -701,3 +701,45 @@ EXTEND FORM contractors PROPERTIES (i) READONLY  budgetDetailName, costItemName,
 NAVIGATOR {
     NEW loadPO BEFORE masterData;
 }
+
+CONSTRAINT LOCAL amountFix(BudgetDetail d) < MAX (OVERRIDE spent(d),0), (OVERRIDE invoiced(d),0) 
+    CHECKED BY amountFix[BudgetDetail] MESSAGE 'The reserve is too small for already executed amount of Invoices and Expenses';
+
+moveBudgetDetail 'Move' (BudgetDetail d) {
+
+    amountFix(d) <- MAX (OVERRIDE spent(d),0), (OVERRIDE invoiced(d),0);
+    
+    IF amountFix(d) > 0 THEN {
+        DIALOG dialogMoveBudgetFix OBJECTS d = d, b INPUT DO {
+            MESSAGE amountFix(d);
+            IF quarterNumber(b) == quarterNumber(budget(d)) THEN {
+                NEW dn = BudgetDetail {
+                    planned(dn) <- planned(d) - amountFix(d);
+                    planned(d) <- amountFix(d);
+                    budget(dn) <- b;
+                    costCenter(dn) <- costCenter(d);
+                    costItem(dn) <- costItem(d);
+                    name(dn) <- name(d);
+                    description(dn) <- description(d);
+                    contractor(dn) <- contractor(d);
+                    sensitive(dn) <- sensitive(d);
+                }
+                SEEK costCenterBudget.bm = b; 
+                SEEK costCenterBudget.bmd = d;
+            }
+            ELSE MESSAGE 'Movement is enabled within the current Quarter only';
+        }
+    }
+    ELSE {
+        DIALOG dialogMoveBudget OBJECTS d = d, b INPUT DO {
+            IF quarterNumber(b) == quarterNumber(budget(d)) THEN {
+                budget(d) <- b;
+                SEEK costCenterBudget.bm = b; 
+                SEEK costCenterBudget.bmd = d;
+            }
+            ELSE MESSAGE 'Movement is enabled within the current Quarter only';
+        }
+    }
+}
+
+EXTEND FORM costCenterBudget PROPERTIES moveBudgetDetail(bmd) DRAW bmd TOOLBAR; // READONLYIF readonlyProc(bmd, c)

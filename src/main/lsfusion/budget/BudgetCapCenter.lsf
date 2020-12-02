@@ -331,6 +331,16 @@ FORM dialogMoveBudget 'Budgets'
     FILTERS selected(b, costCenter(d)), fromDate(b) >= monthReadonlyDate()
 ;
 
+amountFix 'Reserved from Invoices and Expenses' = DATA LOCAL NUMERIC[17,2] (BudgetDetail);
+
+FORM dialogMoveBudgetFix 'Budgets and fixed sum'
+    OBJECTS d = BudgetDetail PANEL 
+    PROPERTIES (d) amountFix
+    OBJECTS b = Budget
+    PROPERTIES(b) READONLY name, fromDate, toDate 
+    FILTERS selected(b, costCenter(d)), fromDate(b) >= monthReadonlyDate()
+;
+
 addInvoice 'Add invoice' (BudgetDetail d) {
     NEWSESSION {
         NEW i = Invoice {
