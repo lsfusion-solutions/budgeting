@@ -331,15 +331,48 @@ FORM dialogMoveBudget 'Budgets'
     FILTERS selected(b, costCenter(d)), fromDate(b) >= monthReadonlyDate()
 ;
 
-amountFix 'Reserved from Invoices and Expenses' = DATA LOCAL NUMERIC[17,2] (BudgetDetail);
+amountFix 'Reserved from Invoices & Expenses, USD' = DATA LOCAL INTEGER (BudgetDetail);
+amountTransfer 'Amount to re-distribute, USD' = DATA LOCAL INTEGER (BudgetDetail);
+WHEN LOCAL SETCHANGED (amountFix(BudgetDetail d)) DO amountTransfer(d) <- INTEGER(planned(d) - amountFix(d));
+WHEN LOCAL SETCHANGED (amountTransfer(BudgetDetail d)) DO amountFix(d) <- INTEGER(planned(d) - amountTransfer(d));
+CONSTRAINT LOCAL amountFix(BudgetDetail d) < 0
+    CHECKED BY amountFix[BudgetDetail] MESSAGE 'Transaction sum should be within original amount of the Budget Item';
+CONSTRAINT LOCAL amountTransfer(BudgetDetail d) < 0
+    CHECKED BY amountTransfer[BudgetDetail] MESSAGE 'Transaction sum should be within original amount of the Budget Item';
 
 FORM dialogMoveBudgetFix 'Budgets and fixed sum'
     OBJECTS d = BudgetDetail PANEL 
-    PROPERTIES (d) amountFix
+    PROPERTIES (d) amountFix, amountTransfer
     OBJECTS b = Budget
     PROPERTIES(b) READONLY name, fromDate, toDate 
     FILTERS selected(b, costCenter(d)), fromDate(b) >= monthReadonlyDate()
 ;
+DESIGN dialogMoveBudgetFix {
+    OBJECTS {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        MOVE PROPERTY (amountFix(d));
+        MOVE PROPERTY (amountTransfer(d));
+        MOVE BOX (b);
+    }
+}
+
+FORM dialogDistributeBudget 'Transfer into another Budget Item'
+    OBJECTS d = BudgetDetail PANEL 
+    PROPERTIES (d) amountFix, amountTransfer
+    OBJECTS b = BudgetDetail
+    PROPERTIES(b) READONLY canonicalNameCostItem, name, planned 
+    FILTERS budget(d) == budget(b), costCenter(d) == costCenter(b), d != b, NOT sensitive(b)
+;
+DESIGN dialogDistributeBudget {
+    OBJECTS {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        MOVE PROPERTY (amountFix(d));
+        MOVE PROPERTY (amountTransfer(d));
+        MOVE BOX (b);
+    }
+}
 
 addInvoice 'Add invoice' (BudgetDetail d) {
     NEWSESSION {
