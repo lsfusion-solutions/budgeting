@@ -709,7 +709,7 @@ CONSTRAINT LOCAL amountFix(BudgetDetail d) < MAX (OVERRIDE spent(d),0), (OVERRID
 
 moveBudgetDetail 'Move' (BudgetDetail d) {
 
-    amountFix(d) <- MAX (OVERRIDE spent(d),0), (OVERRIDE invoiced(d),0);
+    amountFix(d) <- MAX (OVERRIDE ceil(spent(d)),0), (OVERRIDE ceil(invoiced(d)),0);
     
     IF amountFix(d) > 0 THEN {
         DIALOG dialogMoveBudgetFix OBJECTS d = d, b INPUT DO {
@@ -748,7 +748,7 @@ moveBudgetDetail 'Move' (BudgetDetail d) {
 
 distribBudgetDetail 'Distribute' (BudgetDetail d) {
 
-    amountFix(d) <- MAX (OVERRIDE spent(d),0), (OVERRIDE invoiced(d),0);
+    amountFix(d) <- MAX (OVERRIDE ceil(spent(d)),0), (OVERRIDE ceil(invoiced(d)),0);
 
     DIALOG dialogDistributeBudget OBJECTS d = d, b INPUT DO {
         IF amountTransfer(d) AND amountFix(d) THEN {
