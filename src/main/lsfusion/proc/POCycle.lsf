@@ -616,7 +616,7 @@ EXTEND FORM invoiceLoad
     PROPERTIES (i) READONLYIF paid(i) nameContractor, nameContract, nameEmployee
     PROPERTIES (i) READONLYIF paid(i) BACKGROUND backgroundFill() longBudgetDetailName
     PROPERTIES (i) READONLYIF paid(i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
-    PROPERTIES(i) open SHOWIF hasFile(i), load READONLYIF paid(i), openPayment SHOWIF hasPayment(i), loadPayment SHOWIF afg(currentUser())
+    PROPERTIES(i) open SHOWIF hasFile(i), file READONLYIF paid(i), openPayment SHOWIF hasPayment(i), payment SHOWIF afg(currentUser())
 ;
 DESIGN invoiceLoad {
     size = (800, 480);
@@ -674,10 +674,10 @@ DESIGN invoiceLoad {
                 alignment = STRETCH;
                 caption = 'Attachment';
                 type = CONTAINERH;
-                MOVE PROPERTY(load(i)) { fill = 1; height = 40; caption = 'Load Attachment'; }
-                MOVE PROPERTY(open(i)) { fill = 1; height = 40; caption = 'Open Attachment'; }
-                MOVE PROPERTY(loadPayment(i)) { fill = 1; height = 40; }
-                MOVE PROPERTY(openPayment(i)) { fill = 1; height = 40; }
+                MOVE PROPERTY(file(i)) { fill = 1; height = 60; panelCaptionVertical = TRUE; caption = 'Load Attachment'; }
+                MOVE PROPERTY(open(i)) { fill = 1; height = 60; caption = 'Open Attachment'; }
+                MOVE PROPERTY(payment(i)) { fill = 1; height = 60; panelCaptionVertical = TRUE; caption = 'Load Payment'; }
+                MOVE PROPERTY(openPayment(i)) { fill = 1; height = 60; }
             }
             MOVE PROPERTY (text(i)) { caption = 'Comment'; flex = 1; panelCaptionVertical = TRUE; }
         }
