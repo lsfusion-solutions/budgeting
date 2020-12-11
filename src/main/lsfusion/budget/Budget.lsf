@@ -88,8 +88,8 @@ WHEN SETCHANGED (planned(BudgetDetail d)) DO dateTime(d) <- currentDateTime(); /
 monthReadonlyDate 'Monthly budget readonly date' = DATA DATE(); 
 monthReadonlyDate 'Monthly budget readonly date' = DATA DATE(CostCenter); 
 
-readonly (Budget b, CostCenter c) = monthReadonlyDate() > toDate(b) OR monthReadonlyDate(c) > toDate(b); 
-readonly (BudgetDetail d, CostCenter c) = monthReadonlyDate() > toDate(budget(d)) OR monthReadonlyDate(c) > toDate(budget(d)); 
+readonly (Budget b, CostCenter c) = monthReadonlyDate() >= fromDate(b) OR monthReadonlyDate(c) >= fromDate(b); 
+readonly (BudgetDetail d, CostCenter c) = monthReadonlyDate() >= fromDate(budget(d)) OR monthReadonlyDate(c) >= fromDate(budget(d)); 
 
 //
 
