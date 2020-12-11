@@ -319,6 +319,7 @@ assigned(Employee e,AssignReview a) += TRUE IF (name(position(e)) == 'CEO' OR ha
 @buttonDecisions(review,reject,'Reject and send the Budget Proposal back for revising');
 
 isApproved (BudgetPortion s) = step(s) == Step.approve;
+isSubmitted (BudgetPortion s) = step(s) == Step.approve OR step(s) == Step.enter OR step(s) == Step.review;
 isApprovedDrop (BudgetPortion s) = step(s) == Step.approve AND afg(currentUser());
 dropApproval 'Drop Approval' (BudgetPortion o) {
     stepOut(stepLog(o)) <- Step.reject;

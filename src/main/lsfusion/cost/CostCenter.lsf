@@ -19,7 +19,7 @@ FORM costCenter 'Cost Center'
 
 FORM costCenters 'Cost centers'
     OBJECTS c = CostCenter
-    PROPERTIES(c) READONLY name,profit,archive
+    PROPERTIES(c) READONLY name,archive,profit
     PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE
     ORDERS name(c)
 ;

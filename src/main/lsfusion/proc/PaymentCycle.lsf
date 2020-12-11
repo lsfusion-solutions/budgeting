@@ -58,7 +58,7 @@ multiplePayments 'Multiple Payments' (Invoice i) = TRUE IF countPayments(i) > 1;
 sumPayments 'Sum of Payments by Invoice' =      GROUP SUM planned(Payment p) BY invoice(p);
 
 payments 'Reserved, USD' = GROUP SUM plannedUSD(Payment p) IF NOT (budgetDetail(invoice(p)) == budgetDetail(p)) BY budgetDetail(p);
-EXTEND FORM costCenterBudget PROPERTIES (bmd) payments SHOWIF afg(currentUser()) AFTER invoiced(bmd);
+//EXTEND FORM costCenterBudget PROPERTIES (bmd) payments SHOWIF afg(currentUser()) AFTER invoiced(bmd);
 
 CONSTRAINT sumExpenses(Payment i) > planned(i) CHECKED BY amountProc[ExpensePayment] MESSAGE 'Transaction amount exceeds the Payment sum';
 //CONSTRAINT sumPayments(Invoice i) > amount(i)  CHECKED BY planned[Payment]           MESSAGE 'Planned Payment exceeds sum by the Invoice';

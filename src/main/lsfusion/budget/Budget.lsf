@@ -35,7 +35,7 @@ DESIGN options { commons { MOVE PROPERTY(forceHidden()); } }
 hiddenSet = DATA BOOLEAN (BudgetDetail); // eliminate budgets that are being under approval
 hidden (BudgetDetail d) = TRUE IF hiddenSet(d) AND forceHidden(); // control hidding of budgets that are being under approval
 sensitive = ABSTRACT BOOLEAN (BudgetDetail) MATERIALIZED;
-isProcessing = DATA BOOLEAN (BudgetDetail); // enable Budget Detail items for user editing: TRUE is SHOW
+isProcessing = DATA BOOLEAN (BudgetDetail); // enable Budget Detail items for user editing: TRUE is ALLOW
 isBudgeting (BudgetDetail d) = NOT isProcessing(d); // disable Budget Detail items for user editing: TRUE is READONLY
 
 budget = DATA Budget (BudgetDetail) NONULL DELETE;
@@ -90,6 +90,7 @@ monthReadonlyDate 'Monthly budget readonly date' = DATA DATE(CostCenter);
 
 readonly (Budget b, CostCenter c) = monthReadonlyDate() >= fromDate(b) OR monthReadonlyDate(c) >= fromDate(b); 
 readonly (BudgetDetail d, CostCenter c) = monthReadonlyDate() >= fromDate(budget(d)) OR monthReadonlyDate(c) >= fromDate(budget(d)); 
+readonly (BudgetDetail d) = monthReadonlyDate() >= fromDate(budget(d)) OR monthReadonlyDate(costCenter(d)) >= fromDate(budget(d)); 
 
 //
 
