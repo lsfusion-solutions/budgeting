@@ -92,6 +92,8 @@ monthsCostRootItem 'Expenses by root Cost Types for selected months, total' = GR
 
 monthsExpenses 'Expenses by Cost Centers for selected months' = GROUP SUM monthExpenses(Budget b, Currency cur, CostCenter c) IF filterBudgetMonths(b) BY cur,c;
 
+monthsExpenses 'Expenses by Cost Centers for selected months' = GROUP SUM monthsExpenses(Currency cur, CostCenter c) BY c;
+
 plannedMonths 'Planned by Cost Types for selected months' = GROUP SUM planned(Budget b, CostItem t)  IF filterBudgetMonths(b) BY t;
 
 plannedMonths 'Planned by Cost Centers for selected months' = GROUP SUM planned(Budget b, CostCenter t)  IF filterBudgetMonths(b) BY t;
@@ -158,7 +160,7 @@ FORM dashboard 'Dashboard'
     FILTERS costItem3(i) == i AND (monthsCostItem(currencyName('USD'),i) > 0 OR monthsCostItem(currencyName('RUR'),i) > 0)
     
     OBJECTS c = CostCenter 
-    PROPERTIES ON CHANGE dashUpsCostCenter(c) name(c), plannedMonths(c), sumCenterUSD=monthsExpenses(currencyName('USD'),c), sumCenterRUB=monthsExpenses(currencyName('RUR'),c)
+    PROPERTIES ON CHANGE dashUpsCostCenter(c) name(c), plannedMonths(c), sumCenterUSD=monthsExpenses(currencyName('USD'),c), sumCenterRUB=monthsExpenses(currencyName('RUR'),c), monthsExpenses(c)
     ORDERS name(c)
     FILTERS plannedMonths(c) > 0 OR monthsExpenses(currencyName('USD'),c) > 0 OR monthsExpenses(currencyName('RUR'),c) > 0
     
@@ -208,6 +210,7 @@ DESIGN dashboard {
             MOVE BOX (c) {
                 PROPERTY (sumCenterUSD) { caption = 'U.S. Amount, USD'; }
                 PROPERTY (sumCenterRUB) { caption = 'Russia Amount, USD'; }
+                PROPERTY (monthsExpenses(c)) { caption = 'Total Amount, USD'; }
             }
         }
     }
