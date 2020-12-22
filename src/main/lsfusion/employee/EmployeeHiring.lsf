@@ -1,6 +1,6 @@
 MODULE EmployeeHiring;
 
-REQUIRE EmployeeB, Country, Connector;
+REQUIRE EmployeeGroup, Country, Connector;
 
 NAMESPACE Employee;
 
@@ -56,7 +56,7 @@ gsssValuesRange 'Data fields for Google Spreadsheet' (Employee e) =
     '"' + (OVERRIDE firstName(e),' ') + '",' +
     '"' + (OVERRIDE lastName(e),' ') + '",' +
     '"' + (OVERRIDE namePosition(e),' ') + '",' +
-    '"' + (OVERRIDE nameManager(e),' ') + '",' + // @ToDo replace with Team logic
+    '"' + (OVERRIDE teamEmployee(e,currentDate()),' ') + '",' +
     '"' + (OVERRIDE email(e),' ') + '",' +
     '"yes",' + // Flag
     '"' + (OVERRIDE nameLocation(e),' ') + '",' +
@@ -193,7 +193,7 @@ EXTEND FORM employees
 ;
 
 EXTEND FORM employee
-    PROPERTIES(e) slackAccount, trelloEstablished, gsssAppendEmployee, gsssUpdateEmployee, gsssMetadataId, gsssMetadataSync,
+    PROPERTIES(e) slackAccount, trelloEstablished, gsssAppendEmployee, gsssUpdateEmployee, //gsssMetadataId, gsssMetadataSync,
                   citizenships ON CHANGE changeCitizenships(e), nameLanguageLevel
                   
     PROPERTIES(e) laptop, pc, ielts
@@ -221,8 +221,8 @@ DESIGN employee {
             caption = 'Contact info';
             MOVE PROPERTY(slackAccount(e));
             MOVE PROPERTY(trelloEstablished(e));
-            MOVE PROPERTY(gsssMetadataId(e));
-            MOVE PROPERTY(gsssMetadataSync(e));
+            //MOVE PROPERTY(gsssMetadataId(e));
+            //MOVE PROPERTY(gsssMetadataSync(e));
             MOVE PROPERTY(gsssAppendEmployee(e));
             MOVE PROPERTY(gsssUpdateEmployee(e));
         }
