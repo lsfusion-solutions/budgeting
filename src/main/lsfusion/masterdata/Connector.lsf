@@ -24,8 +24,11 @@ gsssAccessTokenRefresh 'GSheets API Refresh Access Token' = DATA STRING ();
 
 // Our Spreadsheets
 gsssScope 'Authorization Scope' = DATA STRING (); // https://www.googleapis.com/auth/spreadsheets
+// Spreadsheet with Team List
 gsssTeam 'Team List' = DATA STRING ();
 gsssTeamSheet 'Team List sheet' = DATA INTEGER ();
+gsssTeamColumns 'Team List columns' = DATA INTEGER (); // amount of columns used for basic filter
+// Spreadsheet with Organigram
 gsssOrg 'Organigram' = DATA STRING ();
 // Add new Spreadsheets here
 
@@ -181,7 +184,7 @@ gsssAccessTokenUpdate 'Request new Access Token (offline) from the Google Sheets
 EXTEND FORM integrationData
     PROPERTIES() gsssEndpoint, gsssSpreadsheets, gsssDeveloperMetadata, gsssSheets, gsssValues
     PROPERTIES() gsssLogin, gsssClientID, gsssProjectID, gsssAuthURI, gsssTokenURI, gsssAuthProvider, gsssClientSecret, gsssRedirectURI
-    PROPERTIES() gsssTeam, gsssTeamSheet, gsssOrg, gsssScope, gsssAccessTokenUpdate//, gsssAuthorizationCodeGet, gsssAccessTokenGet
+    PROPERTIES() gsssTeam, gsssTeamSheet, gsssTeamColumns, gsssOrg, gsssScope, gsssAccessTokenUpdate//, gsssAuthorizationCodeGet, gsssAccessTokenGet
     //PROPERTIES gsssAuthorizationCodeRequestText = TEXT(gsssAuthorizationCodeRequestString())
     PROPERTIES() READONLY gsssAccessTokenRefresh, gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope
 ;
@@ -217,9 +220,20 @@ DESIGN integrationData {
                 type = CONTAINERV;
                 caption = 'Application';
                 alignment = STRETCH;
-                MOVE PROPERTY(gsssTeam());
-                MOVE PROPERTY(gsssTeamSheet());
-                MOVE PROPERTY(gsssOrg());
+                NEW gsssSpreadsheetTeam {
+                    caption = 'Team List';
+                    type = CONTAINERH;
+                    alignment = STRETCH;
+                    MOVE PROPERTY(gsssTeam()) { panelCaptionVertical = TRUE; }
+                    MOVE PROPERTY(gsssTeamSheet()) { panelCaptionVertical = TRUE; }
+                    MOVE PROPERTY(gsssTeamColumns()) { panelCaptionVertical = TRUE; }
+                }
+                NEW gsssSpreadsheetOrg {
+                    caption = 'Organigram';
+                    type = CONTAINERH;
+                    alignment = STRETCH;
+                    MOVE PROPERTY(gsssOrg());
+                }
                 MOVE PROPERTY(gsssScope());
                 //MOVE PROPERTY(gsssAuthorizationCodeGet());
                 //MOVE PROPERTY(gsssAuthorizationCodeRequestText) { panelCaptionVertical = TRUE; }
@@ -468,7 +482,7 @@ gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
             fileToString(response(), 'UTF-8');
             printToLog('Data were successfully appended to Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
             MESSAGE 'Data were successfully appended to Google Spreadsheet in row ' + (gsssLastAppendedRow()+1); // 
-            gsssBatchUpdateFilter(spreadsheetId, sheetId , gsssLastAppendedRow()+1 , 20); // Columns number is hardcoded
+            gsssBatchUpdateFilter(spreadsheetId, sheetId , gsssLastAppendedRow()+1 , gsssTeamColumns()+1);
             APPLY;
         }
     }
