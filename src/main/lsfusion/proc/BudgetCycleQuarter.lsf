@@ -63,8 +63,6 @@ readonlyProc (Budget d, CostCenter c) = isApproved(proposalQuarter(c,quarterNumb
 readonlyProc (INTEGER q, CostCenter c) = isApproved(proposalQuarter(c,q)) OR NOT quarterBudgeting(q);
 readonlyProc (INTEGER q, Period p) = readonlyProc(q, costCenter(p));
 
-readonlyProc (BudgetDetail d) = (isSubmitted(partQuarter(d)) OR readonly(d)) AND NOT freeCostCenter(costCenter(d));
-
 EXTEND FORM reviewCostCentersApprove FILTERS isApproved(proposalQuarter(c,q));
 
 EXTEND FORM costCenterBudget OBJECTS ol=(o = BudgetPortion,l = StepLog) PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND o == proposalQuarter(c,q) AND stepOut(l);
@@ -81,9 +79,3 @@ DESIGN costCenterBudget {
 }
 @showStepAttributes(costCenterBudget,out);
 EXTEND FORM costCenterBudget PROPERTIES(o) dropApproval SHOWIF isApprovedDrop(o) DRAW ol, revokeBudget SHOWIF isRevokable(o) DRAW ol;
-
-EXTEND FORM costCenterBudget
-    PROPERTIES(bmd) READONLYIF readonlyProc(bmd) canonicalNameCostItem, name, planned, optimizedPlanned, spentInteger, description PANEL, sensitive, NEW, DELETE
-;
-DESIGN costCenterBudget { description {
-    MOVE PROPERTY(description(bmd)) { caption = ''; fill = 1; } } }

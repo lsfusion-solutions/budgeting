@@ -1,6 +1,6 @@
 MODULE POCycle;
 
-REQUIRE Step, BudgetContractPurchaseInvoice, BudgetEmployeePurchaseInvoice, CostCenterEmployee, BudgetPurchaseInvoice, BudgetCycle;
+REQUIRE Step, BudgetContractPurchaseInvoice, BudgetEmployeePurchaseInvoice, CostCenterEmployee, BudgetPurchaseInvoice, BudgetCapCenterRent;
 
 NAMESPACE Purchase;
 

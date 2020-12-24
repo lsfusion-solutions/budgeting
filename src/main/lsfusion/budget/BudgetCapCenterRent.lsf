@@ -88,3 +88,26 @@ WHEN SETCHANGED(RentBudgetDetail d IS RentBudgetDetail) DO
 
 WHEN SETCHANGED(rent(costCenter(RentBudgetDetail d), costItem(d), budget(d))) DO
     planned[BudgetDetail](d) <- rent(costCenter(d), costItem(d), budget(d));
+
+// Editor of Budget items on Project Budget form
+
+isInherited 'Inherited and automotically created' (BudgetDetail d) = TRUE IF (d IS RentBudgetDetail) OR (d IS SalaryBudgetDetail);
+
+readonlyProc (BudgetDetail d) = (isSubmitted(partQuarter(d)) OR readonly(d)) AND NOT freeCostCenter(costCenter(d)) OR isInherited(d);
+
+EXTEND FORM costCenterBudget
+    PROPERTIES(bmd) READONLYIF readonlyProc(bmd) canonicalNameCostItem, name, planned, optimizedPlanned, spentInteger, 
+                               description PANEL, sensitive , 
+                               new = NEW, delete = DELETE SHOWIF NOT isInherited(bmd) 
+;
+DESIGN costCenterBudget { 
+    description {
+        MOVE PROPERTY(description(bmd)) { caption = ''; fill = 1; } 
+    } 
+    TOOLBAR(bmd) {
+        MOVE PROPERTY (new);
+        MOVE PROPERTY (delete);
+        MOVE PROPERTY (copyFrom(bm, c));
+        MOVE PROPERTY (copyTo(bmd));
+    }
+}
