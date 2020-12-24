@@ -93,12 +93,13 @@ WHEN SETCHANGED(rent(costCenter(RentBudgetDetail d), costItem(d), budget(d))) DO
 
 isInherited 'Inherited and automotically created' (BudgetDetail d) = TRUE IF (d IS RentBudgetDetail) OR (d IS SalaryBudgetDetail);
 
-readonlyProc (BudgetDetail d) = (isSubmitted(partQuarter(d)) OR readonly(d)) AND NOT freeCostCenter(costCenter(d)) OR isInherited(d);
+readonlyProc (BudgetDetail d) = (isSubmitted(partQuarter(d)) OR readonly(d)) AND NOT freeCostCenter(costCenter(d));
+readonlyProcInh (BudgetDetail d) = (isSubmitted(partQuarter(d)) OR readonly(d)) AND NOT freeCostCenter(costCenter(d)) OR isInherited(d);
 
 EXTEND FORM costCenterBudget
-    PROPERTIES(bmd) READONLYIF readonlyProc(bmd) canonicalNameCostItem, name, planned, optimizedPlanned, spentInteger, 
-                               description PANEL, sensitive , 
-                               new = NEW, delete = DELETE SHOWIF NOT isInherited(bmd) 
+    PROPERTIES(bmd) READONLYIF readonlyProcInh(bmd) 
+                               canonicalNameCostItem, name, planned, optimizedPlanned, spentInteger, description PANEL, sensitive
+    PROPERTIES(bmd) READONLYIF readonlyProc(bmd) new = NEW, delete = DELETE SHOWIF NOT isInherited(bmd) 
 ;
 DESIGN costCenterBudget { 
     description {
