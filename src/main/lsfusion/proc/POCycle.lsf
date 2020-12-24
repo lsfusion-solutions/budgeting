@@ -89,6 +89,7 @@ invoiced 'Invoiced, USD' (Budget b, CostCenter cp) = GROUP SUM invoiced(BudgetDe
 invoiced 'Invoiced, USD' = GROUP SUM invoiced(Budget b, CostCenter cp) BY cp,quarterNumber(b);
 //EXTEND FORM budgetDetails PROPERTIES(d) READONLY invoiced;
 EXTEND FORM costCenterBudget PROPERTIES invoiced(bm,c), invoiced(bmd) AFTER spentInteger(bmd), invoiced(c,q), invoiced(bqd) AFTER spentInteger(bqd);
+EXTEND FORM budgetDetails PROPERTIES(d) invoiced AFTER spent(d);
 WHEN CHANGED(amount(Invoice i)) OR CHANGED(currency(i)) DO {
     approved(i) <- invoiced(budgetDetail(i)) <= planned(budgetDetail(i)); 
 }

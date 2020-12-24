@@ -19,7 +19,7 @@ fullName 'Full Name' (Employee e) = CONCAT ' ', firstName(e), lastName(e);
 name 'Executive' (Executive e) = staticCaption(e) CHARWIDTH 50;
 employee 'Employee' = DATA Employee (Executive);
 nameEmployee 'Employee' (Executive e) = fullName(employee(e));
-titleEmployee 'Executive Name' (Executive e) = TEXT (CONCAT '\n', name(e), nameEmployee(e)) CHARWIDTH 50;
+titleEmployee 'Executive Name' (Executive e) = TEXT (CONCAT '\n', name(e), nameEmployee(e)) CHARWIDTH 30;
 
 FORM executive 'Executive Officer'
     OBJECTS o = Executive PANEL
@@ -74,18 +74,24 @@ nameClass 'Class' (Team t) = name(class(t));
 slack 'Slack handle' = DATA STRING[20](Team);
 email 'Email' = DATA STRING[50](Team);
 
-inDate 'in' = DATA DATE (Team, Employee);
+inDate  'in'  = DATA DATE (Team, Employee);
 outDate 'out' = DATA DATE (Team, Employee);
 in 'in Team' (Team t, Employee e, DATE date) = TRUE IF inDate(t, e) <= date AND NOT (outDate(t,e) <= date);
 teamEmployee 'Teams' = GROUP CONCAT nameShort(Team t),', ' IF in(t,Employee e, DATE date) BY e, date;
 
-sm 'Senior Manager' = DATA Employee (Team);
-po 'Product Owner' = DATA Employee (Team);
-nameSM 'SM' (Team e) = fullName(sm(e));
-namePO 'PO' (Team e) = fullName(po(e));
+smIn  'SM in'  = DATA DATE (Team, Employee);
+smOut 'SM out' = DATA DATE (Team, Employee);
+sm 'Product Owner' (Team t, Employee e, DATE date) = TRUE IF smIn(t, e) <= date AND NOT (smOut(t,e) <= date);
 
-poGroup 'PO' = GROUP CONCAT namePO (Team t), ', ' BY group(t) CHARWIDTH 50;
-smGroup 'SM' = GROUP CONCAT nameSM (Team t), ', ' BY group(t) CHARWIDTH 50;
+poIn  'PO in'  = DATA DATE (Team, Employee);
+poOut 'PO out' = DATA DATE (Team, Employee);
+po 'Product Owner' (Team t, Employee e, DATE date) = TRUE IF poIn(t, e) <= date AND NOT (poOut(t,e) <= date);
+
+smTeam 'SM' = GROUP CONCAT fullName (Employee e), ', ' IF sm(Team t, e, DATE date) BY t, date CHARWIDTH 30;
+poTeam 'PO' = GROUP CONCAT fullName (Employee e), ', ' IF po(Team t, e, DATE date) BY t, date CHARWIDTH 30;
+
+smGroup 'SM' = GROUP CONCAT fullName (Employee e), ', ' IF sm(Team t, e, DATE date) AND group(t) == TeamGroup g BY g, date CHARWIDTH 30;
+poGroup 'PO' = GROUP CONCAT fullName (Employee e), ', ' IF po(Team t, e, DATE date) AND group(t) == TeamGroup g BY g, date CHARWIDTH 30;
 
 titleTeam 'Team Description' (Team e) = TEXT (CONCAT '\n', name(e) + ' (' + nameShort(e) + ')', (OVERRIDE email(e),''), (OVERRIDE 'Slack handle: ' + slack(e),''));
 
@@ -97,13 +103,13 @@ FORM teamGroup 'Group of Teams'
     PROPERTIES(o) name
     
     OBJECTS t = Team
-    PROPERTIES (t) name, nameShort, slack, email, nameSM, namePO, nameClass
+    PROPERTIES (t) name, nameShort, slack, email, nameClass
     PROPERTIES(t) NEW, DELETE
     FILTERS group(t) == o
     
     OBJECTS e = Employee
     PROPERTIES (e) name[User], namePosition
-    PROPERTIES (t,e) inDate, outDate
+    PROPERTIES (t,e) smIn, smOut, poIn, poOut, inDate, outDate
     
     EDIT TeamGroup OBJECT o
 ;
@@ -133,15 +139,17 @@ FORM teamGroups 'Groups of Teams'
     FILTERS finance == Executive.finance
     
     OBJECTS o = TeamGroup
-    PROPERTIES(o) READONLY name, smGroup, poGroup
+    PROPERTIES(o) READONLY name
+    PROPERTIES (o,date) smGroup, poGroup
     PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
     
     OBJECTS t = Team
     PROPERTIES (t) READONLY nameClass, titleTeam
+    PROPERTIES (t,date) smTeam, poTeam
     FILTERS group(t) == o
     
     OBJECTS e = Employee
-    PROPERTIES (e) READONLY fullName, namePosition
+    PROPERTIES (e) READONLY name[User], namePosition
     FILTERS in(t,e,date)
     
     EVENTS ON INIT { SEEK teamGroups.date = currentDate(); }
@@ -198,14 +206,56 @@ FORM dialogTeam 'Team'
     LIST Team OBJECT o
 ;
 
-NAVIGATOR {
-    masterData {
-        NEW teamGroups;
-    }
-}
-
 // Printing FORM 
-FORM teamGroupsPrint 'Groups of Teams'
+
+CLASS TeamCombination 'Combination' {
+    sm 'SM',
+    class 'Class',
+    group 'Group',
+    po 'PO',
+    title 'Team',
+    slack 'Slack',
+    email 'Email',
+    team 'Employees'
+}
+order 'Order' = DATA INTEGER (TeamCombination);
+field 'Field' (TeamCombination c) = staticCaption(c) CHARWIDTH 10;
+onStarted() + { 
+    order(TeamCombination d) <- 0 WHERE d == TeamCombination.sm; 
+    order(TeamCombination d) <- 2 WHERE d == TeamCombination.class;
+    order(TeamCombination d) <- 0 WHERE d == TeamCombination.group;
+    order(TeamCombination d) <- 0 WHERE d == TeamCombination.po;
+    order(TeamCombination d) <- 1 WHERE d == TeamCombination.title;
+    order(TeamCombination d) <- 0 WHERE d == TeamCombination.slack;
+    order(TeamCombination d) <- 0 WHERE d == TeamCombination.email;
+    order(TeamCombination d) <- 7 WHERE d == TeamCombination.team;
+}
+employeeNamePosition 'Name with position' (Employee e) = CONCAT ' - ', name[User](e), namePosition(e);
+employeeTeam 'Team' = GROUP CONCAT employeeNamePosition(Employee e) IF in(Team t, e, DATE date),'\n' BY t,date;
+
+content 'Content' (TeamCombination c, Team t, DATE date) = CASE 
+    WHEN c == TeamCombination.sm THEN smTeam(t,date)
+    WHEN c == TeamCombination.class THEN 
+        //nameClass(t)
+        CONCAT '\n',nameClass(t),'','SM: ' + smTeam(t,date),'PO: ' + poTeam(t,date)
+    WHEN c == TeamCombination.group THEN nameGroup(t)
+    WHEN c == TeamCombination.po THEN poTeam(t,date)
+    WHEN c == TeamCombination.title THEN titleTeam(t)
+    WHEN c == TeamCombination.team THEN employeeTeam(t,date)
+;
+
+contentItem 'Content' (TeamCombination c, Team t, DATE date, Employee e) = STRING (CASE 
+    WHEN c == TeamCombination.sm THEN smTeam(t,date)
+    WHEN c == TeamCombination.class THEN nameClass(t)
+    WHEN c == TeamCombination.group THEN nameGroup(t)
+    WHEN c == TeamCombination.po THEN poTeam(t,date)
+    WHEN c == TeamCombination.title THEN name(t)
+    WHEN c == TeamCombination.slack THEN slack(t)
+    WHEN c == TeamCombination.email THEN email(t)
+    WHEN c == TeamCombination.team THEN employeeNamePosition(e)
+) CHARWIDTH 30;
+
+FORM teamOrganigram 'Organigram'
     OBJECTS date = DATE PANEL 
     PROPERTIES (date) dateName = VALUE 
     
@@ -229,22 +279,65 @@ FORM teamGroupsPrint 'Groups of Teams'
     PROPERTIES (finance) titleEmployee
     FILTERS finance == Executive.finance
     
-    OBJECTS o = TeamGroup
-    PROPERTIES(o) READONLY name, smGroup, poGroup
-    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
-    
     OBJECTS t = Team
-    PROPERTIES (t) READONLY nameClass, titleTeam
-    FILTERS group(t) == o
+    PROPERTIES nameGroup(t) SHOWIF NULL 
+    ORDERS nameGroup(t)
     
-    OBJECTS e = Employee
-    PROPERTIES (e) READONLY fullName, namePosition
-    FILTERS in(t,e,date)
+    OBJECTS c = TeamCombination
+    //OBJECTS ec=(c = TeamCombination, e = Employee)
+    PROPERTIES (c) order SHOWIF NULL , field
+    PROPERTIES content(c,t,date) COLUMNS (t) HEADER nameGroup(t)
+    //PROPERTIES contentItem(c,t,date,e) COLUMNS (t) HEADER nameGroup(t)
+    ORDERS order(c)
+    FILTERS order(c) > 0
+    //        in(t,e,date)
+    
+    EVENTS ON INIT { SEEK teamOrganigram.date = currentDate(); }
 ;
 
-teamGroupsPrint 'Organigram' (DATE date) {
-    PRINT teamGroupsPrint OBJECTS date = date;
+DESIGN teamOrganigram {
+    OBJECTS {
+        NEW date {
+            type = CONTAINERH;
+            MOVE PROPERTY (dateName) FIRST { caption = 'Organigram date'; }
+        }
+        NEW exec {
+            type = CONTAINERH;
+            MOVE PROPERTY (titleEmployee(ceo)) { panelCaptionVertical = TRUE; caption = ''; }
+            MOVE PROPERTY (titleEmployee(cto)) { panelCaptionVertical = TRUE; caption = ''; }
+            MOVE PROPERTY (titleEmployee(coo)) { panelCaptionVertical = TRUE; caption = ''; }
+            MOVE PROPERTY (titleEmployee(cso)) { panelCaptionVertical = TRUE; caption = ''; }
+            MOVE PROPERTY (titleEmployee(finance)) { panelCaptionVertical = TRUE; caption = ''; }
+        }
+        MOVE BOX (c) {fill = 1;}
+    }
 }
 
-EXTEND FORM teamGroups PROPERTIES (date) teamGroupsPrint;
+singleGroupSection 'Representation of single section' (TeamGroup g, DATE date) = smGroup(g,date);
+
+combineGroupSections 'Combine all group sections' = 
+    GROUP CONCAT singleGroupSection(TeamGroup g, DATE date),'' BY date;
+
+teamGroupsExecute 'Show Organigram' () { 
+    NEWSESSION {
+        EVAL
+            CONCAT ' ',
+                'run() \{SHOW teamGroupsPrint NOWAIT;\}';
+    }  
+}
+
+teamGroupsPrint 'Print Organigram' (DATE date) {
+    SHOW teamOrganigram OBJECTS date = date;
+}
+
+EXTEND FORM teamGroups PROPERTIES  teamGroupsPrint(date);
+
 DESIGN teamGroups { date { MOVE PROPERTY (teamGroupsPrint(date));} }
+
+
+NAVIGATOR {
+    masterData {
+        NEW teamGroups;
+        NEW teamOrganigram;
+    }
+}
