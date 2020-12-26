@@ -1,6 +1,6 @@
 MODULE EmployeeGroup;
 
-REQUIRE EmployeeB;
+REQUIRE EmployeeB, Connector;
 
 NAMESPACE Employee;
 
@@ -13,6 +13,15 @@ CLASS Executive 'Executive Officer' {
     finance 'Senior VP of Finance and Corporate Development'
 }
 TABLE executive (Executive);
+
+order 'Employee' = DATA INTEGER (Executive);
+onStarted() + { 
+    order(Executive d) <- 1 WHERE d == Executive.ceo; 
+    order(Executive d) <- 2 WHERE d == Executive.cto;
+    order(Executive d) <- 3 WHERE d == Executive.coo;
+    order(Executive d) <- 4 WHERE d == Executive.cso;
+    order(Executive d) <- 5 WHERE d == Executive.finance;
+}
 
 fullName 'Full Name' (Employee e) = CONCAT ' ', firstName(e), lastName(e);
 
@@ -330,9 +339,20 @@ teamGroupsPrint 'Print Organigram' (DATE date) {
     SHOW teamOrganigram OBJECTS date = date;
 }
 
-EXTEND FORM teamGroups PROPERTIES  teamGroupsPrint(date);
+toFullDate = FORMULA STRING 'to_char(($1),\'Month DD, YYYY\')';
 
-DESIGN teamGroups { date { MOVE PROPERTY (teamGroupsPrint(date));} }
+gsssOrgExecutiveValues 'Dataset for Executives in Google Spreadsheet' (DATE date) = '["updated:","' + toFullDate(date) + '"],["' + 
+    (GROUP CONCAT titleEmployee(Executive e),'","","","' IF e IS Executive AND employee(e) ORDER order(e)) + 
+    '"]';
+
+gsssPublishOrganigramExecutives 'Publish Executives in Organigram on Google Spreadsheet' (DATE date) {
+    IF gsssOrgExecutiveValues(date) THEN  gsssUpdateRow(gsssOrg(),'target!B2',gsssOrgExecutiveValues(date));
+    ELSE MESSAGE 'No dataset for Organigram publication provided.\nContact Administrator';
+}
+
+EXTEND FORM teamGroups PROPERTIES  teamGroupsPrint(date), gsssPublishOrganigramExecutives(date);
+
+DESIGN teamGroups { date { MOVE PROPERTY (teamGroupsPrint(date)); MOVE PROPERTY (gsssPublishOrganigramExecutives(date));} }
 
 
 NAVIGATOR {

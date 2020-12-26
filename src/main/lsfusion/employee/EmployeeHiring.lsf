@@ -1,6 +1,6 @@
 MODULE EmployeeHiring;
 
-REQUIRE EmployeeGroup, Country, Connector;
+REQUIRE EmployeeGroup, Country;
 
 NAMESPACE Employee;
 
@@ -77,7 +77,7 @@ gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
 gsssUpdateEmployee 'Update record on Google Spreadsheet' (Employee e) {
     IF NOT gsssMetadataId(e) THEN gsssMetadataSync(e);
     
-    IF gsssMetadataId(e) THEN  gsssUpdate(gsssTeam(),gsssMetadataId(e),gsssValuesRange(e));
+    IF gsssMetadataId(e) THEN  gsssUpdateDataFilter(gsssTeam(),gsssMetadataId(e),gsssValuesRange(e));
     ELSE MESSAGE 'There is no such Employee on Google spreadsheet List. Please append the new record';
 }
 

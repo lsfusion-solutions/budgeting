@@ -30,6 +30,7 @@ gsssTeamSheet 'Team List sheet' = DATA INTEGER ();
 gsssTeamColumns 'Team List columns' = DATA INTEGER (); // amount of columns used for basic filter
 // Spreadsheet with Organigram
 gsssOrg 'Organigram' = DATA STRING ();
+gsssOrgSheet 'Organigram sheet' = DATA INTEGER ();
 // Add new Spreadsheets here
 
 //--- Basic methods ---
@@ -184,7 +185,7 @@ gsssAccessTokenUpdate 'Request new Access Token (offline) from the Google Sheets
 EXTEND FORM integrationData
     PROPERTIES() gsssEndpoint, gsssSpreadsheets, gsssDeveloperMetadata, gsssSheets, gsssValues
     PROPERTIES() gsssLogin, gsssClientID, gsssProjectID, gsssAuthURI, gsssTokenURI, gsssAuthProvider, gsssClientSecret, gsssRedirectURI
-    PROPERTIES() gsssTeam, gsssTeamSheet, gsssTeamColumns, gsssOrg, gsssScope, gsssAccessTokenUpdate//, gsssAuthorizationCodeGet, gsssAccessTokenGet
+    PROPERTIES() gsssTeam, gsssTeamSheet, gsssTeamColumns, gsssOrg, gsssOrgSheet, gsssScope, gsssAccessTokenUpdate//, gsssAuthorizationCodeGet, gsssAccessTokenGet
     //PROPERTIES gsssAuthorizationCodeRequestText = TEXT(gsssAuthorizationCodeRequestString())
     PROPERTIES() READONLY gsssAccessTokenRefresh, gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope
 ;
@@ -233,6 +234,7 @@ DESIGN integrationData {
                     type = CONTAINERH;
                     alignment = STRETCH;
                     MOVE PROPERTY(gsssOrg());
+                    MOVE PROPERTY(gsssOrgSheet());
                 }
                 MOVE PROPERTY(gsssScope());
                 //MOVE PROPERTY(gsssAuthorizationCodeGet());
@@ -489,7 +491,53 @@ gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
     ELSE MESSAGE 'The Google Sheets API Access expired';
 }
 
-gsssUpdate (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange) {
+gsssUpdateRow (STRING spreadsheetId, STRING range, TEXT valuesRange) {
+    // Update (replace) existing line in Google Spreadsheet by Metedata based link:
+    //      spreadsheetId - ID of the Google Spreadsheet
+    //      range         - A1 notation; when appending, represents the range to search for a table, after which values will be appended
+    //      valuesRange   - data to be written, array of columns
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdate
+    
+    LOCAL payload = TEXT ();
+    LOCAL response = FILE();
+    LOCAL totalUpdatedCells = INTEGER();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        payload() <- '\{' +
+                         '"valueInputOption": "USER_ENTERED",' +
+                         '"data": [\{' + 
+                             '"range": "' + range + '",' + // take care to address the needed sheet
+                             '"majorDimension": "ROWS",' + 
+                             '"values": ['+ valuesRange + ']\}]\}';
+        TRY {
+            printToLog('Data sent to Google Spreadsheets: ' + payload());
+            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + ':batchUpdate' 
+                HEADERS gsssAuthHeader 
+                PARAMS JSONFILE (payload()) 
+                TO response;
+        } CATCH {
+            fileToString(response(), 'UTF-8');
+            MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString();
+        }
+        
+        IMPORT FROM response() TO() totalUpdatedCells;
+        
+        fileToString(response(), 'UTF-8');
+        IF totalUpdatedCells() > 0 THEN {
+            printToLog('Data in ' + totalUpdatedCells() + ' cells were updated on Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+            MESSAGE 'Data in ' + totalUpdatedCells() + ' cells were successfully updated on Google Spreadsheet';
+        }
+        ELSE {
+            printToLog('Error accured during Google Spreadsheet update: ' + resultString());  // Enabled for debugging purposes only
+            MESSAGE 'Error accured during Google Spreadsheet update.\nContact Administrator';
+        }
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired';
+}
+
+gsssUpdateDataFilter (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange) {
     // Update (replace) existing line in Google Spreadsheet by Metedata based link:
     //      spreadsheetId - ID of the Google Spreadsheet
     //      metadataId    - Metadata link created using @gsssMetadataHandle routines
@@ -502,17 +550,22 @@ gsssUpdate (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange) {
     IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
     
     IF gsssAuth() THEN {
-        EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + ':batchUpdateByDataFilter' 
-            HEADERS gsssAuthHeader 
-            PARAMS JSONFILE ('\{' +
-                                '"valueInputOption": "USER_ENTERED",' +
-                                '"data": [\{' + 
-                                    '"dataFilter": \{' + // use one of three options for addressing needed row, alternatives are A1 range and GridRange
-                                        '"developerMetadataLookup": \{' + // https://developers.google.com/sheets/api/reference/rest/v4/DataFilter?authuser=5#DeveloperMetadataLookup
-                                            '"metadataId": ' + metadataId + '\}\},' + // matching by matadataId only
-                                    '"majorDimension": "ROWS",' + 
-                                    '"values": [['+ valuesRange + ']]\}]\}') 
-            TO response;
+        TRY {
+            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + ':batchUpdateByDataFilter' 
+                HEADERS gsssAuthHeader 
+                PARAMS JSONFILE ('\{' +
+                                    '"valueInputOption": "USER_ENTERED",' +
+                                    '"data": [\{' + 
+                                        '"dataFilter": \{' + // use one of three options for addressing needed row, alternatives are A1 range and GridRange
+                                            '"developerMetadataLookup": \{' + // https://developers.google.com/sheets/api/reference/rest/v4/DataFilter?authuser=5#DeveloperMetadataLookup
+                                                '"metadataId": ' + metadataId + '\}\},' + // matching by matadataId only
+                                        '"majorDimension": "ROWS",' + 
+                                        '"values": [['+ valuesRange + ']]\}]\}') 
+                TO response;
+        } CATCH {
+            fileToString(response(), 'UTF-8');
+            MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString();
+        }
         
         IMPORT FROM response() TO() totalUpdatedRows;
         
