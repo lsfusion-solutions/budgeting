@@ -491,8 +491,11 @@ gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
     ELSE MESSAGE 'The Google Sheets API Access expired';
 }
 
-gsssUpdateRow (STRING spreadsheetId, STRING range, TEXT valuesRange) {
-    // Update (replace) existing line in Google Spreadsheet by Metedata based link:
+gsssUpdate (STRING[10] type, STRING spreadsheetId, STRING range, TEXT valuesRange) {
+    // Update (replace) existing data in Google Spreadsheet by A1 type address link:
+    //      type          - majorDimension, with range=A1:B2 and dataset [[1,2],[3,4]] will set:
+    //                      ROWS A1=1,B1=2,A2=3,B2=4
+    //                      COLUMNS A1=1,B1=3,A2=2,B2=4
     //      spreadsheetId - ID of the Google Spreadsheet
     //      range         - A1 notation; when appending, represents the range to search for a table, after which values will be appended
     //      valuesRange   - data to be written, array of columns
@@ -509,7 +512,7 @@ gsssUpdateRow (STRING spreadsheetId, STRING range, TEXT valuesRange) {
                          '"valueInputOption": "USER_ENTERED",' +
                          '"data": [\{' + 
                              '"range": "' + range + '",' + // take care to address the needed sheet
-                             '"majorDimension": "ROWS",' + 
+                             '"majorDimension": "' + type + '",' + 
                              '"values": ['+ valuesRange + ']\}]\}';
         TRY {
             printToLog('Data sent to Google Spreadsheets: ' + payload());

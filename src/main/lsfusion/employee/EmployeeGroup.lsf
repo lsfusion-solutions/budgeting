@@ -346,13 +346,38 @@ gsssOrgExecutiveValues 'Dataset for Executives in Google Spreadsheet' (DATE date
     '"]';
 
 gsssPublishOrganigramExecutives 'Publish Executives in Organigram on Google Spreadsheet' (DATE date) {
-    IF gsssOrgExecutiveValues(date) THEN  gsssUpdateRow(gsssOrg(),'target!B2',gsssOrgExecutiveValues(date));
-    ELSE MESSAGE 'No dataset for Organigram publication provided.\nContact Administrator';
+    IF gsssOrgExecutiveValues(date) THEN  gsssUpdate('ROWS',gsssOrg(),'target!B2',gsssOrgExecutiveValues(date));
+    ELSE MESSAGE 'No Executives dataset for Organigram publication provided.\nContact Administrator';
 }
 
-EXTEND FORM teamGroups PROPERTIES  teamGroupsPrint(date), gsssPublishOrganigramExecutives(date);
+gsssOrgTeamValuesHeader 'Dataset for Teams headers in Google Spreadsheet' () = '["SM:","Class:","Group:","PO:","Name:","Slack:","Email:","Employees:"]';
 
-DESIGN teamGroups { date { MOVE PROPERTY (teamGroupsPrint(date)); MOVE PROPERTY (gsssPublishOrganigramExecutives(date));} }
+gsssOrgTeamValues 'Dataset for Teams in Google Spreadsheet' (Team t, DATE date) = '[' + 
+        '"' + smTeam(t,date) + '",' + //WHEN c == TeamCombination.sm THEN smTeam(t,date)
+        '"' + nameClass(t) + '",' + //WHEN c == TeamCombination.class THEN nameClass(t)
+        '"' + nameGroup(t) + '",' + //WHEN c == TeamCombination.group THEN nameGroup(t)
+        '"' + poTeam(t,date) + '",' + //WHEN c == TeamCombination.po THEN poTeam(t,date)
+        '"' + name(t) + '",' + //WHEN c == TeamCombination.title THEN name(t)
+        '"' + slack(t) + '",' + //WHEN c == TeamCombination.slack THEN slack(t)
+        '"' + email(t) + '",' + //WHEN c == TeamCombination.email THEN email(t)
+        '"' + [GROUP CONCAT employeeNamePosition(Employee e) IF in(Team tt, e, DATE d),'\n' BY tt,d](t,date) + '"' +
+        //'"' + smTeam(t,date) + '",' + //WHEN c == TeamCombination.team THEN employeeNamePosition(e)
+    ']';
+
+gsssOrgTeamsValues 'Dataset for Teams in Google Spreadsheet' (DATE date) = 
+    GROUP CONCAT gsssOrgTeamValues(Team t,date),',' IF t IS Team ORDER name(t);
+
+gsssPublishOrganigramTeams 'Publish Teams in Organigram on Google Spreadsheet' (DATE date) {
+    IF gsssOrgTeamsValues(date) THEN  {
+        gsssUpdate('COLUMNS',gsssOrg(),'target!A7',gsssOrgTeamValuesHeader());
+        gsssUpdate('COLUMNS',gsssOrg(),'target!B7',gsssOrgTeamsValues(date));
+    }
+    ELSE MESSAGE 'No Teams dataset for Organigram publication provided.\nContact Administrator';
+}
+
+EXTEND FORM teamGroups PROPERTIES  teamGroupsPrint(date), gsssPublishOrganigramExecutives(date), gsssPublishOrganigramTeams(date);
+
+DESIGN teamGroups { date { MOVE PROPERTY (teamGroupsPrint(date)); MOVE PROPERTY (gsssPublishOrganigramExecutives(date)); MOVE PROPERTY (gsssPublishOrganigramTeams(date));} }
 
 
 NAVIGATOR {
