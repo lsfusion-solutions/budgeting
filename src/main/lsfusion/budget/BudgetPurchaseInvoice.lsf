@@ -7,8 +7,9 @@ NAMESPACE Budget;
 costCenter 'Cost center' = DATA CostCenter (Invoice);
 nameCostCenter 'Cost center' (Invoice i) = name(costCenter(i));
 
-budgetDetail 'Budget detail' = DATA BudgetDetail (Invoice) NONULL;
+budgetDetail 'Budget detail' = DATA BudgetDetail (Invoice);
 
+CONSTRAINT Invoice i IS Invoice AND NOT budgetDetail(i) MESSAGE 'Plese specify Budget detail';
 CONSTRAINT costCenter(Invoice i) != costCenter(budgetDetail(i)) CHECKED BY budgetDetail[Invoice],costCenter[Invoice] MESSAGE 'Cost center is not equal to cost center of budget detail'; 
 WHEN LOCAL CHANGED (budgetDetail(Invoice i)) DO { costCenter(i) <- costCenter(budgetDetail(i)); }
 

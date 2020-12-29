@@ -7,7 +7,7 @@ NAMESPACE Purchase;
 CLASS Invoice 'Purchase invoice';
 TABLE invoice(Invoice);
 
-date 'Date' = DATA DATE (Invoice) IN id NONULL;
+date 'Date' = DATA DATE (Invoice) IN id;
 
 number 'Number' = DATA STRING[50] (Invoice) CHARWIDTH 15 IN id;
 
@@ -15,10 +15,10 @@ nameSupplier 'Supplier' = DATA STRING[50] (Invoice);
 
 description 'Description' (Invoice i) = CONCAT ' / ', number(i), date(i), nameSupplier(i); 
 
-currency 'Currency' = DATA Currency (Invoice) NONULL;
+currency 'Currency' = DATA Currency (Invoice);
 nameCurrency 'Currency' (Invoice i) = name(currency(i)) IN id;
 
-amount 'Sum' = DATA NUMERIC[14,2] (Invoice) NONULL IN id;
+amount 'Sum' = DATA NUMERIC[14,2] (Invoice) IN id;
 
 note 'Note' = DATA STRING[1000] (Invoice) CHARWIDTH 20;
 
@@ -26,10 +26,13 @@ approved 'Approved' = DATA BOOLEAN (Invoice);
 dateTimeApproved 'Date/time of approve' = DATA DATETIME (Invoice);
 nameUserApproved 'Approved by' = DATA STRING[200](Invoice) CHARWIDTH 20;
 
-file 'Attachment' = DATA FILE (Invoice) NONULL;
+file 'Attachment' = DATA FILE (Invoice);
 hasFile (Invoice i) = TRUE IF file(i); 
 open 'Open Attachment' (Invoice i)  { open(file(i)); }
 load 'Load Attachment' (Invoice i)  { INPUT =file(i) CHANGE; }
+
+CONSTRAINT Invoice i IS Invoice AND (NOT date(i) OR NOT currency(i) OR NOT amount(i) OR NOT file(i)) 
+    MESSAGE 'Please provide the required data: Date, Sum, Currency, Budget Item, Attachment';
 
 payment = DATA FILE (Invoice);
 hasPayment (Invoice i) = TRUE IF payment(i); 
