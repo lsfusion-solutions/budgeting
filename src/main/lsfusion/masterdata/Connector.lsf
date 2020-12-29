@@ -33,6 +33,19 @@ gsssOrg 'Organigram' = DATA STRING ();
 gsssOrgSheet 'Organigram sheet' = DATA INTEGER ();
 // Add new Spreadsheets here
 
+// A1 notation
+
+// ASCII codes of column letters: A is 65 to Z is 90 - 26 in order
+toASCII (symbol) = FORMULA INTEGER 'ascii($1)'; // ASCII code of the first byte of the argument
+toCHR (ascii) = FORMULA TEXT 'chr($1)'; // Character with the given ASCII code
+columnLength 'Number of letters' (INTEGER i) = i > 26; // when TRUE, then two letters are used, space until 26*27 = 702
+columnOrder 'Order of AA notation' (INTEGER i) = INTEGER (floor ((i-1)/26) + 64);
+columnIndex 'Number of column in the order' (INTEGER i) = INTEGER (mod((i-1),26) + 65);
+columnLetter 'AA notation' (INTEGER i) = IF columnLength(i) 
+    THEN (CONCAT '',toCHR(columnOrder(i)),toCHR(columnIndex(i)))
+    ELSE toCHR(columnIndex(i));
+a1notation 'A1 notation' (INTEGER i, INTEGER j) = CONCAT '',columnLetter(i),STRING(j);// First index is column, second index is row
+
 //--- Basic methods ---
 // Authentication https://developers.google.com/identity/protocols/oauth2/web-server
 gsssAuthorizationCode 'GSheets API Authorization Code' = DATA STRING ();
