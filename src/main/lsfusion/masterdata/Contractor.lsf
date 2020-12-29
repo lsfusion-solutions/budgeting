@@ -9,7 +9,7 @@ CLASS AccountingName 'Name in Xero/1C';
 TABLE accountingname (AccountingName);
 contractor 'Contractor' = DATA Contractor(AccountingName) INDEXED;
 
-name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 20 NONULL;
+name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 20;
 regID 'Registration ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
 taxID 'Tax ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
 name 'Name' = DATA ISTRING(AccountingName) IN id CHARWIDTH 20 NONULL;
@@ -39,11 +39,11 @@ FORM types 'Contractor types'
     
     LIST Type OBJECT t
 ;
-type 'Type' = DATA Type(Contractor) NONULL;
+type 'Type' = DATA Type(Contractor);
 nameType 'Type' (Contractor c) = name(type(c));
 
 isRegular 'Regular Contractor (Monthly Labour)' = DATA BOOLEAN (Contractor);
-costItem 'Cost type' = DATA CostItem (Contractor); //NONULL;
+costItem 'Cost type' = DATA CostItem (Contractor);
 nameCostItem 'Cost type' (Contractor c) = canonicalName(costItem(c));
 
 costItemReconcile 'Cost type for Reconcile' = DATA CostItem (Contractor); 
@@ -57,6 +57,7 @@ EXTEND FORM costItem
     PROPERTIES(c) contractor
 ;
 
+CONSTRAINT Contractor i IS Contractor AND (NOT name(i) OR NOT type(i)) MESSAGE 'Plese provide required Contractor details: Name, Type';
 CONSTRAINT isRegular(Contractor c) AND NOT costItem(c) MESSAGE 'Please specify Cost type for the regular Contractor';
 CONSTRAINT costItem(Contractor c) AND NOT contractor(costItem(c)) CHECKED BY costItem[Contractor] MESSAGE 'Cost type for the contractor is not valid';
 
