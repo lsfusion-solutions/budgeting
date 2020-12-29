@@ -286,11 +286,18 @@ gsssBatchUpdate (STRING spreadsheetId) {
     
     IF gsssAuth() THEN {
         IF batchUpdateRequest() THEN {
-            //fileToString(FILE(JSONFILE ('\{"requests": ['+ batchUpdateRequest() + '],"includeSpreadsheetInResponse":false\}')) , 'UTF-8');
-            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + ':batchUpdate' 
-                HEADERS gsssAuthHeader 
-                PARAMS JSONFILE ('\{"requests": ['+ batchUpdateRequest() + '],"includeSpreadsheetInResponse":false\}') 
-                TO batchUpdateResponse;
+            batchUpdateRequest() <- '\{"requests": ['+ batchUpdateRequest() + '],"includeSpreadsheetInResponse":false\}';
+            printToLog('Sending Batch update request to Google Spreadsheet: ' + batchUpdateRequest());
+            
+            TRY {
+                EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + ':batchUpdate' 
+                    HEADERS gsssAuthHeader 
+                    PARAMS JSONFILE (batchUpdateRequest()) 
+                    TO batchUpdateResponse;
+            } CATCH {
+                fileToString(batchUpdateResponse(), 'UTF-8');
+                MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString();
+            }
                 
             fileToString(batchUpdateResponse(), 'UTF-8');
             printToLog('Google Spreadsheet Batch Update: ' + resultString());
@@ -298,6 +305,24 @@ gsssBatchUpdate (STRING spreadsheetId) {
         ELSE MESSAGE 'Wrong data for Basic filter update';
     }
     ELSE MESSAGE 'The Google Sheets API Access expired';
+}
+
+gsssBatchUpdateMerge  (STRING spreadsheetId, INTEGER sheetId, INTEGER startRow, INTEGER endRow, INTEGER startColumn, INTEGER endColumn) {
+    // Merge set of cells
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#mergecellsrequest
+    //      spreadsheetId - ID of the Google Spreadsheet
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    
+    batchUpdateRequest() <- '\{"mergeCells":\{' + 
+                                    '"range":\{' +
+                                           '"sheetId":' + sheetId + ',' +
+                                           '"startRowIndex": ' + startRow + ',' +
+                                           '"endRowIndex": ' + endRow + ',' +
+                                           '"startColumnIndex": ' + startColumn + ',' +
+                                           '"endColumnIndex": ' + endColumn + '\},' +
+                                      '"mergeType":"MERGE_ROWS"\}\}';
+    gsssBatchUpdate(spreadsheetId);
 }
 
 gsssBatchUpdateFilter (STRING spreadsheetId, INTEGER sheetId, INTEGER rows, INTEGER columns) {

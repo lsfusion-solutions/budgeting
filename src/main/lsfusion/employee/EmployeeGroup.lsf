@@ -378,8 +378,10 @@ gsssPublishOrganigramTeams 'Publish Teams in Organigram on Google Spreadsheet' (
     LOCAL column = INTEGER ();
     IF gsssOrgTeamValuesHeader() THEN  {
         gsssUpdate('COLUMNS',gsssOrg(),'target!'+a1notation(1,7),gsssOrgTeamValuesHeader());
-        FOR order(Team t) AND gsssOrgTeamValues(t,date) DO 
+        FOR order(Team t) AND gsssOrgTeamValues(t,date) DO {
             gsssUpdate('ROWS',gsssOrg(),'target!'+a1notation(order(t),7),gsssOrgTeamValues(t,date));
+            gsssBatchUpdateMerge(gsssOrg(),gsssOrgSheet(),6,14,order(t)-1,order(t)+1);
+        }
     }
     ELSE MESSAGE 'No Teams dataset for Organigram publication provided.\nContact Administrator';
 }
