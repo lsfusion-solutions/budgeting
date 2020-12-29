@@ -76,12 +76,14 @@ TABLE team (Team);
 
 name 'Team' = DATA STRING[100](Team) NONULL;
 nameShort 'Team' = DATA STRING[15](Team) NONULL;
+order 'Order' = DATA INTEGER (Team) NONULL;
 group 'Group' = DATA TeamGroup (Team);
 nameGroup 'Group' (Team t) = name(group(t));
 class 'Class' = DATA TeamClass (Team);
 nameClass 'Class' (Team t) = name(class(t));
 slack 'Slack handle' = DATA STRING[20](Team);
 email 'Email' = DATA STRING[50](Team);
+okr 'OKRs' = DATA STRING[50](Team);
 
 inDate  'in'  = DATA DATE (Team, Employee);
 outDate 'out' = DATA DATE (Team, Employee);
@@ -102,7 +104,12 @@ poTeam 'PO' = GROUP CONCAT fullName (Employee e), ', ' IF po(Team t, e, DATE dat
 smGroup 'SM' = GROUP CONCAT fullName (Employee e), ', ' IF sm(Team t, e, DATE date) AND group(t) == TeamGroup g BY g, date CHARWIDTH 30;
 poGroup 'PO' = GROUP CONCAT fullName (Employee e), ', ' IF po(Team t, e, DATE date) AND group(t) == TeamGroup g BY g, date CHARWIDTH 30;
 
-titleTeam 'Team Description' (Team e) = TEXT (CONCAT '\n', name(e) + ' (' + nameShort(e) + ')', (OVERRIDE email(e),''), (OVERRIDE 'Slack handle: ' + slack(e),''));
+titleTeam 'Team Description' (Team e) = TEXT (CONCAT '\n', 
+    name(e) + ' (' + nameShort(e) + ')', 
+    (OVERRIDE email(e),''), 
+    (OVERRIDE 'Slack handle: ' + slack(e),''),
+    (OVERRIDE 'OKRs: ' + okr(e),''))
+;
 
 EXTEND FORM employee PROPERTIES teamEmployee = teamEmployee(e,currentDate());
 DESIGN employee { additional { MOVE PROPERTY (teamEmployee) { caption = 'Teams'; } } }
@@ -112,7 +119,7 @@ FORM teamGroup 'Group of Teams'
     PROPERTIES(o) name
     
     OBJECTS t = Team
-    PROPERTIES (t) name, nameShort, slack, email, nameClass
+    PROPERTIES (t) order, name, nameShort, slack, email, okr, nameClass
     PROPERTIES(t) NEW, DELETE
     FILTERS group(t) == o
     
@@ -153,7 +160,7 @@ FORM teamGroups 'Groups of Teams'
     PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
     
     OBJECTS t = Team
-    PROPERTIES (t) READONLY nameClass, titleTeam
+    PROPERTIES (t) READONLY order, nameClass, titleTeam
     PROPERTIES (t,date) smTeam, poTeam
     FILTERS group(t) == o
     
@@ -240,6 +247,7 @@ onStarted() + {
     order(TeamCombination d) <- 7 WHERE d == TeamCombination.team;
 }
 employeeNamePosition 'Name with position' (Employee e) = CONCAT ' - ', name[User](e), namePosition(e);
+employeeNamePositionRow 'Name with position in Row' (Employee e) = CONCAT '","', name[User](e), (OVERRIDE namePosition(e),' ');
 employeeTeam 'Team' = GROUP CONCAT employeeNamePosition(Employee e) IF in(Team t, e, DATE date),'\n' BY t,date;
 
 content 'Content' (TeamCombination c, Team t, DATE date) = CASE 
@@ -350,32 +358,33 @@ gsssPublishOrganigramExecutives 'Publish Executives in Organigram on Google Spre
     ELSE MESSAGE 'No Executives dataset for Organigram publication provided.\nContact Administrator';
 }
 
-gsssOrgTeamValuesHeader 'Dataset for Teams headers in Google Spreadsheet' () = '["SM:","Class:","Group:","PO:","Name:","Slack:","Email:","Employees:"]';
+gsssOrgTeamValuesHeader 'Dataset for Teams headers in Google Spreadsheet' () = '["SM:","Class:","Group:","PO:","Name:","Slack:","Email:","OKRs:","Employees:"]';
 
-gsssOrgTeamValues 'Dataset for Teams in Google Spreadsheet' (Team t, DATE date) = '[' + 
-        '"' + smTeam(t,date) + '",' + //WHEN c == TeamCombination.sm THEN smTeam(t,date)
-        '"' + nameClass(t) + '",' + //WHEN c == TeamCombination.class THEN nameClass(t)
-        '"' + nameGroup(t) + '",' + //WHEN c == TeamCombination.group THEN nameGroup(t)
-        '"' + poTeam(t,date) + '",' + //WHEN c == TeamCombination.po THEN poTeam(t,date)
-        '"' + name(t) + '",' + //WHEN c == TeamCombination.title THEN name(t)
-        '"' + slack(t) + '",' + //WHEN c == TeamCombination.slack THEN slack(t)
-        '"' + email(t) + '",' + //WHEN c == TeamCombination.email THEN email(t)
-        '"' + [GROUP CONCAT employeeNamePosition(Employee e) IF in(Team tt, e, DATE d),'\n' BY tt,d](t,date) + '"' +
-        //'"' + smTeam(t,date) + '",' + //WHEN c == TeamCombination.team THEN employeeNamePosition(e)
-    ']';
+gsssOrgTeamValues 'Dataset for single Team in Google Spreadsheet' (Team t, DATE date) = 
+    '["' + (OVERRIDE smTeam(t,date),'') + '",""],' +
+    '["' + (OVERRIDE nameClass(t),'') + '",""],' +
+    '["' + (OVERRIDE nameGroup(t),'') + '",""],' +
+    '["' + (OVERRIDE poTeam(t,date),'') + '",""],' +
+    '["' + (OVERRIDE name(t),'') + '",""],' +
+    '["' + (OVERRIDE slack(t),'') + '",""],' +
+    '["' + (OVERRIDE email(t),'') + '",""],' +
+    '["' + (OVERRIDE okr(t),'') + '",""],' + 
+    '["' + (OVERRIDE [GROUP CONCAT employeeNamePositionRow(Employee e) IF in(Team tt, e, DATE d),'"],["' BY tt,d](t,date), '') + '"]';
 
 gsssOrgTeamsValues 'Dataset for Teams in Google Spreadsheet' (DATE date) = 
     GROUP CONCAT gsssOrgTeamValues(Team t,date),',' IF t IS Team ORDER name(t);
 
 gsssPublishOrganigramTeams 'Publish Teams in Organigram on Google Spreadsheet' (DATE date) {
-    IF gsssOrgTeamsValues(date) THEN  {
-        gsssUpdate('COLUMNS',gsssOrg(),'target!A7',gsssOrgTeamValuesHeader());
-        gsssUpdate('COLUMNS',gsssOrg(),'target!B7',gsssOrgTeamsValues(date));
+    LOCAL column = INTEGER ();
+    IF gsssOrgTeamValuesHeader() THEN  {
+        gsssUpdate('COLUMNS',gsssOrg(),'target!'+a1notation(1,7),gsssOrgTeamValuesHeader());
+        FOR order(Team t) AND gsssOrgTeamValues(t,date) DO 
+            gsssUpdate('ROWS',gsssOrg(),'target!'+a1notation(order(t),7),gsssOrgTeamValues(t,date));
     }
     ELSE MESSAGE 'No Teams dataset for Organigram publication provided.\nContact Administrator';
 }
 
-EXTEND FORM teamGroups PROPERTIES  teamGroupsPrint(date), gsssPublishOrganigramExecutives(date), gsssPublishOrganigramTeams(date);
+EXTEND FORM teamGroups PROPERTIES gsssOrgTeamValues(t,date),  teamGroupsPrint(date), gsssPublishOrganigramExecutives(date), gsssPublishOrganigramTeams(date);
 
 DESIGN teamGroups { date { MOVE PROPERTY (teamGroupsPrint(date)); MOVE PROPERTY (gsssPublishOrganigramExecutives(date)); MOVE PROPERTY (gsssPublishOrganigramTeams(date));} }
 
