@@ -543,7 +543,6 @@ gsssUpdate (STRING[10] type, STRING spreadsheetId, STRING range, TEXT valuesRang
         fileToString(response(), 'UTF-8');
         IF totalUpdatedCells() > 0 THEN {
             printToLog('Data in ' + totalUpdatedCells() + ' cells were updated on Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
-            MESSAGE 'Data in ' + totalUpdatedCells() + ' cells were successfully updated on Google Spreadsheet';
         }
         ELSE {
             printToLog('Error accured during Google Spreadsheet update: ' + resultString());  // Enabled for debugging purposes only

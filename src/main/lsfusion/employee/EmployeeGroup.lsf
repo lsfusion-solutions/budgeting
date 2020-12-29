@@ -384,7 +384,7 @@ gsssPublishOrganigramTeams 'Publish Teams in Organigram on Google Spreadsheet' (
     ELSE MESSAGE 'No Teams dataset for Organigram publication provided.\nContact Administrator';
 }
 
-EXTEND FORM teamGroups PROPERTIES gsssOrgTeamValues(t,date),  teamGroupsPrint(date), gsssPublishOrganigramExecutives(date), gsssPublishOrganigramTeams(date);
+EXTEND FORM teamGroups PROPERTIES teamGroupsPrint(date), gsssPublishOrganigramExecutives(date), gsssPublishOrganigramTeams(date);
 
 DESIGN teamGroups { date { MOVE PROPERTY (teamGroupsPrint(date)); MOVE PROPERTY (gsssPublishOrganigramExecutives(date)); MOVE PROPERTY (gsssPublishOrganigramTeams(date));} }
 
