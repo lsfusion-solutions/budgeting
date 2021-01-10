@@ -25,6 +25,11 @@ contractorTax 'Contractor' = GROUP AGGR Contractor c BY taxID(c);
 accountingName 'Accounting Name' = GROUP AGGR AccountingName c BY lower(name(c));
 accountingContractor 'Contractor by Accounting Name' (ISTRING c) = contractor(accountingName(c));
 
+//CONSTRAINT LOCAL SETCHANGED(regID(Contractor c)) AND contractorReg(regID(c))
+//    MESSAGE 'Contractor with this registration ID already exists in the database.  Please use filter search.';
+//CONSTRAINT LOCAL SETCHANGED(taxID(Contractor c)) AND contractorTax(taxID(c))
+//    MESSAGE 'Contractor with this tax ID already exists in the database.  Please use filter search.';
+
 // Type
 CLASS Type {
     individual 'Individual',

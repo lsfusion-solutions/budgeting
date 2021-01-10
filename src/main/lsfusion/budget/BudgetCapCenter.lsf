@@ -24,6 +24,8 @@ period (CostCenter c, Budget b) = GROUP AGGR Period p WHERE selected(p, b) BY co
 fromDate 'From' = GROUP MIN fromDate(Budget b) IF selected(Period p, b) BY p; 
 toDate 'To' = GROUP MAX toDate(Budget b) IF selected(Period p, b) BY p; 
 
+readonly (Period p, CostCenter c) = monthReadonlyDate() >= fromDate(p) OR monthReadonlyDate(c) >= fromDate(p); 
+
 days (Period p) = daysInclBetweenDates(fromDate(p), toDate(p));
 
 calcSelected (Budget b, CostCenter c) = GROUP SUM 1 IF selected(Period p, b) BY costCenter(p);

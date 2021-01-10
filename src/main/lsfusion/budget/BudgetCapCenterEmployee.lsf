@@ -198,8 +198,8 @@ EXTEND FORM employees
     OBJECTS ep = Period//c = CostCenter
     PROPERTIES BACKGROUND backgroundProtected(q,ep) nameCostCenter(ep)//, quarterPlanned(c,q), plannedSalary(c,q)
     //PROPERTIES BACKGROUND backgroundProtected(q,c) plannedSalary(c,eb) COLUMNS (eb) HEADER name(eb)
-    PROPERTIES(ep,eq) READONLYIF (NOT afg(currentUser())) assigned BACKGROUND backgroundProtected(q,ep) // READONLYIF (readonlyProc(q, ep) OR NOT afg(currentUser()))
-    PROPERTIES READONLYIF (NOT afg(currentUser())) assigned(ep, eb, eq) BACKGROUND backgroundProtected(q,ep) COLUMNS (eb) HEADER name(eb)
+    PROPERTIES(ep,eq) READONLYIF (NOT afg(currentUser()) OR readonly(ep,costCenter(ep))) assigned BACKGROUND backgroundProtected(q,ep) // READONLYIF (readonlyProc(q, ep) OR NOT afg(currentUser()))
+    PROPERTIES READONLYIF (NOT afg(currentUser()) OR readonly(eb,costCenter(ep))) assigned(ep, eb, eq) BACKGROUND backgroundProtected(q,ep) COLUMNS (eb) HEADER name(eb)
     PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq, eb) COLUMNS (eb) HEADER name(eb)
     PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq), salaryNet(ep, eq)
     ORDERS nameCostCenter(ep)
