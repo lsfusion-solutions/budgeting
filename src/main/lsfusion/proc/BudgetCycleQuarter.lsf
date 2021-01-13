@@ -59,9 +59,10 @@ revokeBudget 'Revoke Budget' (CostCenter c, Budget b) {
 } TOOLBAR;
 EXTEND FORM costCenterBudget PROPERTIES revokeBudget(c,bm) DRAW bmd SHOWIF isRevokable(c,bm);
 
-readonlyProc (Budget d, CostCenter c) = isApproved(proposalQuarter(c,quarterNumber(d))) OR NOT quarterBudgeting(quarterNumber(d)); //  OR NOT afg(currentUser())
-readonlyProc (INTEGER q, CostCenter c) = isApproved(proposalQuarter(c,q)) OR NOT quarterBudgeting(q);
+readonlyProc (Budget d, CostCenter c) = isApproved(proposalQuarter(c,quarterNumber(d))) OR NOT quarterBudgeting(quarterNumber(d)) OR readonly(d,c); //  OR NOT afg(currentUser())
+readonlyProc (INTEGER q, CostCenter c) = isApproved(proposalQuarter(c,q)) OR NOT quarterBudgeting(q) OR getQuarter(monthReadonlyDate()) >= q OR getQuarter(monthReadonlyDate(c)) >= q;
 readonlyProc (INTEGER q, Period p) = readonlyProc(q, costCenter(p));
+readonlyProc (Budget d, Period p) = readonlyProc(d, costCenter(p));
 
 EXTEND FORM reviewCostCentersApprove FILTERS isApproved(proposalQuarter(c,q));
 
