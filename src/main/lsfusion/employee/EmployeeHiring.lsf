@@ -58,7 +58,7 @@ gsssValuesRange 'Data fields for Google Spreadsheet' (Employee e) =
     '"' + (OVERRIDE namePosition(e),' ') + '",' +
     '"' + (OVERRIDE teamEmployee(e,currentDate()),' ') + '",' +
     '"' + (OVERRIDE email(e),' ') + '",' +
-    '"yes",' + // Flag
+//    '"yes",' + // Flag
     '"' + (OVERRIDE nameLocation(e),' ') + '",' +
     '"' + (OVERRIDE toDateUS(hiringDate(e)),' ') + '",' +
     '"' + (OVERRIDE toDateUS(probationDate(e)),' ') + '",' +
