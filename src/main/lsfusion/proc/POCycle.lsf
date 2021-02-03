@@ -710,6 +710,9 @@ CONSTRAINT LOCAL amountFix(BudgetDetail d) < MAX (OVERRIDE spent(d),0), (OVERRID
 
 moveBudgetDetail 'Move' (BudgetDetail d) {
 
+    amountFix (BudgetDetail dd) <- NULL WHERE dd != d;
+    amountTransfer (BudgetDetail dd) <- NULL WHERE dd != d;
+    
     amountFix(d) <- MAX (OVERRIDE ceil(spent(d)),0), (OVERRIDE ceil(invoiced(d)),0);
     
     IF amountFix(d) > 0 THEN {
@@ -748,6 +751,9 @@ moveBudgetDetail 'Move' (BudgetDetail d) {
 }
 
 distribBudgetDetail 'Distribute' (BudgetDetail d) {
+
+    amountFix (BudgetDetail dd) <- NULL WHERE dd != d;
+    amountTransfer (BudgetDetail dd) <- NULL WHERE dd != d;
 
     amountFix(d) <- MAX (OVERRIDE ceil(spent(d)),0), (OVERRIDE ceil(invoiced(d)),0);
 
