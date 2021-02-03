@@ -60,13 +60,23 @@ nameStage 'Select Stage' = name (stage());
 currency = DATA LOCAL Currency ();
 nameCurrency 'Select by Currency' = name (currency());
 
+showAllAssignments 'Show all assignments' = DATA BOOLEAN (Employee);
+EXTEND FORM employee
+    PROPERTIES(e) showAllAssignments 
+;
+DESIGN employee {
+    application {
+        MOVE PROPERTY(showAllAssignments(e));
+    }
+}
+
 FORM assignments 'Assignments'
     PROPERTIES () nameStage, nameCurrency
 
     OBJECTS s = Assign GRID
     PROPERTIES(s) ON CHANGE exec(s) dateTimeStart, desc BACKGROUND color(s) , sum //, dateLine
     ORDERS dateTimeStart(s)
-    FILTERS in(currentUser(), s),
+    FILTERS in(currentUser(), s) OR showAllAssignments(currentUser()),
             stage(s) == stage() OR NOT stage(),
             currency(s) == currency() OR NOT currency()
     
