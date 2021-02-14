@@ -124,13 +124,13 @@ FORM teamGroup 'Group of Teams'
     FILTERS group(t) == o
     
     OBJECTS e = Employee
-    PROPERTIES (e) name[User], namePosition
+    PROPERTIES (e) name[User], namePosition, isCandidate
     PROPERTIES (t,e) smIn, smOut, poIn, poOut, inDate, outDate
     
     EDIT TeamGroup OBJECT o
 ;
 
-FORM teamGroups 'Groups of Teams'
+FORM teamGroups 'Organigram'
     OBJECTS date = DATE PANEL 
     PROPERTIES (date) dateName = VALUE 
     
@@ -165,7 +165,7 @@ FORM teamGroups 'Groups of Teams'
     FILTERS group(t) == o
     
     OBJECTS e = Employee
-    PROPERTIES (e) READONLY name[User], namePosition
+    PROPERTIES (e) READONLY name[User], namePosition, isCandidate
     FILTERS in(t,e,date)
     
     EVENTS ON INIT { SEEK teamGroups.date = currentDate(); }
