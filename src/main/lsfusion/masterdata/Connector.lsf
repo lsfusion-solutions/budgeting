@@ -348,6 +348,22 @@ gsssBatchUpdateFilter (STRING spreadsheetId, INTEGER sheetId, INTEGER rows, INTE
     gsssBatchUpdate(spreadsheetId);
 }
 
+gsssBatchUpdateDeleteRow (STRING spreadsheetId, INTEGER sheetId, INTEGER index) {
+    // Delete Row
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#deletedimensionrequest
+    //      spreadsheetId - ID of the Google Spreadsheet
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    
+    batchUpdateRequest() <- '\{"deleteDimension":\{'+
+                                    '"range": \{'+
+                                        '"sheetId": ' + sheetId + ',' + 
+                                        '"dimension": "ROWS",' + 
+                                        '"startIndex": ' + index+ ',' +
+                                        '"endIndex": ' + (index + 1) + 
+                                '\}\}\}';
+    gsssBatchUpdate(spreadsheetId);
+}
 
 //--- Handle Spreadsheet metadata ---
 
@@ -366,8 +382,17 @@ FORM gsssValueRange
 // not used either, because the Id is being generated in system itself with proper uniqueness control
 // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata
 GROUP developerMetadata;
+GROUP location : developerMetadata;
+GROUP dimensionRange : location;
 metadataId = DATA LOCAL INTEGER ();
+startIndex = DATA LOCAL INTEGER (INTEGER);
+
 FORM gsssMetadataId PROPERTIES() IN developerMetadata metadataId;
+
+FORM matchedDeveloperMetadata
+    OBJECTS matchedDeveloperMetadata = INTEGER
+    PROPERTIES(matchedDeveloperMetadata) IN dimensionRange startIndex;
+;
 
 META gsssMetadataHandle (List, key, sheets, column)
     // Define link of Object to Google Spreadsheet by the following parameters:
@@ -377,6 +402,8 @@ META gsssMetadataHandle (List, key, sheets, column)
     //      column - name of Column containing the key value, use Spreadsheets addressing notation 'A:A' 
     
 gsssMetadataId 'Metadata ID' = DATA INTEGER (List);
+gsssMetadataIdIndex 'Metadata ID current position (index)' = DATA INTEGER (List);
+gsssMetadataIdArch 'Metadata ID archive' = DATA INTEGER (List);
 
 metadataId 'Object by Metadata ID' = GROUP AGGR List obj BY gsssMetadataId(obj); // Metadata ID must be unique
 
@@ -397,6 +424,13 @@ gsssMetadataGet 'Create Metadata JSON' (List obj, INTEGER index) = '\{"developer
                                                                 // '"spreadsheet": true' + // alternative location options cannot be combined with each other
                                                                 // '"sheetId": sheetId' +
                                                             '\},'+
+                                                            '"visibility": "DOCUMENT"' +
+                                                    '\}\}';
+
+gsssMetadataLookup 'Search Metadata JSON' (List obj) = '\{"developerMetadataLookup":\{'+
+                                                            '"metadataId": ' + gsssMetadataId(obj) + ',' + // alternative option, drop and let let Google to create the ID
+                                                            '"metadataKey": ' + '"LSFusionRows"' + ',' + // there may be multiple metadata in a spreadsheet with the same key
+                                                            '"metadataValue": ' + '"Row is synchronized with LSFusion ERP"' + ',' + // Data associated with the metadata's key.
                                                             '"visibility": "DOCUMENT"' +
                                                     '\}\}';
 
@@ -486,6 +520,42 @@ gsssMetadataSync 'Sync record with Google Spreadsheet' (List obj) {
             gsssMetadataCreate(obj,indexSearch());
         }
         ELSE printToLog('Google spreadsheet sync was requested for object, but it was not found in there: ' + lower(key(obj)));
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired';
+}
+
+gsssSearchMetadata (List obj) {
+    // Search current properties of the linked Googla Spreadsheet record
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata/search
+    
+    LOCAL payload  = TEXT();
+    LOCAL response  = FILE();
+    LOCAL startIndex = INTEGER(); // The found position
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        IF gsssMetadataId(obj) THEN {
+            payload() <- '\{"dataFilters": ['+ gsssMetadataLookup(obj) + ']\}';
+            printToLog('Sending Metadata search request to Google Spreadsheet: ' + payload());
+            
+            TRY {
+                EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/developerMetadata:search' 
+                    HEADERS gsssAuthHeader 
+                    PARAMS JSONFILE (payload()) 
+                    TO response;
+            } CATCH {
+                fileToString(response(), 'UTF-8');
+                MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString();
+            }
+                
+            fileToString(response(), 'UTF-8');
+            printToLog('Google Spreadsheet Metadata Search: ' + resultString());
+            
+            IMPORT matchedDeveloperMetadata JSON FROM response();
+            FOR startIndex(INTEGER i) DO gsssMetadataIdIndex(obj) <- startIndex(i);
+        }
+        ELSE MESSAGE 'Metadata ID is absent';
     }
     ELSE MESSAGE 'The Google Sheets API Access expired';
 }
