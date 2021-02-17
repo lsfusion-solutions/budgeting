@@ -182,15 +182,11 @@ gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
 }
 
 gsssUpdateEmployee 'Update record on Google Spreadsheet' (Employee e) {
-    IF NOT gsssMetadataId(e) THEN gsssMetadataSync(e);
-    
     IF gsssMetadataId(e) THEN  gsssUpdateDataFilter(gsssTeam(),gsssMetadataId(e),gsssValuesRange(e));
-    ELSE MESSAGE 'There is no such Employee on Google spreadsheet List. Please append the new record';
+    ELSE MESSAGE 'There is no linked Employee on Google spreadsheet List. Please append the new record or re-sync the records either contact administrator';
 }
 
 gsssRemoveEmployee 'Delete record on Google Spreadsheet' (Employee e) {
-    IF NOT gsssMetadataId(e) THEN gsssMetadataSync(e);
-    
     IF gsssMetadataId(e) THEN { // Search current position of the record
         NEWSESSION {
             gsssSearchMetadata(e);
@@ -214,7 +210,11 @@ EXTEND FORM employees
     PROPERTIES(e) READONLY laptop, pc
                   
     PROPERTIES(e) READONLY SHOWIF name(mainRole(e)) = 'Product Owner' scrum, brexCard
+    
+    PROPERTIES () TOOLBAR gsssMetadataSync
 ;
+
+DESIGN employees { TOOLBARBOX { MOVE PROPERTY(gsssMetadataSync()) BEFORE TOOLBARRIGHT; } }
 
 EXTEND FORM employee
     PROPERTIES(e) slackAccount, trelloEstablished, gsssAppendEmployee, gsssUpdateEmployee, gsssRemoveEmployee, // gsssMetadataId, gsssMetadataIdIndex, gsssMetadataIdArch,

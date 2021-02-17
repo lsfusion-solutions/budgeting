@@ -28,6 +28,7 @@ gsssScope 'Authorization Scope' = DATA STRING (); // https://www.googleapis.com/
 gsssTeam 'Team List' = DATA STRING ();
 gsssTeamSheet 'Team List sheet' = DATA INTEGER ();
 gsssTeamColumns 'Team List columns' = DATA INTEGER (); // amount of columns used for basic filter
+gsssTeamLink 'Team List Key column' = DATA INTEGER (); // column containing the key value
 // Spreadsheet with Organigram
 gsssOrg 'Organigram' = DATA STRING ();
 gsssOrgSheet 'Organigram sheet' = DATA INTEGER ();
@@ -198,7 +199,7 @@ gsssAccessTokenUpdate 'Request new Access Token (offline) from the Google Sheets
 EXTEND FORM integrationData
     PROPERTIES() gsssEndpoint, gsssSpreadsheets, gsssDeveloperMetadata, gsssSheets, gsssValues
     PROPERTIES() gsssLogin, gsssClientID, gsssProjectID, gsssAuthURI, gsssTokenURI, gsssAuthProvider, gsssClientSecret, gsssRedirectURI
-    PROPERTIES() gsssTeam, gsssTeamSheet, gsssTeamColumns, gsssOrg, gsssOrgSheet, gsssScope, gsssAccessTokenUpdate//, gsssAuthorizationCodeGet, gsssAccessTokenGet
+    PROPERTIES() gsssTeam, gsssTeamSheet, gsssTeamColumns, gsssTeamLink, gsssOrg, gsssOrgSheet, gsssScope, gsssAccessTokenUpdate//, gsssAuthorizationCodeGet, gsssAccessTokenGet
     //PROPERTIES gsssAuthorizationCodeRequestText = TEXT(gsssAuthorizationCodeRequestString())
     PROPERTIES() READONLY gsssAccessTokenRefresh, gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope
 ;
@@ -241,6 +242,7 @@ DESIGN integrationData {
                     MOVE PROPERTY(gsssTeam()) { panelCaptionVertical = TRUE; }
                     MOVE PROPERTY(gsssTeamSheet()) { panelCaptionVertical = TRUE; }
                     MOVE PROPERTY(gsssTeamColumns()) { panelCaptionVertical = TRUE; }
+                    MOVE PROPERTY(gsssTeamLink()) { panelCaptionVertical = TRUE; }
                 }
                 NEW gsssSpreadsheetOrg {
                     caption = 'Organigram';
@@ -369,13 +371,29 @@ gsssBatchUpdateDeleteRow (STRING spreadsheetId, INTEGER sheetId, INTEGER index) 
 
 // Representation for Resource: ValueRange
 // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values#ValueRange
+GROUP valueranges;
+GROUP valuerange;
 majorDimension = DATA LOCAL STRING();
+majordimension = DATA LOCAL STRING(INTEGER);
 valueRange = DATA LOCAL ISTRING(INTEGER);
 range = DATA LOCAL STRING();
+values = DATA LOCAL STRING(INTEGER);
+valuerangesValues = DATA LOCAL INTEGER(INTEGER);
+valuerangeValues = DATA LOCAL INTEGER(INTEGER);
+
 FORM gsssValueRange
     PROPERTIES() majorDimension, range
     OBJECTS values = INTEGER 
     PROPERTIES(values) valueRange EXTID 'value'
+;
+
+FORM gsssValueRanges
+    OBJECTS valueranges = INTEGER
+
+    OBJECTS values = INTEGER IN valuerange
+    FILTERS valuerangesValues(values) == valueranges
+    PROPERTIES(values) values EXTID 'value'
+    FILTERS valuerangeValues(values) == values
 ;
 
 // Representation for Resource: DeveloperMetadata - shortened to necessary
@@ -460,7 +478,7 @@ gsssMetadataCreate (List obj, INTEGER index) {
     ELSE MESSAGE 'Meatadata ID is already set';
 }
 
-gsssMetadataSync 'Sync record with Google Spreadsheet' (List obj) {
+gsssMetadataSync 'Sync records with Google Spreadsheet' () {
     // Synchronize data integration with a spreadsheet
     // The link way is column, to be abstracted to other dimension types
     // Obtains amount of records, searches first entry of the given data and assigns Metadata to it
@@ -471,58 +489,79 @@ gsssMetadataSync 'Sync record with Google Spreadsheet' (List obj) {
     LOCAL indexRequest  = TEXT();
     LOCAL indexResponse = FILE();
     LOCAL indexRange    = FILE();
+    LOCAL searchObject  = List();
     
     IF NOT gsssAuth() THEN gsssAccessTokenUpdate(); // NOT gsssAccessToken() OR gsssAccessTokenValidity() < currentDateTime()
     
-    IF gsssAuth() THEN { // gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime()
-        
-        EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + '/' + column + ':' + column + '?majorDimension=ROWS' 
-            // alternative option COLUMNS will put column' data in CSV-like format
-            HEADERS gsssAuthHeader
-            TO indexRange;
+    IF gsssAuth() AND gsss###sheets() AND gsss###sheets##Sheet() AND gsss###sheets##Link() THEN { // gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime()
+
+        TRY {
+            EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + '/' + column + ':' + column + '?majorDimension=ROWS' 
+                // alternative option COLUMNS will put column' data in CSV-like format
+                HEADERS gsssAuthHeader
+                TO indexRange;
+        } CATCH {
+            fileToString(indexRange(), 'UTF-8');
+            MESSAGE 'Error returned by Google Spreadsheet ' + gsssValues() + ' service.\n' + resultString();
+        }
+            
         IMPORT gsssValueRange JSON FROM indexRange();
         
         indexIterate() <- 0;
         indexSearch() <- NULL;
-        WHILE valueRange(indexIterate()) AND NOT indexSearch() DO {
-            indexIterate() <- indexIterate() + 1;
-        
+        FOR valueRange(INTEGER item) AND item > 0 AND item < 5 DO {
             indexRequest() <- '\{'+
                                 //'"majorDimension": "ROWS",' + 
                                 //'"valueRenderOption": "FORMATTED_VALUE",' + 
                                 //'"dateTimeRenderOption": "FORMATTED_STRING",' + 
                                 '"dataFilters": [' + // filter can be only one of three types, A1 range is used below
                                     '\{'+
-                                        '"a1Range": "' + column + STRING (indexIterate()) + '"' +
-                                        //'"gridRange": \{'+ // alternative option: GridRange 
-                                        //    '"sheetId": ' + gsss###sheets##Sheet() + ',' + 
-                                        //    '"startRowIndex": ' + indexIterate()-1 + ','
-                                        //    '"endRowIndex": ' + indexIterate() + ',' + // valuable rows amount from append output
-                                        //    '"startColumnIndex": ' + columnInt + ',' + // integer representation of column name
-                                        //    '"endColumnIndex": ' + columnInt + 1 + // end index is exclusive, while start is included
-                                        //  '\}'+
+                                        //'"a1Range": "' + column + STRING (indexIterate()) + '"' +
+                                        '"gridRange": \{'+ // alternative option: GridRange 
+                                            '"sheetId": ' + gsss###sheets##Sheet() + ',' + 
+                                            '"startRowIndex": ' + item + ',' + 
+                                            '"endRowIndex": ' + (item + 1) + ',' + // valuable rows amount from append output
+                                            '"startColumnIndex": ' + gsss###sheets##Link() + ',' + // integer representation of column name
+                                            '"endColumnIndex": ' + (gsss###sheets##Link() + 1) + // end index is exclusive, while start is included
+                                          '\}'+
                                     '\}' +
                                 ']\}';
                                 
             IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+
+            TRY {
+                EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + ':batchGetByDataFilter' 
+                    HEADERS gsssAuthHeader 
+                    PARAMS JSONFILE (indexRequest()) 
+                    TO indexResponse;
+            } CATCH {
+                fileToString(indexResponse(), 'UTF-8');
+                MESSAGE 'Error returned by Google Spreadsheet batchGetByDataFilter service.\n' + indexResponse();
+            }
             
-            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + ':batchGetByDataFilter' 
-                HEADERS gsssAuthHeader 
-                PARAMS JSONFILE (indexRequest()) 
-                TO indexResponse;
-                
+            IMPORT gsssValueRanges JSON FROM indexResponse();
+            FOR values(INTEGER ranges) DO MESSAGE values(ranges);
             fileToString(indexResponse(), 'UTF-8');
             
-            IF isSubstring(lower(resultString()), lower(key(obj))) THEN indexSearch() <- indexIterate() - 1; // GridRange enumerates starting from 0, while A1 range from 1
+            searchObject() <- NULL;
+            FOR values(INTEGER j) DO {
+                searchObject() <- GROUP LAST List obj IF isSubstring(lower(values(j)), lower(key(obj)));
+                printToLog('Record from Google spreadsheet ' + values(j));
+            }
+            IF searchObject() THEN {
+                IF NOT gsssMetadataId(searchObject()) THEN printToLog('New sync for ' + lower(resultString()) + ' in line +' + STRING(item)); //gsssMetadataCreate(searchObject(),item);
+                ELSE printToLog('Record from Google spreadsheet for ' + lower(resultString()) + ' in line +' + STRING(item) + ' was synced previously.');
+                gsssMetadataIdIndex(searchObject()) <- item;
+            }
+            ELSE {
+                printToLog('Record from Google spreadsheet was not found in the database: ' + lower(resultString()));
+                MESSAGE 'Record from Google spreadsheet was not found in the database: ' + lower(resultString());
+            }            
+            //IF isSubstring(lower(resultString()), lower(key(obj))) THEN indexSearch() <- indexIterate() - 1; // GridRange enumerates starting from 0, while A1 range from 1
         }
-        
-        IF indexSearch() THEN {
-            gsssMetadataCreate(obj,indexSearch());
-        }
-        ELSE printToLog('Google spreadsheet sync was requested for object, but it was not found in there: ' + lower(key(obj)));
     }
-    ELSE MESSAGE 'The Google Sheets API Access expired';
-}
+    ELSE MESSAGE 'The Google Sheets API Access was not setup properly';
+} TOOLBAR;
 
 gsssSearchMetadata (List obj) {
     // Search current properties of the linked Googla Spreadsheet record
@@ -648,7 +687,7 @@ gsssUpdate (STRING[10] type, STRING spreadsheetId, STRING range, TEXT valuesRang
 }
 
 gsssUpdateDataFilter (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange) {
-    // Update (replace) existing line in Google Spreadsheet by Metedata based link:
+    // Update (replace) existing line in Google Spreadsheet by Metadata based link:
     //      spreadsheetId - ID of the Google Spreadsheet
     //      metadataId    - Metadata link created using @gsssMetadataHandle routines
     //      valuesRange   - data to be written into the linked row
