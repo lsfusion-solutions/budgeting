@@ -89,7 +89,7 @@ gsssAuthorizationCodeGet 'Request new Authorization Code from the Google Sheets 
                 PARAMS gsssScope(), gsssRedirectURI(), gsssClientID(), gsssLogin();
         }
     }
-    ELSE MESSAGE 'No Google Sheets API Parameters defined';
+    ELSE MESSAGE 'No Google Sheets API Parameters defined' NOWAIT;
 }
 
 gsssAuthorizationCodeSet 'Receive new Authorization Code from the Google Sheets API' (STRING code, STRING scope, STRING error) {
@@ -148,10 +148,10 @@ gsssAccessTokenGet 'Request new Access Token (online) from the Google Sheets API
                 APPLY;
             }
         }
-        ELSE MESSAGE 'No Google Sheets API Parameters defined';
+        ELSE MESSAGE 'No Google Sheets API Parameters defined' NOWAIT;
         //ELSE printToLog('No Google Sheets API Parameters defined');
     }
-    ELSE MESSAGE 'No Google Sheets API Authorization Code established';
+    ELSE MESSAGE 'No Google Sheets API Authorization Code established' NOWAIT;
     //ELSE printToLog('No offline refresh Access Toke provided to access Google Sheets API.');
 }
 
@@ -189,10 +189,10 @@ gsssAccessTokenUpdate 'Request new Access Token (offline) from the Google Sheets
                 APPLY;
             }
         }
-        ELSE MESSAGE 'No Google Sheets API Parameters defined';
+        ELSE MESSAGE 'No Google Sheets API Parameters defined' NOWAIT;
         //ELSE printToLog('No Google Sheets API Parameters defined');
     }
-    ELSE MESSAGE 'No Google Sheets API Refresh Token established';
+    ELSE MESSAGE 'No Google Sheets API Refresh Token established' NOWAIT;
     //ELSE printToLog('No offline refresh Access Toke provided to access Google Sheets API.');
 }
 
@@ -298,15 +298,15 @@ gsssBatchUpdate (STRING spreadsheetId) {
                     TO batchUpdateResponse;
             } CATCH {
                 fileToString(batchUpdateResponse(), 'UTF-8');
-                MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString();
+                MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString() NOWAIT;
             }
                 
             fileToString(batchUpdateResponse(), 'UTF-8');
             printToLog('Google Spreadsheet Batch Update: ' + resultString());
         }
-        ELSE MESSAGE 'Wrong data for Basic filter update';
+        ELSE MESSAGE 'Wrong data for Basic filter update' NOWAIT;
     }
-    ELSE MESSAGE 'The Google Sheets API Access expired';
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
 }
 
 gsssBatchUpdateMerge  (STRING spreadsheetId, INTEGER sheetId, INTEGER startRow, INTEGER endRow, INTEGER startColumn, INTEGER endColumn) {
@@ -363,6 +363,23 @@ gsssBatchUpdateDeleteRow (STRING spreadsheetId, INTEGER sheetId, INTEGER index) 
                                         '"dimension": "ROWS",' + 
                                         '"startIndex": ' + index+ ',' +
                                         '"endIndex": ' + (index + 1) + 
+                                '\}\}\}';
+    gsssBatchUpdate(spreadsheetId);
+}
+
+gsssBatchUpdateDeleteRows (STRING spreadsheetId, INTEGER sheetId, INTEGER indexFrom, INTEGER indexTo) {
+    // Delete Rows
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#deletedimensionrequest
+    //      spreadsheetId - ID of the Google Spreadsheet
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    
+    batchUpdateRequest() <- '\{"deleteDimension":\{'+
+                                    '"range": \{'+
+                                        '"sheetId": ' + sheetId + ',' + 
+                                        '"dimension": "ROWS",' + 
+                                        '"startIndex": ' + indexFrom + ',' +
+                                        '"endIndex": ' + (indexTo + 1) + 
                                 '\}\}\}';
     gsssBatchUpdate(spreadsheetId);
 }
@@ -475,7 +492,7 @@ gsssMetadataCreate (List obj, INTEGER index) {
             APPLY;
         }
     }
-    ELSE MESSAGE 'Meatadata ID is already set';
+    ELSE MESSAGE 'Meatadata ID is already set' NOWAIT;
 }
 
 gsssMetadataSync 'Sync records with Google Spreadsheet' () {
@@ -502,7 +519,7 @@ gsssMetadataSync 'Sync records with Google Spreadsheet' () {
                 TO indexRange;
         } CATCH {
             fileToString(indexRange(), 'UTF-8');
-            MESSAGE 'Error returned by Google Spreadsheet ' + gsssValues() + ' service.\n' + resultString();
+            MESSAGE 'Error returned by Google Spreadsheet ' + gsssValues() + ' service.\n' + resultString() NOWAIT;
         }
             
         IMPORT gsssValueRange JSON FROM indexRange();
@@ -536,11 +553,11 @@ gsssMetadataSync 'Sync records with Google Spreadsheet' () {
                     TO indexResponse;
             } CATCH {
                 fileToString(indexResponse(), 'UTF-8');
-                MESSAGE 'Error returned by Google Spreadsheet batchGetByDataFilter service.\n' + indexResponse();
+                MESSAGE 'Error returned by Google Spreadsheet batchGetByDataFilter service.\n' + indexResponse() NOWAIT;
             }
             
             IMPORT gsssValueRanges JSON FROM indexResponse();
-            FOR values(INTEGER ranges) DO MESSAGE values(ranges);
+            FOR values(INTEGER ranges) DO MESSAGE values(ranges) NOWAIT;
             fileToString(indexResponse(), 'UTF-8');
             
             searchObject() <- NULL;
@@ -555,12 +572,12 @@ gsssMetadataSync 'Sync records with Google Spreadsheet' () {
             }
             ELSE {
                 printToLog('Record from Google spreadsheet was not found in the database: ' + lower(resultString()));
-                MESSAGE 'Record from Google spreadsheet was not found in the database: ' + lower(resultString());
+                MESSAGE 'Record from Google spreadsheet was not found in the database: ' + lower(resultString()) NOWAIT;
             }            
             //IF isSubstring(lower(resultString()), lower(key(obj))) THEN indexSearch() <- indexIterate() - 1; // GridRange enumerates starting from 0, while A1 range from 1
         }
     }
-    ELSE MESSAGE 'The Google Sheets API Access was not setup properly';
+    ELSE MESSAGE 'The Google Sheets API Access was not setup properly' NOWAIT;
 } TOOLBAR;
 
 gsssSearchMetadata (List obj) {
@@ -585,7 +602,7 @@ gsssSearchMetadata (List obj) {
                     TO response;
             } CATCH {
                 fileToString(response(), 'UTF-8');
-                MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString();
+                MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString() NOWAIT;
             }
                 
             fileToString(response(), 'UTF-8');
@@ -594,14 +611,23 @@ gsssSearchMetadata (List obj) {
             IMPORT matchedDeveloperMetadata JSON FROM response();
             FOR startIndex(INTEGER i) DO gsssMetadataIdIndex(obj) <- startIndex(i);
         }
-        ELSE MESSAGE 'Metadata ID is absent';
+        ELSE MESSAGE 'Metadata ID is absent' NOWAIT;
     }
-    ELSE MESSAGE 'The Google Sheets API Access expired';
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
 }
 END
 
 //--- Edit lines ---
-gsssLastAppendedRow = DATA INTEGER ();
+
+//https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/append?authuser=5#response-body
+GROUP updates;
+updatedRange = DATA LOCAL STRING();
+
+FORM gsssValueAppendResponse
+    PROPERTIES() updatedRange IN updates
+;
+
+gsssLastAppendedRow = DATA LOCAL NESTED INTEGER ();
 
 gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
     // Append new line into Google Spreadsheet by the following parameters:
@@ -611,7 +637,6 @@ gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
     // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/append
     
     LOCAL response = FILE();
-    LOCAL tableRange = STRING();
     
     IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
     
@@ -622,20 +647,19 @@ gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
                 PARAMS JSONFILE ('\{' + 
                                     //'"range": "A1"' + // appending to the end of speadsheet, so the parameter is dropped
                                     '"majorDimension": "ROWS",' + // default value as well, so the parameter ay be dropped 
-                                    '"values": [['+ valuesRange + ']]\}') 
+                                    '"values": ['+ valuesRange + ']\}') 
                 TO response;
                 
-            IMPORT FROM response() TO() tableRange // Link by report on the range, which was defined before the apend
-            gsssLastAppendedRow() <- INTEGER (substrFrom(tableRange(),strpos(tableRange(),':')+2));
+            IMPORT gsssValueAppendResponse FROM response(); // Link by report on the range, which was defined before the apend
+            gsssLastAppendedRow() <- INTEGER (substrFrom(updatedRange(),strpos(updatedRange(),':')+2));
             
             fileToString(response(), 'UTF-8');
             printToLog('Data were successfully appended to Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
-            MESSAGE 'Data were successfully appended to Google Spreadsheet in row ' + (gsssLastAppendedRow()+1); // 
-            gsssBatchUpdateFilter(spreadsheetId, sheetId , gsssLastAppendedRow()+1 , gsssTeamColumns()+1);
-            APPLY;
+            //MESSAGE 'Data were successfully appended to Google Spreadsheet in row ' + (gsssLastAppendedRow()) NOWAIT; // 
+            gsssBatchUpdateFilter(spreadsheetId, sheetId , gsssLastAppendedRow() , gsssTeamColumns()+1);
         }
     }
-    ELSE MESSAGE 'The Google Sheets API Access expired';
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
 }
 
 gsssUpdate (STRING[10] type, STRING spreadsheetId, STRING range, TEXT valuesRange) {
@@ -669,7 +693,7 @@ gsssUpdate (STRING[10] type, STRING spreadsheetId, STRING range, TEXT valuesRang
                 TO response;
         } CATCH {
             fileToString(response(), 'UTF-8');
-            MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString();
+            MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString() NOWAIT;
         }
         
         IMPORT FROM response() TO() totalUpdatedCells;
@@ -680,10 +704,10 @@ gsssUpdate (STRING[10] type, STRING spreadsheetId, STRING range, TEXT valuesRang
         }
         ELSE {
             printToLog('Error accured during Google Spreadsheet update: ' + resultString());  // Enabled for debugging purposes only
-            MESSAGE 'Error accured during Google Spreadsheet update.\nContact Administrator';
+            MESSAGE 'Error accured during Google Spreadsheet update.\nContact Administrator' NOWAIT;
         }
     }
-    ELSE MESSAGE 'The Google Sheets API Access expired';
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
 }
 
 gsssUpdateDataFilter (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange) {
@@ -713,7 +737,7 @@ gsssUpdateDataFilter (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange
                 TO response;
         } CATCH {
             fileToString(response(), 'UTF-8');
-            MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString();
+            MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString() NOWAIT;
         }
         
         IMPORT FROM response() TO() totalUpdatedRows;
@@ -721,14 +745,14 @@ gsssUpdateDataFilter (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange
         fileToString(response(), 'UTF-8');
         IF totalUpdatedRows() == 1 THEN {
             printToLog('Data were successfully updated on Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
-            MESSAGE 'Data were successfully updated on Google Spreadsheet';
+            MESSAGE 'Data were successfully updated on Google Spreadsheet' NOWAIT;
         }
         ELSE {
             printToLog('Error accured during Google Spreadsheet update: ' + resultString());  // Enabled for debugging purposes only
-            MESSAGE 'Error accured during Google Spreadsheet update.\nContact Administrator';
+            MESSAGE 'Error accured during Google Spreadsheet update.\nContact Administrator' NOWAIT;
         }
     }
-    ELSE MESSAGE 'The Google Sheets API Access expired';
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
 }
 
 META gsssRowNumberGet (List, key, sheets, column)
@@ -761,12 +785,12 @@ META gsssRowNumberGet (List, key, sheets, column)
                 
                 FOR valueRange(INTEGER i) DO {
                     IF lower(valueRange(i)) == lower(key(obj)) THEN gsss###sheets##Row(obj) <- i;
-                    IF i < 6 THEN MESSAGE i + ': ' + valueRange(i); // Enabled for debugging purposes only
+                    IF i < 6 THEN MESSAGE i + ': ' + valueRange(i) NOWAIT; // Enabled for debugging purposes only
                 }
                 APPLY;
             }
         }
-        ELSE MESSAGE 'The Google Sheets API Access expired';
+        ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
     }
 END
 

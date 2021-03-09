@@ -87,8 +87,8 @@ okr 'OKRs' = DATA STRING[50](Team);
 
 inDate  'in'  = DATA DATE (Team, Employee);
 outDate 'out' = DATA DATE (Team, Employee);
-in 'in Team' (Team t, Employee e, DATE date) = TRUE IF inDate(t, e) <= date AND NOT (outDate(t,e) <= date);
-teamEmployee 'Teams' = GROUP CONCAT nameShort(Team t),', ' IF in(t,Employee e, DATE date) BY e, date;
+in 'in Team' (Team t, Employee e, DATE date) = inDate(t, e) <= date AND NOT (outDate(t,e) <= date);
+teamEmployee 'Teams' = GROUP CONCAT nameShort(Team t) IF in(t, Employee e, DATE date), ', ' ORDER t BY e, date;
 
 smIn  'SM in'  = DATA DATE (Team, Employee);
 smOut 'SM out' = DATA DATE (Team, Employee);

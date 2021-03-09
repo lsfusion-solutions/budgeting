@@ -156,7 +156,7 @@ toDateUS = FORMULA STRING[10] 'to_char(($1),\'MM/DD/YYYY\')';
 toMonthDay = FORMULA STRING[10] 'to_char(($1),\'Mon/DD\')';
 
 nameVisaFull 'Full Visa details' (Visa v) = nameCountry(v) + ' (' + nameVisaStatus(v) + ') until ' + toDateUS(to(v));
-nameVisaFull 'List of Visas for Employee' = GROUP CONCAT nameVisaFull(Visa v), ', ' BY employee(v);
+nameVisaFull 'List of Visas for Employee' = GROUP CONCAT nameVisaFull(Visa v), ', ' BY employee(v) MATERIALIZED;
 
 gsssValuesRange 'Data fields for Google Spreadsheet' (Employee e) = 
     '"' + (OVERRIDE firstName(e),' ') + '",' +
@@ -175,15 +175,15 @@ gsssValuesRange 'Data fields for Google Spreadsheet' (Employee e) =
 
 gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
     IF NOT gsssMetadataId(e) THEN {
-        gsssAppend(gsssTeam(),gsssTeamSheet(),gsssValuesRange(e));
+        gsssAppend(gsssTeam(),gsssTeamSheet(),'[' + gsssValuesRange(e) + ']');
         gsssMetadataCreate (e, gsssLastAppendedRow());
     }
-    ELSE MESSAGE 'Data already exist on Google spreadsheet.\nUse Update record fuctionality';
+    ELSE MESSAGE 'Data already exist on Google spreadsheet.\nUse Update record fuctionality' NOWAIT;
 }
 
 gsssUpdateEmployee 'Update record on Google Spreadsheet' (Employee e) {
     IF gsssMetadataId(e) THEN  gsssUpdateDataFilter(gsssTeam(),gsssMetadataId(e),gsssValuesRange(e));
-    ELSE MESSAGE 'There is no linked Employee on Google spreadsheet List. Please append the new record or re-sync the records either contact administrator';
+    ELSE MESSAGE 'There is no linked Employee on Google spreadsheet List. Please append the new record or re-sync the records either contact administrator' NOWAIT;
 }
 
 gsssRemoveEmployee 'Delete record on Google Spreadsheet' (Employee e) {
@@ -195,12 +195,60 @@ gsssRemoveEmployee 'Delete record on Google Spreadsheet' (Employee e) {
                 gsssMetadataIdArch(e) <- gsssMetadataId(e);
                 gsssMetadataId(e) <- NULL;
                 APPLY;
-                MESSAGE 'Record ' + name[Contact](e) + ' was removed from Google Spreadsheet';
+                MESSAGE 'Record ' + name[Contact](e) + ' was removed from Google Spreadsheet' NOWAIT;
             }
-            ELSE MESSAGE 'A record by the provided Metadata ID for Employee ' + name[Contact](e) + ' was not found. Please contact administrator';
+            ELSE MESSAGE 'A record by the provided Metadata ID for Employee ' + name[Contact](e) + ' was not found. Please contact administrator' NOWAIT;
         }
     }
-    ELSE MESSAGE 'Cannot delete record ' + name[Contact](e) + ' as it is not synced with Google Spreadsheet';
+    ELSE MESSAGE 'Cannot delete record ' + name[Contact](e) + ' as it is not synced with Google Spreadsheet' NOWAIT;
+}
+
+gsssIndex 'Index' = DATA INTEGER (Employee);
+
+gsssValuesRange 'Data fields for Google Spreadsheet' () = 
+    GROUP CONCAT ('[' + TEXT(gsssValuesRange(Employee e)) + ']') IF e IS Employee AND NOT inactive(e) AND NOT isCandidate(e), ', ' ORDER gsssIndex(e), e;
+
+gsssSynchronize 'Synchronize with Google Spreadsheet' () {
+    LOCAL indexRange = FILE();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() AND gsssTeam() AND gsssTeamSheet() THEN {
+        TRY {
+            EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsssTeam() + '/' + gsssValues() + '/' + 'A2' + ':' + 'K' + '?majorDimension=ROWS'
+                // alternative option COLUMNS will put column' data in CSV-like format
+                HEADERS gsssAuthHeader
+                TO indexRange;
+        } CATCH {
+            fileToString(indexRange(), 'UTF-8');
+            MESSAGE 'Error returned by Google Spreadsheet ' + gsssValues() + ' service.\n' + resultString() NOWAIT;
+        }
+        
+        IMPORT gsssValueRange JSON FROM indexRange();
+        
+        LOCAL countRows = INTEGER ();
+        countRows() <- GROUP SUM 1 IF valueRange(INTEGER item);
+        
+        IF countRows() THEN {
+            gsssBatchUpdateDeleteRows(gsssTeam(),gsssTeamSheet(),1,countRows());
+        }
+        
+        gsssAppend(gsssTeam(),gsssTeamSheet(),gsssValuesRange());
+    }
+    ELSE MESSAGE 'The Google Sheets API Access was not setup properly' NOWAIT;
+}
+
+WHEN (GROUP SUM 1 IF SET(Employee e IS Employee) AND NOT inactive(e) AND NOT isCandidate(e)) DO {
+    gsssSynchronize();
+}
+WHEN (GROUP SUM 1 IF DROPPED(Employee e IS Employee) AND NOT PREV(inactive(e)) AND NOT PREV(isCandidate(e))) DO {
+    gsssSynchronize();
+}
+WHEN (GROUP SUM 1 IF CHANGED(inactive(Employee e)) OR CHANGED(isCandidate(e)) OR CHANGED(firstName(e)) OR CHANGED(lastName(e)) OR
+      CHANGED(namePosition(e)) OR CHANGED(teamEmployee(e,currentDate())) OR CHANGED(email(e)) OR CHANGED(nameLocation(e)) OR
+      CHANGED(toDateUS(hiringDate(e))) OR CHANGED(toDateUS(probationDate(e))) OR CHANGED(toMonthDay(birthday(e))) OR
+      CHANGED(phone(e)) OR CHANGED(nameVisaFull(e))) DO {
+    gsssSynchronize();
 }
 
 EXTEND FORM employees

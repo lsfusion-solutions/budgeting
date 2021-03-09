@@ -32,7 +32,7 @@ hiringDate 'Hiring date' = DATA DATE(Employee);
 WHEN SET(hiringDate(Employee e)) DO isCandidate(e) <- NULL;
 
 probationPeriod 'Probation period (months)' = DATA INTEGER (Employee);
-probationDate 'Probation date' (Employee e) = sumMonth(hiringDate(e), probationPeriod(e));
+probationDate 'Probation date' (Employee e) = sumMonth(hiringDate(e), probationPeriod(e)) MATERIALIZED;
  
 passedProbation 'Passed probation' = DATA BOOLEAN (Employee);
 
