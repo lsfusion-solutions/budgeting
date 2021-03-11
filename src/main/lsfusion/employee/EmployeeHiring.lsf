@@ -171,7 +171,7 @@ gsssValuesRange 'Data fields for Google Spreadsheet' (Employee e) =
     '"' + (OVERRIDE toMonthDay(birthday(e)),' ') + '",' +
 //    '" ",' + // No data is needed
     '"' + (OVERRIDE phone(e),' ') + '",' + 
-    '"' + (OVERRIDE nameVisaFull(e),' ') + '"';
+    '"' + (OVERRIDE nameVisaFull(e),' ') + '"' COMPLEX;
 
 gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
     IF NOT gsssMetadataId(e) THEN {
