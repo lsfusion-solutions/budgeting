@@ -70,11 +70,12 @@ CLASS TeamGroup 'Group of Teams';
 TABLE teamgroup (TeamGroup);
 
 name 'Group of Teams' = DATA STRING[30](TeamGroup);
+//
+//CLASS Team 'Team';
+//TABLE team (Team);
+//
+//name 'Team' = DATA STRING[100](Team) NONULL;
 
-CLASS Team 'Team';
-TABLE team (Team);
-
-name 'Team' = DATA STRING[100](Team) NONULL;
 nameShort 'Team' = DATA STRING[15](Team) NONULL;
 order 'Order' = DATA INTEGER (Team) NONULL;
 group 'Group' = DATA TeamGroup (Team);
