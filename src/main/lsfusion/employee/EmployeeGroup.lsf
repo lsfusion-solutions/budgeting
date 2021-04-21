@@ -217,7 +217,7 @@ FORM dialogTeamGroup 'Group of Teams'
 ;
 
 FORM team 'Team'
-    OBJECTS o = Team
+    OBJECTS o = Team PANEL
     PROPERTIES(o) name, nameShort, slack, email, okr
     
     EDIT Team OBJECT o
