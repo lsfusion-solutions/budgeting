@@ -216,9 +216,17 @@ FORM dialogTeamGroup 'Group of Teams'
     LIST TeamGroup OBJECT o
 ;
 
+FORM team 'Team'
+    OBJECTS o = Team
+    PROPERTIES(o) name, nameShort, slack, email, okr
+    
+    EDIT Team OBJECT o
+;
+
 FORM dialogTeam 'Team'
     OBJECTS o = Team
     PROPERTIES(o) READONLY name
+    PROPERTIES(o) NEWSESSION NEW, EDIT, DELETE
     
     LIST Team OBJECT o
 ;
