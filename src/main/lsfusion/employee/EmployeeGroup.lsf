@@ -77,7 +77,7 @@ name 'Group of Teams' = DATA STRING[30](TeamGroup);
 //name 'Team' = DATA STRING[100](Team) NONULL;
 
 nameShort 'Team' = DATA STRING[15](Team) NONULL;
-order 'Order' = DATA INTEGER (Team) NONULL;
+order 'Order' = DATA INTEGER (Team);
 group 'Group' = DATA TeamGroup (Team);
 nameGroup 'Group' (Team t) = name(group(t));
 class 'Class' = DATA TeamClass (Team);
@@ -218,7 +218,7 @@ FORM dialogTeamGroup 'Group of Teams'
 
 FORM team 'Team'
     OBJECTS o = Team PANEL
-    PROPERTIES(o) name, nameShort, slack, email, okr
+    PROPERTIES(o) name, nameShort, slack, email, okr, order
     
     EDIT Team OBJECT o
 ;
