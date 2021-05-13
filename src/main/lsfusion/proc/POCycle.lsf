@@ -757,6 +757,26 @@ moveBudgetDetail 'Move' (BudgetDetail d) {
     }
 }
 
+FORM dialogDistributeBudget 'Transfer into another Budget Item'
+    OBJECTS d = BudgetDetail PANEL 
+    PROPERTIES (d) amountFix, amountTransfer
+    OBJECTS b = BudgetDetail
+    PROPERTIES(b) READONLY canonicalNameCostItem, name, planned 
+    FILTERS quarterNumber(budget(b)) == quarterNumber(budget(d)), costCenter(d) == costCenter(b), d != b, NOT sensitive(b),
+            fromDate(budget(b)) >= monthReadonlyDate()
+    FILTERGROUP sameBudget
+        FILTER 'Same budget' budget(d) = budget(b) DEFAULT
+;
+DESIGN dialogDistributeBudget {
+    OBJECTS {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        MOVE PROPERTY (amountFix(d));
+        MOVE PROPERTY (amountTransfer(d));
+        MOVE BOX (b);
+    }
+}
+
 distribBudgetDetail 'Distribute' (BudgetDetail d) {
 
     amountFix (BudgetDetail dd) <- NULL WHERE dd != d;
@@ -766,7 +786,10 @@ distribBudgetDetail 'Distribute' (BudgetDetail d) {
 
     DIALOG dialogDistributeBudget OBJECTS d = d, b INPUT DO {
         IF amountTransfer(d) AND amountFix(d) THEN {
-            planned(d) <- amountFix(d);
+            IF amountFix(d) = 0 AND NOT spent(d) AND NOT invoiced(d) THEN
+                DELETE d;
+            ELSE
+                planned(d) <- amountFix(d);
             planned(b) <- planned(b) + amountTransfer(d);
         }
         ELSE MESSAGE 'The sum to transfer was not defined';
