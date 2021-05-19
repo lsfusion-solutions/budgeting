@@ -786,9 +786,9 @@ distribBudgetDetail 'Distribute' (BudgetDetail d) {
 
     DIALOG dialogDistributeBudget OBJECTS d = d, b INPUT DO {
         IF amountTransfer(d) AND amountFix(d) THEN {
-            IF amountFix(d) = 0 AND NOT spent(d) AND NOT invoiced(d) THEN
-                DELETE d;
-            ELSE
+            //IF amountFix(d) = 0 AND NOT spent(d) AND NOT invoiced(d) THEN
+            //    DELETE d;
+            //ELSE
                 planned(d) <- amountFix(d);
             planned(b) <- planned(b) + amountTransfer(d);
         }
