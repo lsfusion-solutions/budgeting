@@ -1,0 +1,19 @@
+MODULE POCycleCompany;
+
+REQUIRE POCycle, EmployeeCompany, PurchaseInvoiceCompany;
+
+NAMESPACE Purchase;
+
+// --- Company
+countInvoice (PurchaseOrder o, Company c) = GROUP SUM 1 IF part(Invoice i) = o AND company(i) = c MATERIALIZED;
+skip(Employee e, Assign s) += company(e) AND NOT countInvoice(sbj(s), company(e)); 
+
+EXTEND FORM invoiceLoad
+    PROPERTIES(i) nameCompany
+;
+
+DESIGN invoiceLoad {
+    parameters {
+        MOVE PROPERTY(nameCompany(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 4;}
+    }
+}

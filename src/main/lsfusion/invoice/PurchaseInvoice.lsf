@@ -74,6 +74,8 @@ DESIGN invoice {
                 type = CONTAINERH;
                 MOVE PROPERTY(open(i)) { fill = 1; height = 40; }
                 MOVE PROPERTY(load(i)) { fill = 1; height = 40; }
+                MOVE PROPERTY(openPayment(i)) { fill = 1; height = 40; }
+                MOVE PROPERTY(loadPayment(i)) { fill = 1; height = 40; }
             }
             NEW note {
                 alignment = STRETCH;

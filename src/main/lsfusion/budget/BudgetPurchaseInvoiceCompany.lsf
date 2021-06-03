@@ -1,0 +1,9 @@
+MODULE BudgetPurchaseInvoiceCompany;
+
+REQUIRE BudgetPurchaseInvoice, PurchaseInvoiceCompany;
+
+NAMESPACE Budget;
+
+EXTEND FORM invoices
+    PROPERTIES(i) READONLY nameCompany
+;

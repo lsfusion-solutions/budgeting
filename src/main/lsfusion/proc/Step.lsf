@@ -258,7 +258,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     //assigned (Employee e, Assign###makeStep s) += has###makeStep(e) AND s IS Assign###makeStep; 
     
     WHEN SET(Assign###makeStep s IS Assign###makeStep) DO {
-        FOR assigned(Employee e, s) AND email(e) != email(currentUser()) DO {
+        FOR in(Employee e, s) AND email(e) != email(currentUser()) DO {
             sendNotification(sbj(s), e);
         }
     }

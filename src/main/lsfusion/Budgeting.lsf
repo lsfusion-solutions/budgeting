@@ -11,7 +11,7 @@ REQUIRE Time, Utils, I18n, Eval, Security, Service, Scheduler, SQLUtils, Chat, B
         BudgetExpenseEmployeeReconcile, BudgetExpenseRentReconcile, BudgetExpenseEmployeeTaxReconcile, 
         BudgetCapCenterExpense, BudgetCapCenterContractor, 
         BudgetExecution, BudgetExecutionCostItemGroup,
-        BudgetPurchaseInvoice, BudgetPurchaseInvoiceExpense, PurchaseInvoiceEmail, BudgetPurchaseInvoiceEmail,
+        BudgetPurchaseInvoice, BudgetPurchaseInvoiceExpense, PurchaseInvoiceEmail, BudgetPurchaseInvoiceEmail, BudgetPurchaseInvoiceCompany,
         BudgetProjectStatus, BudgetEmployeePurchaseInvoice,
         BudgetBI, CashFlowBI, Dashboard,
         CostCenter, CostItem, CostItemEmployee, CostCenterEmployee,
@@ -20,6 +20,6 @@ REQUIRE Time, Utils, I18n, Eval, Security, Service, Scheduler, SQLUtils, Chat, B
         EmployeeB, EmployeeLocation, EmployeeHiring,
         AccountB, BudgetAccount,
         PurchaseInvoiceEmployee,
-        Cycle, Step, BudgetCycle, BudgetCycleQuarter, POCycle, PaymentCycle,
+        Cycle, Step, BudgetCycle, BudgetCycleQuarter, POCycle, POCycleCompany, PaymentCycle,
         
         BudgetingMyCompany;
