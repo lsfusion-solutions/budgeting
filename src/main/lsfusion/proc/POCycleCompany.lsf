@@ -4,16 +4,27 @@ REQUIRE POCycle, EmployeeCompany, PurchaseInvoiceCompany;
 
 NAMESPACE Purchase;
 
+showCompany 'Show company' = DATA BOOLEAN (CostCenter);
+EXTEND FORM costCenter
+    PROPERTIES(c) showCompany
+;
+DESIGN costCenter {
+    flag {
+        MOVE PROPERTY(showCompany(c));
+    }
+}
+
 // --- Company
 countInvoice (PurchaseOrder o, Company c) = GROUP SUM 1 IF part(Invoice i) = o AND company(i) = c MATERIALIZED;
-skip(Employee e, Assign s) += company(e) AND NOT countInvoice(sbj(s), company(e)); 
+countCompanies (PurchaseOrder o) = GROUP SUM 1 IF countInvoice(o, Company c) MATERIALIZED;
+skip(Employee e, Assign s) += company(e) AND countCompanies(sbj(s)) AND NOT countInvoice(sbj(s), company(e)); 
 
 EXTEND FORM invoiceLoad
-    PROPERTIES(i) nameCompany
+    PROPERTIES(i) nameCompany SHOWIF showCompany(costCenter(i))
 ;
 
 DESIGN invoiceLoad {
-    parameters {
+    budgetItemDetails {
         MOVE PROPERTY(nameCompany(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 4;}
     }
 }
