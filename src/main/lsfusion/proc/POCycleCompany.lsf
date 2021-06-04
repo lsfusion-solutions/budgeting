@@ -25,6 +25,9 @@ EXTEND FORM invoiceLoad
 
 DESIGN invoiceLoad {
     budgetItemDetails {
-        MOVE PROPERTY(nameCompany(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 4;}
+        MOVE PROPERTY(nameCompany(i)) { caption = 'Paying company'; notNull = TRUE; panelCaptionVertical = TRUE; flex = 4;}
     }
 }
+
+CONSTRAINT SETCHANGED(costCenter(Invoice i)) AND showCompany(costCenter(i)) AND NOT company(i)
+    MESSAGE 'You must specify a paying company';
