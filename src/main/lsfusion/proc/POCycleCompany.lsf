@@ -17,6 +17,7 @@ DESIGN costCenter {
 // --- Company
 countInvoice (PurchaseOrder o, Company c) = GROUP SUM 1 IF part(Invoice i) = o AND company(i) = c MATERIALIZED;
 countCompanies (PurchaseOrder o) = GROUP SUM 1 IF countInvoice(o, Company c) MATERIALIZED;
+companies 'Companies' (PurchaseOrder o) = GROUP CONCAT name(Company c) IF countInvoice(o, c), ',' ORDER c MATERIALIZED CHARWIDTH 15;
 skip(Employee e, Assign s) += company(e) AND countCompanies(sbj(s)) AND NOT countInvoice(sbj(s), company(e)); 
 
 EXTEND FORM invoiceLoad
@@ -31,3 +32,15 @@ DESIGN invoiceLoad {
 
 CONSTRAINT SETCHANGED(costCenter(Invoice i)) AND showCompany(costCenter(i)) AND NOT company(i)
     MESSAGE 'You must specify a paying company';
+
+companies 'Companies' (Assign s) = companies(sbj(s)); 
+EXTEND FORM assignments
+    PROPERTIES(s) READONLY companies
+;
+
+EXTEND FORM approve PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM enter PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM purchaseOrder PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM reject PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM review PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM update PROPERTIES(d) READONLY nameCompany;
