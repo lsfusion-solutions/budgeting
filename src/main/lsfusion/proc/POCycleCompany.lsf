@@ -44,3 +44,11 @@ EXTEND FORM purchaseOrder PROPERTIES(d) READONLY nameCompany;
 EXTEND FORM reject PROPERTIES(d) READONLY nameCompany;
 EXTEND FORM review PROPERTIES(d) READONLY nameCompany;
 EXTEND FORM update PROPERTIES(d) READONLY nameCompany;
+
+// notification
+
+processNotification(PurchaseOrder o) + {
+    notificationHeader() <- replace(notificationHeader(), 'company(s)', OVERRIDE companies(o), '');
+    notificationText() <- replace(notificationText(), 'company(s)', OVERRIDE companies(o), '');
+    notificationDetails() <- replace(notificationDetails(), 'company(s)', OVERRIDE companies(o), '');
+}

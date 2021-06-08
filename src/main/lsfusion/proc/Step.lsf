@@ -73,6 +73,10 @@ META defineStep (id,capName,ClassName)
     notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n);
 END
 
+notificationHeader = DATA LOCAL TEXT ();
+notificationText = DATA LOCAL TEXT ();
+notificationDetails = DATA LOCAL TEXT ();
+
 META defineNotification (id,capName,ClassName,Category)
     generateHeader (##ClassName s) = STRING(replace(replace(header(notification(step(s))),
                                                                                    Category##'(s)', name###Category(s)),
@@ -81,10 +85,15 @@ META defineNotification (id,capName,ClassName,Category)
                                                                                    Category##'(s)', name###Category(s)),
                                                                                    'date(s)', toDateDDMMYY(currentDate())), 
                                                                                    'planned(s)', STRING(INTEGER(planned(s)))));
+    processNotification ABSTRACT (ClassName); 
     sendNotification 'Send Notification' (##ClassName s, Employee e) {
         IF notification(step(s)) AND email(e) AND NOT disableNotification() AND NOT inactive(e) AND login(e) THEN {
-            IF attachment(s) THEN sendNotificationFile(generateHeader(s),generateNotification(s),generateDetails(s),email(e),attachment(s),attachmentName(s));
-            ELSE sendNotification(generateHeader(s),generateNotification(s),generateDetails(s),email(e));
+            notificationHeader() <- generateHeader(s);
+            notificationText() <- generateNotification(s);
+            notificationDetails() <- generateDetails(s);
+            processNotification(s);
+            IF attachment(s) THEN sendNotificationFile(notificationHeader(),notificationText(),notificationDetails(),email(e),attachment(s),attachmentName(s));
+            ELSE sendNotification(notificationHeader(),notificationText(),notificationDetails(),email(e));
         }
     } 
     EXTEND FORM notificationsForms
