@@ -78,6 +78,7 @@ backgroundAssignedQuarter (Budget b, Employee e) = GROUP MAX backgroundAssigned(
 backgroundAssignedQuarter (INTEGER q, Employee e) = GROUP MAX backgroundAssigned(Budget be,e) IF quarterNumber(be) == q;
 backgroundProtected (INTEGER q, CostCenter c) = RGB(240,240,240) IF readonlyProc(q, c);
 backgroundProtected (INTEGER q, Period p) = backgroundProtected(q, costCenter(p));
+backgroundProtected (Period p) = backgroundProtected(quarterNumber(firstBudget(p)), costCenter(p));
 isAssignedQuarter (CostCenter c, Budget b, Employee e) = TRUE IF GROUP MAX assigned(period(c,Budget be),be,e) IF quarterNumber(be) == quarterNumber(b);
 isAssignedQuarter (CostCenter c, INTEGER q, Employee e) = TRUE IF GROUP MAX assigned(period(c,Budget be),be,e) IF quarterNumber(be) == q;
 isAssignedQuarter (Period p, INTEGER q, Employee e) = isAssignedQuarter(costCenter(p),q,e);
@@ -173,6 +174,10 @@ WHEN SETCHANGED(salary(costCenter(SalaryBudgetDetail d), costItem(d), budget(d))
 plannedSalary 'Salary planned, USD' = GROUP SUM planned(SalaryBudgetDetail d) BY costCenter(d), budget(d);
 plannedSalary 'Salary planned, USD' = GROUP SUM plannedSalary(CostCenter c, Budget b) BY c, quarterNumber(b);
 
+copyAssigned 'Copy from previous period' (INTEGER q, Employee e) {
+    assigned(Period p, e) <- assigned(prevPeriod(p), e) WHERE period(costCenter(p), q) = p AND NOT assigned(p, e) AND NOT readonlyProc(p);
+}
+
 // Flow editor
 showSensitiveColumns 'Show sensitive columns' = DATA LOCAL NESTED BOOLEAN ();
 EXTEND FORM employees
@@ -190,7 +195,8 @@ EXTEND FORM employees
     //OBJECTS c = CostCenter
     OBJECTS eq = Employee
     PROPERTIES(eq) READONLY firstName, lastName, namePosition
-    PROPERTIES assignedQuarter(q, eq) BACKGROUND backgroundAssignedQuarter(q, eq) 
+    PROPERTIES assignedQuarter(q, eq) BACKGROUND backgroundAssignedQuarter(q, eq)
+    PROPERTIES copyAssigned(q, eq) GRID
     ORDERS lastName(eq), firstName(eq)
     FILTERS isSubstring(lower(firstName(eq)), lower(searchByName())) OR isSubstring(lower(lastName(eq)), lower(searchByName())) OR isSubstring(lower(namePosition(eq)), lower(searchByName())) OR NOT searchByName(),
             NOT fromDate(eb) > fromDate(monthTo(eq))
@@ -198,7 +204,7 @@ EXTEND FORM employees
     OBJECTS ep = Period//c = CostCenter
     PROPERTIES READONLY BACKGROUND backgroundProtected(q,ep) nameCostCenter(ep)//, quarterPlanned(c,q), plannedSalary(c,q)
     //PROPERTIES BACKGROUND backgroundProtected(q,c) plannedSalary(c,eb) COLUMNS (eb) HEADER name(eb)
-    PROPERTIES(ep,eq) READONLYIF (NOT afg(currentUser()) OR readonlyProc(q,ep)) assigned BACKGROUND backgroundProtected(q,ep) // READONLYIF (readonlyProc(q, ep) OR NOT afg(currentUser()))
+    PROPERTIES(ep,eq) READONLYIF (NOT afg(currentUser()) OR readonlyProc(ep)) assigned BACKGROUND backgroundProtected(ep) // READONLYIF (readonlyProc(q, ep) OR NOT afg(currentUser()))
     PROPERTIES READONLYIF (NOT afg(currentUser()) OR readonlyProc(eb,ep)) assigned(ep, eb, eq) BACKGROUND backgroundProtected(q,ep) COLUMNS (eb) HEADER name(eb)
     PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq, eb) COLUMNS (eb) HEADER name(eb)
     PROPERTIES BACKGROUND backgroundProtected(q,ep) salary(ep, eq), salaryNet(ep, eq)

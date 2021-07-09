@@ -17,12 +17,15 @@ TABLE periodBudget (Period, Budget);
 selected 'Selected' = DATA BOOLEAN (Period, Budget);
 
 budgetCount 'Budget count' (Period p) = GROUP SUM 1 IF selected(p, Budget b); 
+firstBudget 'First budget' (Period p) = GROUP MIN Budget b IF selected(p, b); 
 
 // Budget of this Cost Center may be selected into period only once
 period (CostCenter c, Budget b) = GROUP AGGR Period p WHERE selected(p, b) BY costCenter(p); 
 
-fromDate 'From' = GROUP MIN fromDate(Budget b) IF selected(Period p, b) BY p; 
-toDate 'To' = GROUP MAX toDate(Budget b) IF selected(Period p, b) BY p; 
+fromDate 'From' = GROUP MIN fromDate(Budget b) IF selected(Period p, b) BY p MATERIALIZED; 
+toDate 'To' = GROUP MAX toDate(Budget b) IF selected(Period p, b) BY p MATERIALIZED; 
+
+prevPeriod (Period p) = PARTITION PREV p ORDER fromDate(p), p BY costCenter(p); 
 
 readonly (Period p, CostCenter c) = monthReadonlyDate() >= fromDate(p) OR monthReadonlyDate(c) >= fromDate(p); 
 
