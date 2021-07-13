@@ -200,6 +200,7 @@ EXTEND FORM employees
     ORDERS lastName(eq), firstName(eq)
     FILTERS isSubstring(lower(firstName(eq)), lower(searchByName())) OR isSubstring(lower(lastName(eq)), lower(searchByName())) OR isSubstring(lower(namePosition(eq)), lower(searchByName())) OR NOT searchByName(),
             NOT fromDate(eb) > fromDate(monthTo(eq))
+    FILTERGROUP inactiveq FILTER 'Active' NOT inactive(eq) DEFAULT 
     
     OBJECTS ep = Period//c = CostCenter
     PROPERTIES READONLY BACKGROUND backgroundProtected(q,ep) nameCostCenter(ep)//, quarterPlanned(c,q), plannedSalary(c,q)
