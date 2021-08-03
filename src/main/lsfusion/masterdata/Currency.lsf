@@ -1,6 +1,6 @@
 MODULE Currency;
 
-REQUIRE System, MasterData, Time;
+REQUIRE System, MasterData, Time, Utils;
 
 CLASS Currency 'Currency';
 TABLE currency(Currency);
@@ -8,18 +8,21 @@ TABLE currency(Currency);
 name 'Name' = DATA ISTRING[50](Currency) IN id CHARWIDTH 5;
 currencyName = GROUP AGGR Currency currency BY name(currency);
 
+shortName 'Short name' = DATA BPSTRING[3] (Currency);
+currencyShortName (string) = GROUP AGGR Currency currency WHERE currency IS Currency BY shortName(currency);
+
 // Формы
 
 FORM currency 'Currency'
     OBJECTS c = Currency PANEL
-    PROPERTIES(c) name
+    PROPERTIES(c) name, shortName
 
     EDIT Currency OBJECT c
 ;
 
 FORM currencies 'Currencies'
     OBJECTS c = Currency
-    PROPERTIES(c) READONLY name
+    PROPERTIES(c) READONLY name, shortName
 
     PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE 
 ;
@@ -172,5 +175,108 @@ DESIGN options {
     commons {
         MOVE PROPERTY(nameDefaultCurrency());
         MOVE PROPERTY(nameDefaultTypeExchange());
+    }
+}
+
+extraSID 'CBRF code' = DATA BPSTRING[6] (Currency);
+currencyExtraSID (string) = GROUP AGGR Currency currency WHERE currency IS Currency BY extraSID(currency);
+
+EXTEND FORM currency PROPERTIES (c) extraSID;
+
+EXTEND FORM currencies PROPERTIES(c) READONLY extraSID;
+
+//----------------------------------------------- Импорт курсов ----------------------------------------------------
+importCBRFExchangeRateDateFrom 'Date from' = DATA DATE ();
+importCBRFExchangeRateDateTo 'Date to' = DATA DATE ();
+
+numCode = DATA LOCAL STRING(INTEGER);
+charCode = DATA LOCAL STRING(INTEGER);
+nominal = DATA LOCAL STRING(INTEGER);
+name = DATA LOCAL STRING(INTEGER);
+value = DATA LOCAL STRING(INTEGER);
+ID = DATA LOCAL STRING(INTEGER);
+date = DATA LOCAL STRING();
+name1 = DATA LOCAL STRING();
+
+FORM valCurs FORMEXTID 'ValCurs'
+PROPERTIES() date EXTID 'Date' ATTR, name1 EXTID 'name' ATTR
+
+OBJECTS valute = INTEGER EXTID 'Valute'
+PROPERTIES(valute) numCode EXTID 'NumCode', charCode EXTID 'CharCode', nominal EXTID 'Nominal', name EXTID 'Name', value EXTID 'Value', ID ATTR
+;
+
+importCBRFExchangeRate 'Import CBRF exchange rates (current)'()  { 
+    NEWSESSION {
+        LOCAL xml = FILE ();
+                
+        EXTERNAL HTTP GET 'http://www.cbr.ru/scripts/XML_daily.asp?' TO xml; 
+        IMPORT valCurs XML FROM xml();
+        
+        LOCAL type = TypeExchange();
+        type() <- GROUP MAX TypeExchange t IF currency(t) == currencyName('RUB');
+        
+        IF NOT type() THEN {
+            MESSAGE 'Need to create exchange rate with currency RUB';
+            BREAK;
+        } 
+        ELSE {
+            FOR [GROUP SUM 1 IF (name(Currency c) == name(INTEGER i) OR numCode(i) == extraSID(c) OR name(c) == charCode(i)) 
+                BY i, c](INTEGER i, Currency c) DO {
+                value(i) <- replace(value(i), ',', '.');
+                rate(type(), c, toDateFormat(date(), 'dd-MM-yyyy')) <- NUMERIC[20,13](NUMERIC[8,6](value(i)) / INTEGER(nominal(i)));
+                name(c) <- STRING[50](name(i));
+                extraSID(c) <- BPSTRING[6](numCode(i));
+                name(c) <- BPSTRING[3](charCode(i));                
+            }
+            rate(type(), currencyName('RUB'), toDateFormat(date(), 'dd-MM-yyyy')) <- 1;
+        }
+        APPLY;
+    } 
+}
+
+importCBRFExchangeRateDates 'Import CBRF exchange rates (dates)'()  { 
+    LOCAL type = TypeExchange();
+    type() <- GROUP MAX TypeExchange t IF currency(t) == currencyName('RUB');
+    
+    IF NOT type() THEN {
+        MESSAGE 'Need to create exchange rate with currency RUB';
+        BREAK;
+    } ELSE FOR iterate(DATE d, importCBRFExchangeRateDateFrom(), importCBRFExchangeRateDateTo()) DO {
+        LOCAL xml = FILE ();
+                        
+        EXTERNAL HTTP GET 'http://www.cbr.ru/scripts/XML_daily.asp?date_req=' + toChar(d, 'dd/MM/yyyy') TO xml; 
+        IMPORT valCurs XML FROM xml();
+         
+        FOR [GROUP SUM 1 IF (name(Currency c) == name(INTEGER i) OR numCode(i) == extraSID(c) OR name(c) == charCode(i)) 
+        BY i, c](INTEGER i, Currency c) DO {
+            value(i) <- replace(value(i), ',', '.');
+            rate(type(), c, toDateFormat(date(), 'dd-MM-yyyy')) <- NUMERIC[20,13](NUMERIC[8,6](value(i)) / INTEGER(nominal(i)));
+            name(c) <- STRING[50](name(i));
+            extraSID(c) <- BPSTRING[6](numCode(i));
+            name(c) <- BPSTRING[3](charCode(i));                
+        }
+        rate(type(), currencyName('RUB'), toDateFormat(date(), 'dd-MM-yyyy')) <- 1;
+        
+    }
+    EXEC apply();
+}
+
+EXTEND FORM typeExchangeCurrencyDate
+    PROPERTIES() importCBRFExchangeRate, importCBRFExchangeRateDateFrom, importCBRFExchangeRateDateTo, importCBRFExchangeRateDates
+;
+
+DESIGN typeExchangeCurrencyDate {
+    topContainer {
+        NEW import { 
+            type = CONTAINERV;
+            caption = 'Import';
+            MOVE PROPERTY(importCBRFExchangeRate());
+            NEW dates {
+                type = CONTAINERH;
+                MOVE PROPERTY(importCBRFExchangeRateDateFrom()) { align = CENTER; }
+                MOVE PROPERTY(importCBRFExchangeRateDateTo()) { align = CENTER; }
+                MOVE PROPERTY(importCBRFExchangeRateDates());
+            }
+        }
     }
 }

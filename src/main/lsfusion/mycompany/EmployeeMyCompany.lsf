@@ -20,8 +20,8 @@ DESIGN employee {
 }
 
 onStarted() + {
-    firstName[Individual](Employee e) <- firstName[Contact](e) WHERE firstName[Contact](e); 
-    lastName[Individual](Employee e) <- lastName[Contact](e) WHERE lastName[Contact](e); 
+    firstName[Individual](Employee e) <- STRING[30](firstName[Contact](e)) WHERE firstName[Contact](e); 
+    lastName[Individual](Employee e) <- STRING[30](lastName[Contact](e)) WHERE lastName[Contact](e); 
 }
 
 // location
