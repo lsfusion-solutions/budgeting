@@ -17,6 +17,9 @@ EXTEND FORM expenses
     OBJECTS ce = (cc = CostCenter, ee = Employee)
     PROPERTIES SHOWIF ie IS RentExpense READONLY name(cc), name(ee), canonicalNameCostItem(ee), nameRentCostItem(ee, ie), assigned(ie, cc, ee), amount(ie, cc, ee)
     FILTERS assigned(ie, cc, ee)
+    
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(cc) DEFAULT
 ;
 
 DESIGN expenses {
@@ -24,9 +27,8 @@ DESIGN expenses {
         expenseMark {
             MOVE PROPERTY(markAsRent(ie));
         }
-        NEW rentParameters {
-            type = CONTAINERH;
-            MOVE PROPERTY(nameLocation(ie));
+        purchaseDetails {
+            MOVE PROPERTY(nameLocation(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
         }
         MOVE BOX(ce);        
     }

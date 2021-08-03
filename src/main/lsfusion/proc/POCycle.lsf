@@ -1,0 +1,799 @@
+MODULE POCycle;
+
+REQUIRE Step, BudgetContractPurchaseInvoice, BudgetEmployeePurchaseInvoice, CostCenterEmployee, BudgetPurchaseInvoice, BudgetCapCenterRent;
+
+NAMESPACE Purchase;
+
+EXTEND CLASS Stage 
+{
+    po 'Purchase Order formation'
+}
+onStarted() + { 
+    color(Stage s) <- RGB(225, 255, 240) WHERE s == Stage.po; 
+}
+GROUP rolePo 'Purchasing';
+
+//--- Objects --
+
+CLASS PurchaseOrder 'Purchase Order';
+TABLE purorder (PurchaseOrder);
+
+author 'Author' = DATA Employee (PurchaseOrder);
+nameAuthor 'Author' (PurchaseOrder b) = name(author(b)) CHARWIDTH 20;
+dateTime 'Created' = DATA DATETIME (PurchaseOrder) CHARWIDTH 20;
+datePlan 'Date plan' = DATA DATE (PurchaseOrder) CHARWIDTH 10;
+
+sbj = ABSTRACT PurchaseOrder (Assign) MATERIALIZED;
+part = DATA PurchaseOrder (Invoice); // Purchase order may include multiple items, each is named Invoice
+countInvoices 'Number of Invoices in Purchase Order' = GROUP SUM 1 BY part(Invoice i);
+
+planned 'Planned, USD' (PurchaseOrder b) = GROUP SUM NUMERIC[16,2](invoiced(Invoice d)) BY part(d);
+currency 'Currency' (PurchaseOrder b) = GROUP LAST currency(Invoice d) BY part(d);
+numberCostCenter 'Number by Cost Center' (PurchaseOrder b, CostCenter c) = GROUP SUM 1 IF  part(Invoice d) == b AND costCenter(d) == c;
+numberContractor 'Number by Contractor' = GROUP SUM 1 BY part(Invoice d) , contractor(d); //  (PurchaseOrder b, Contractor c)
+numberEmployee 'Number by Employee' (PurchaseOrder b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF approve(c,e) OR owner(c) == e; 
+access 'Access' (PurchaseOrder b, Employee e) = TRUE IF numberEmployee(b,e) > 0; 
+
+author (PurchaseOrder b) <- currentUser() WHEN SET(b IS PurchaseOrder);
+dateTime(PurchaseOrder b) <- currentDateTime() WHEN CHANGED(planned(b));
+nameExplainCostCenter 'Cost Centers involved' (PurchaseOrder b) = GROUP CONCAT name(CostCenter c),'; ' IF numberCostCenter(b,c) ORDER name(c) CHARWIDTH 50;
+nameExplainContractor 'Contractors involved' (PurchaseOrder b) = GROUP CONCAT name(Contractor c),'; ' IF numberContractor(b,c) ORDER name(c) CHARWIDTH 50;
+nameExplain 'Cost Center and Contractor' (PurchaseOrder b) = CONCAT ' - ',nameExplainCostCenter(b),nameExplainContractor(b) CHARWIDTH 50;
+
+// Extend basic items
+existInvoices 'Exist invoices' (PurchaseOrder o) = TRUE IF [GROUP SUM 1 IF amount(Invoice i) BY part(i)](o);
+urgent 'Urgent' = DATA BOOLEAN (Invoice);
+color 'Color' (PurchaseOrder o) = RGB(250,200,200) IF [GROUP SUM 1 IF urgent(Invoice i) BY part(i)](o);
+supply 'Known Supplier' = DATA BOOLEAN (Invoice);
+searchSupply 'Search Supplier' (PurchaseOrder o) = TRUE IF [GROUP SUM amount(Invoice i) IF NOT contractor(i) BY part(i)](o);
+budgetDetailName 'Budget Item' (Invoice d) = CONCAT ' - ', nameBudget(budgetDetail(d)), name(budgetDetail(d));  
+budgetDetailNameSum 'Budget Item' (Invoice d) = name(budgetDetail(d)) + ' (' + STRING (INTEGER(planned(budgetDetail(d)))) + ' USD)';  
+longBudgetDetailName 'Budget Item' (Invoice d) = longBudgetName(budgetDetail(d));  
+costItemName 'Cost type' (Invoice d) = canonicalNameCostItem(budgetDetail(d));
+planned 'Budgeted, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
+//spent 'Spent, USD' (Invoice d) = spent(budgetDetail(d)) CHARWIDTH 10;
+
+// Attachment
+attachmentName (PurchaseOrder p) = IF countInvoices(p) == 1 THEN 'Invoice' ELSE 'InvoicesArchive';
+attachment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST file(Invoice i) BY part(i)](p) ELSE NULL;
+attachmentPayment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST payment(Invoice i) BY part(i)](p) ELSE NULL;
+
+// Threshold prepare
+limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
+limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostItem);
+paidCash 'Paid' = DATA BOOLEAN (Invoice);
+EXTEND FORM costCenters PROPERTIES (c) limit;
+EXTEND FORM costCenter PROPERTIES (c) limit;
+DESIGN costCenter {flag{MOVE PROPERTY (limit(c));}}
+EXTEND FORM costItems PROPERTIES (c) limit;
+EXTEND FORM costItem PROPERTIES (c) limit;
+
+//--- Initialize Procedure ---
+
+@defineStep(po,'Purchasing cycle',PurchaseOrder);
+EXTEND CLASS Step
+{
+    enter 'Entered',
+    review 'Approved',
+    approve 'AFG Passed',
+    reject 'Rejected',
+    update 'Update',
+    pay 'Paid'
+}
+
+// Summing up
+
+gotApproval 'In the loop' (Invoice i) = TRUE IF NOT (step(part(i)) == Step.reject); //  OR tep(part(i)) == Step.update OR step(part(i)) == Step.enter
+invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM NUMERIC[14,2](round0(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate())))) IF gotApproval(i) BY budgetDetail(i); 
+invoiced 'Invoiced, USD' (Budget b, CostCenter cp) = GROUP SUM invoiced(BudgetDetail d) BY budget(d), costCenter(d);
+invoiced 'Invoiced, USD' = GROUP SUM invoiced(Budget b, CostCenter cp) BY cp,quarterNumber(b);
+//EXTEND FORM budgetDetails PROPERTIES(d) READONLY invoiced;
+EXTEND FORM costCenterBudget PROPERTIES invoiced(bm,c), invoiced(bmd) AFTER spentInteger(bmd), invoiced(c,q), invoiced(bqd) AFTER spentInteger(bqd);
+EXTEND FORM budgetDetails PROPERTIES(d) invoiced AFTER spent(d);
+WHEN CHANGED(amount(Invoice i)) OR CHANGED(currency(i)) DO {
+    approved(i) <- invoiced(budgetDetail(i)) <= planned(budgetDetail(i)); 
+}
+left 'Left' (BudgetDetail d) = planned(d) (-) invoiced(d);
+
+balance 'Balance Remain, USD' (BudgetDetail d, DATE date) = IF date IS DATE THEN 
+    ((OVERRIDE planned(d),0) - (IF getQuarter(date) == quarterNumber(budget(d)) THEN (OVERRIDE invoiced(d),0) ELSE (OVERRIDE spent(d),0))) ELSE NULL CHARWIDTH 10;
+balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),(OVERRIDE date(d),currentDate())) CHARWIDTH 10;
+//CONSTRAINT balance(Invoice d) < 0 AND d IS Invoice CHECKED BY amount[Invoice] MESSAGE 'The selected Budget was overspent';
+amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
+fullName 'Invoice name' (Invoice i) = CONCAT ' ',number(i),'dated',date(i),'for',amountName(i);
+
+budgetDetailSum 'Budget Items' = GROUP CONCAT budgetDetailNameSum(Invoice i),', ' BY part(i);
+
+quarterInvoiced 'Invoiced, USD' (CostCenter c, INTEGER q) = GROUP SUM invoiced(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balance(BudgetDetail d, currentDate()) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
+EXTEND FORM budgetPortionsOverview 
+PROPERTIES(c,q) AFTER quarterPlannedInteger(c,q) quarterInvoiced, quarterBalance BACKGROUND RGB (200,250,200)
+PROPERTIES invoiced(d), balanceItem=balance(d,currentDate()) DRAW d BACKGROUND RGB (200,250,200), spent(d)
+; 
+DESIGN budgetPortionsOverview { PROPERTY (balanceItem) { caption = 'Balance Remain, USD'; }}
+
+passThreshold 'Limit' (Invoice i) = balance(i) > 0 AND invoiced(i) <= limit(costCenter(budgetDetail(i))) AND (invoiced(i) <= limit(costItem(budgetDetail(i))) OR NOT limit(costItem(budgetDetail(i))));
+passThreshold 'Limit' (PurchaseOrder p) = TRUE IF NOT [GROUP SUM 1 IF NOT passThreshold(Invoice i) BY part(i)](p);
+
+CONSTRAINT NOT existInvoices(PurchaseOrder p) AND step(p) MESSAGE 'Please add at list one item into Purchase';
+
+// Continue initialization
+
+budgetItem 'Budget detail full name' (Invoice i) = CONCAT '<br>',nameCostCenter(i),costItemName(i),budgetDetailName(i);
+budgetItems 'Budget details involved' (PurchaseOrder o) = GROUP CONCAT TEXT(budgetItem(Invoice i) + ': <b>' + amountName(i)),'</b><br><br>' BY part(i);
+generateDetails (PurchaseOrder s) = STRING(replace(replace(details(notification(step(s))),
+                                                                               'budgetItems(s)', budgetItems(s)),
+                                                                               'passThreshold(s)', (IF passThreshold(s) THEN 'Passed Limits automatically' ELSE 'Over automatical limits') ));
+@defineNotification(po,'Purchasing cycle',PurchaseOrder,author);
+
+FORM selectPO
+    OBJECTS o = PurchaseOrder
+    PROPERTIES(o) READONLY nameAuthor, nameStep, planned
+    FILTERS generateNotification(o) AND generateDetails(o)
+;
+testNotification 'Test Notification' () {
+    DIALOG selectPO OBJECTS o INPUT DO {
+        PRINT notification OBJECTS r = generateNotification(o), d = generateDetails(o);
+    }
+} TOOLBAR;
+EXTEND FORM notificationsForms PROPERTIES testNotification() DRAW notePo;
+
+paid 'Paid' (PurchaseOrder o) = TRUE IF step(o) == Step.pay;
+paid 'Paid' (Invoice i) = paid(part(i));
+
+paidDate 'Paid Date' = GROUP LAST DATE(dateTimeOut(StepLog l)) IF stepOut(l) == Step.pay BY sbj(l) MATERIALIZED;
+paidDate 'Paid Date' (Invoice i) = paidDate(part(i));
+
+paid 'Paid, USD' (BudgetDetail d) = GROUP SUM NUMERIC[14,2](round0(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate())))) IF paid(i) BY budgetDetail(i); 
+
+//--- Execution forms ---
+
+FORM invoiceLoad 'Load Purchase invoice'
+    OBJECTS i = Invoice PANEL
+    EDIT Invoice OBJECT i
+;
+addPO 'Add Invoice' (PurchaseOrder o) {
+    NEWSESSION {
+        NEW i = Invoice {
+            part(i) <- o;
+            SHOW invoiceLoad OBJECTS i = i FLOAT WAIT;
+        }
+    }
+} TOOLBAR;
+editPO 'Edit Invoice' (Invoice i) {
+    NEWSESSION {
+        SHOW invoiceLoad OBJECTS i = i FLOAT WAIT;
+    }
+} TOOLBAR;
+
+META extendPurchaseOrder (form)
+    EXTEND FORM ##form
+        PROPERTIES(o) READONLY nameAuthor, planned, dateTime
+        PROPERTIES(o) datePlan, paidDate
+        
+        OBJECTS d = Invoice
+        PROPERTIES (d) ON CHANGE editPO(d)  urgent BACKGROUND RGB(250,200,200), date, number, nameCostCenter, nameBudget, itemBudgetDetail
+        PROPERTIES (d) ON CHANGE editPO(d) planned BACKGROUND RGB(200,250,200), balance BACKGROUND RGB(250,200,200), amountName BACKGROUND RGB(200,200,250), passThreshold 
+        PROPERTIES (d) READONLYIF paid(d) PANEL costItemName, nameContractor, nameContract, nameEmployee, text//, nameSupplier SHOWIF NOT supply(d)
+        PROPERTIES (d) PANEL load READONLYIF paid(d), open SHOWIF hasFile(d),  loadPayment SHOWIF afg(currentUser()), openPayment SHOWIF hasPayment(d)
+        PROPERTIES (o) TOOLBAR addPO DRAW d SHOWIF NOT paid(o)
+        PROPERTIES (d) DELETE SHOWIF afg(currentUser()) // TOOLBAR NEWSESSION EDIT,
+        FILTERS part(d) == o
+        
+        OBJECTS log = StepLog
+        PROPERTIES (log) userNameIn, dateTimeIn, nameIn
+        ORDERS dateTimeIn(log) DESC
+        FILTERS sbj(log) == o
+    ;
+
+    DESIGN ##form {
+        OBJECTS {
+            NEW pane FIRST {
+                fill = 1;
+                alignment = STRETCH;
+                type = CONTAINERV;
+                NEW headerPart {
+                    alignment = STRETCH;
+                    type = CONTAINERH;
+                    MOVE PROPERTY(datePlan(o)) {notNull = TRUE; hide = TRUE;}
+                    MOVE PROPERTY(paidDate(o)) {notNull = TRUE;}
+                    MOVE PROPERTY(planned(o));
+                    MOVE PROPERTY(nameAuthor(o)) { alignment = CENTER; }
+                    MOVE PROPERTY(dateTime(o));
+                }
+                NEW proposal {
+                    type = CONTAINERV;
+                    fill = 1;
+                    alignment = STRETCH;
+                    MOVE BOX (d) {
+                        fill = 4;
+                        alignment = STRETCH;
+                    }
+                    NEW detailsPanel {
+                        type = CONTAINERH;
+                        alignment = STRETCH;
+                        fill = 1;
+                        NEW details {
+                            fill = 1;
+                            //width = 400;
+                            alignment = STRETCH;
+                            type = CONTAINERV;
+                            MOVE PROPERTY (costItemName(d)) {alignment = STRETCH;}
+                            NEW contractor {
+                                type = COLUMNS;
+                                alignment = STRETCH;
+                                caption = 'Supplier details';
+                                //MOVE PROPERTY (supply(d));
+                                //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionVertical = TRUE;
+                                MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
+                                MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
+                                MOVE PROPERTY(nameEmployee(d)) {alignment = STRETCH; }
+                            }
+                            NEW files {
+                                type = CONTAINERH;
+                                alignment = STRETCH;
+                                caption = 'Attachment file';
+                                MOVE PROPERTY (load(d));// { height = 40;}
+                                MOVE PROPERTY (open(d));// { height = 40;}
+                            }
+                            NEW filePayment {
+                                type = CONTAINERH;
+                                alignment = STRETCH;
+                                caption = 'Payment Confirmation';
+                                MOVE PROPERTY (loadPayment(d));// { height = 40;}
+                                MOVE PROPERTY (openPayment(d));// { height = 40;}  
+                            }
+                        }
+                        NEW detailTabs {
+                            type = TABBED;
+                            width  = 600;
+                            height = 250;
+                            alignment = STRETCH;
+                            NEW commentTab {
+                                caption = 'Comment'; 
+                                MOVE PROPERTY (text(d)) {
+                                    fill = 1;
+                                    alignment = STRETCH;
+                                    //panelCaptionVertical = TRUE;
+                                    caption = '';
+                                }
+                            }
+                            NEW historyTab {
+                                caption = 'Approval steps'; 
+                                fill = 1;
+                                MOVE BOX(log) { 
+                                    PROPERTY (userNameIn(log)) { caption = 'Executed by'; }
+                                    PROPERTY (dateTimeIn(log)) { caption = 'Date/Time'; }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        //TOOLBAR {
+        //    MOVE PROPERTY(new);
+        //    MOVE PROPERTY(delete);
+        //}
+    }    
+END
+
+FORM purchaseOrder 'Edit single Purchase Order'
+    OBJECTS o = PurchaseOrder PANEL
+    EDIT PurchaseOrder OBJECT o
+;
+@extendPurchaseOrder(purchaseOrder);
+
+newPart '+ Add' ()  { 
+    NEWSESSION {
+        NEW b = PurchaseOrder {
+            author (b) <- currentUser();
+            dateTime(b) <- currentDateTime();
+            step(b) <- Step.update;
+            SHOW EDIT PurchaseOrder = b DOCKED MANAGESESSION;
+        }
+    }
+}
+
+//--- Procedure: Init and Update Steps ---
+
+FORM purchaseOrders 'Purchase Orders' OBJECTS o = PurchaseOrder;
+@defineAssignment(PurchaseOrder, po, update, 'Complete Purchase Order editing',planned);
+@extendPurchaseOrder(update);
+assigned(Employee e,AssignUpdate a) += TRUE IF author(sbj(a)) == e AND a IS AssignUpdate;
+
+// Pass threshold logic
+//CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.review AND passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Automated approval';
+//CONSTRAINT stepIn(StepLog l) == Step.update AND stepOut(l) == Step.approve AND NOT passThreshold(sbj(l)) CHECKED BY stepOut[StepLog] MESSAGE 'Block automated approval';
+
+//--- Procedure: Review and Review Updated Steps ---
+
+@defineAssignment(PurchaseOrder, po, enter, 'Product Owner Purchase order Approval',planned);
+@extendPurchaseOrder(enter);
+assigned(Employee e,AssignEnter a) += TRUE IF hasEnter(e) AND access(sbj(a),e) AND a IS AssignEnter;
+
+//--- Procedure: Approve Step ---
+
+@defineAssignment(PurchaseOrder, po, review, 'AFG Purchase order Approval',planned);
+@extendPurchaseOrder(review);
+assigned(Employee e,AssignReview a) += TRUE IF (afg(e) OR hasReview(e)) AND a IS AssignReview;
+
+isApproved (PurchaseOrder po) = step(po) == Step.approve AND afg(currentUser());
+isRevoke (PurchaseOrder po) = NOT (step(po) == Step.pay) AND author(po) == currentUser();
+dropApproval 'Cancel Purchase order' (PurchaseOrder o) {
+    IF NOT paid(o) THEN {
+        stepOut(stepLog(o)) <- Step.reject;
+        APPLY;
+    }
+} TOOLBAR;
+EXTEND FORM purchaseOrders PROPERTIES(o) dropApproval SHOWIF NOT paid(o); //SHOWIF isApproved(o)
+
+//--- Procedure: Payment Step ---
+
+@defineAssignment(PurchaseOrder, po, approve, 'Pay Purchase order',planned);
+@extendPurchaseOrder(approve);
+assigned(Employee e,AssignApprove a) += TRUE IF (afg(e) OR hasApprove(e)) AND a IS AssignApprove;
+
+isPayed (PurchaseOrder po) = step(po) == Step.pay;
+WHEN SET(isPayed (PurchaseOrder po)) DO {
+    FOR Employee e AND (author(po) == e OR (hasEnter(e) AND access(po,e))) AND NOT afg(e) DO {
+        IF notification(Step.pay) AND email(e) AND NOT disableNotification() THEN {
+            sendNotificationFile(generateHeader(po),generateNotification(po),generateDetails(po),email(e),attachmentPayment(po),'Payment Confirmation');
+        }
+    }
+}
+
+//--- Procedure: Updating information on Reject Step ---
+
+@defineAssignment(PurchaseOrder, po, reject, 'Revising Purchase Order',planned);
+@extendPurchaseOrder(reject);
+assigned(Employee e,AssignReject a) += TRUE IF author(sbj(a)) == e AND a IS AssignReject;
+
+//--- Procedure buttons ---
+
+hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = CASE EXCLUSIVE 
+            WHEN stepIn(l) == Step.enter  AND passThreshold(sbj(l))     AND stepOut == Step.review                                                          THEN TRUE 
+            WHEN stepIn(l) == Step.enter  AND NOT passThreshold(sbj(l)) AND stepOut == Step.approve                                                         THEN TRUE
+            WHEN stepIn(l) == Step.update AND                           NOT hasEnter(currentUser()) AND (stepOut == Step.approve OR stepOut == Step.review) THEN TRUE
+            WHEN stepIn(l) == Step.update AND passThreshold(sbj(l))     AND hasEnter(currentUser()) AND (stepOut == Step.review  OR stepOut == Step.enter)  THEN TRUE
+            WHEN stepIn(l) == Step.update AND NOT passThreshold(sbj(l)) AND hasEnter(currentUser()) AND (stepOut == Step.approve OR stepOut == Step.enter)  THEN TRUE
+            WHEN stepIn(l) == Step.reject AND                           NOT hasEnter(currentUser()) AND (stepOut == Step.approve OR stepOut == Step.review) THEN TRUE
+            WHEN stepIn(l) == Step.reject AND passThreshold(sbj(l))     AND hasEnter(currentUser()) AND (stepOut == Step.review  OR stepOut == Step.enter)  THEN TRUE
+            WHEN stepIn(l) == Step.reject AND NOT passThreshold(sbj(l)) AND hasEnter(currentUser()) AND (stepOut == Step.approve OR stepOut == Step.enter)  THEN TRUE
+            ELSE NULL;
+
+@buttonDecisions(update,enter,'Send the Purchase Order for Approval');
+@buttonDecisions(update,review,'Approve and send the Purchase Order to AFG');
+@buttonDecisions(update,approve,'Approve the Purchase Order (passed limits)');
+
+@buttonDecisions(enter,reject,'Send the Purchase Order back for revising');
+@buttonDecisions(enter,review,'Approve and send the Purchase Order to AFG');
+@buttonDecisions(enter,approve,'Approve the Purchase Order (passed limits)');
+
+@buttonDecisions(review,reject,'Send the Purchase Order back for revising');
+@buttonDecisions(review,approve,'Approve the Purchase Order');
+
+@buttonDecisions(approve,reject,'Reject and send the Purchase Order back for revising');
+@buttonDecisions(approve,pay,'Invoice by the Purchase Order was paid');
+
+@buttonDecisions(reject,enter,'Send the revised Purchase Order for Approval');
+@buttonDecisions(reject,review,'Approve and send the Purchase Order to AFG');
+@buttonDecisions(reject,approve,'Approve the Purchase Order (passed limits)');
+
+//--- Automotive Purchase Order initialization ---
+
+author 'Author' = DATA Employee(Invoice);
+searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.enter AND author(p) == e;
+WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
+    author(b) <- currentUser();
+    //hidden(b) <- TRUE;
+    //IF searchProposal(author(b)) THEN
+    //    part(b) <- searchProposal(author(b));
+    //ELSE
+        NEW p = PurchaseOrder {        
+            part(b) <- p;
+            datePlan(p) <- DATE(OVERRIDE sumDay(DATETIME(date(b)),30),sumDay(currentDateTime(),30));
+            //IF passThreshold(b) THEN step(p) <- Step.approve;
+            //ELSE 
+            IF hasEnter(currentUser()) AND passThreshold(p) THEN step(p) <- Step.approve;
+            ELSE IF hasEnter(currentUser()) THEN step(p) <- Step.review;
+                 ELSE step(p) <- Step.enter;
+        }
+    IF contractor(b) THEN supply(b) <- TRUE;
+    IF NOT nameSupplier(b) THEN nameSupplier(b) <- 'Search needed';
+    IF NOT number(b) THEN number(b) <- 'Plan';
+    IF NOT date(b) THEN date(b) <- datePlan(part(b));
+}
+
+completeUpdate 'Complete draft and send Purchase Order' = DATA BOOLEAN (PurchaseOrder);
+autoSendPurchaseOrder (PurchaseOrder p) {
+    IF completeUpdate(p) AND (stepIn(stepLog(p)) == Step.update OR stepIn(stepLog(p)) == Step.reject) THEN {
+        IF hasEnter(currentUser()) AND passThreshold(p) THEN stepOut(stepLog(p)) <- Step.approve;
+        ELSE IF hasEnter(currentUser()) THEN stepOut(stepLog(p)) <- Step.review;
+             ELSE stepOut(stepLog(p)) <- Step.enter;
+        completeUpdate(p) <- NULL;
+        APPLY;
+    }
+}
+
+showCompletion 'Show completeUpdate' (PurchaseOrder o) = TRUE IF step(o) == Step.update OR step(o) == Step.reject;
+EXTEND FORM purchaseOrder 
+    PROPERTIES completeUpdate(o) SHOWIF showCompletion(o)
+    EVENTS ON APPLY AFTER autoSendPurchaseOrder(o)
+;
+DESIGN purchaseOrder { TOOLBAR { MOVE PROPERTY(completeUpdate(o)); } }
+
+//--- Main Form ---
+
+EXTEND FORM purchaseOrders
+    PROPERTIES(o) READONLY nameExplain, budgetDetailSum SHOWIF afg(currentUser()), paidDate, planned, nameStep, passThreshold, searchSupply, dateTime, nameAuthor
+    PROPERTIES newPart() 
+    PROPERTIES(o) NEWSESSION editPart = EDIT, delPart = DELETE SHOWIF afg(currentUser())
+    ORDERS paidDate(o) DESC
+    FILTERS author(o) == currentUser() OR afg(currentUser()) OR access(o,currentUser())
+    
+    OBJECTS d = Invoice
+    PROPERTIES (d) READONLY urgent, nameCostCenter, budgetDetailName, amountName, passThreshold
+    PROPERTIES (d) READONLY PANEL costItemName, text, nameContractor, nameContract, nameEmployee //, supply, nameSupplier SHOWIF NOT supply(d)
+    PROPERTIES (d) PANEL open SHOWIF hasFile(d), load,  openPayment SHOWIF hasPayment(d), loadPayment SHOWIF afg(currentUser()) //SHOWIF NOT hasFile(d)
+    FILTERS part(d) == o
+    
+    LIST PurchaseOrder OBJECT o
+;
+
+DESIGN purchaseOrders {
+    //REMOVE TOOLBARRIGHT;
+    OBJECTS {
+        NEW pane {
+            fill = 1;
+            alignment = STRETCH;
+            type = CONTAINERV;
+            NEW proposal {
+                type = CONTAINERH;
+                fill = 1;
+                alignment = STRETCH;
+                MOVE BOX (o) {
+                    fill = 4;
+                    alignment = STRETCH;
+                    TOOLBAR {
+                        MOVE PROPERTY (newPart());
+                        MOVE PROPERTY (editPart);
+                        MOVE PROPERTY (delPart);
+                    }
+                }
+                NEW proc {
+                    width = 500;
+                    alignment = STRETCH;
+                }
+            } 
+            NEW details {
+                fill = 1;
+                alignment = STRETCH;
+                type = CONTAINERH;
+                MOVE BOX (d) {
+                    fill = 4;
+                    alignment = STRETCH;
+                }
+                NEW itemDetails {
+                    type = CONTAINERV;
+                    caption = 'Details for purchase invoice';
+                    width = 400;
+                    alignment = STRETCH;
+                    MOVE PROPERTY (costItemName(d)) {alignment = STRETCH; panelCaptionVertical = TRUE;}
+                    NEW contractor {
+                        type = CONTAINERV;
+                        alignment = STRETCH;
+                        caption = 'Supplier details';
+                        //MOVE PROPERTY (supply(d));
+                        //MOVE PROPERTY(nameSupplier(d)) {alignment = STRETCH;} // panelCaptionVertical = TRUE;
+                        MOVE PROPERTY(nameContractor(d)) {alignment = STRETCH; }
+                        MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
+                        MOVE PROPERTY(nameEmployee(d)) {alignment = STRETCH; }
+                    }
+                    NEW files {
+                        type = CONTAINERH;
+                        alignment = START;
+                        MOVE PROPERTY (load(d)) {caption = 'Load Attachment';}
+                        MOVE PROPERTY (open(d)) {caption = 'Open Attachment';}
+                    }
+                    NEW payment {
+                        type = CONTAINERH;
+                        alignment = START;
+                        MOVE PROPERTY (loadPayment(d));
+                        MOVE PROPERTY (openPayment(d));
+                    }
+                    MOVE PROPERTY (text(d)) {
+                        alignment = STRETCH;
+                        panelCaptionVertical = TRUE;
+                        fill = 1;
+                    }                                
+                }
+            }
+        }
+    }
+}
+
+//--- Logging Procedure ---
+
+authorName 'Order Author' (StepLog s) = nameAuthor(sbj(s)) CHARWIDTH 20;
+dateTime 'Order Created' (StepLog s) = dateTime(sbj(s)) CHARWIDTH 20;
+planned 'Planned, USD' = DATA NUMERIC[16,3](StepLog);
+
+CLASS PurchaseOrderLog 'Purchase Orders Log';
+TABLE purOrderLog(PurchaseOrderLog);
+
+item 'Invoice Item' = DATA Invoice(PurchaseOrderLog);
+log 'Step Log' = DATA StepLog(PurchaseOrderLog);
+datePlan 'Date plan' = DATA DATE (PurchaseOrderLog) CHARWIDTH 10;
+costCenter 'Cost Center' = DATA CostCenter(PurchaseOrderLog);
+budgetDetail 'Budget Detail' = DATA BudgetDetail(PurchaseOrderLog);
+text 'Description' = DATA RICHTEXT(PurchaseOrderLog);
+planned 'Planned, USD' = DATA NUMERIC[16,3](PurchaseOrderLog);
+currency 'Currency' = DATA Currency(PurchaseOrderLog);
+file 'Attachment' = DATA FILE (PurchaseOrderLog);
+
+WHEN SETCHANGED (stepOut(StepLog l)) DO {
+    planned(l) <- planned(sbj(l));
+    FOR part(Invoice b) == sbj(l) NEW d = PurchaseOrderLog DO {
+        log(d) <- l;
+        item(d) <- b;
+        datePlan(d) <- datePlan(sbj(l));
+        costCenter(d) <- costCenter(b);
+        budgetDetail(d) <- budgetDetail(b);
+        text(d) <- text(b);
+        planned(d) <- amount(b);
+        currency(d) <- currency(b);
+        file(d) <- file(b);
+    }
+}
+
+budgetDetailName 'Budget Item' (PurchaseOrderLog d) = CONCAT ' - ', nameBudget(budgetDetail(d)), name(budgetDetail(d));  
+nameCurrency 'Currency' (PurchaseOrderLog l) = name(currency(l));
+hasFile (PurchaseOrderLog i) = TRUE IF file(i); 
+open 'Open' (PurchaseOrderLog i)  { open(file(i)); }
+
+FORM steplog 'Purchase Orders log'
+    OBJECTS l = StepLog
+    PROPERTIES(l) READONLY authorName, dateTime, planned READONLY
+    
+    OBJECTS d = PurchaseOrderLog
+    PROPERTIES (d) READONLY datePlan,budgetDetailName, planned, nameCurrency
+    PROPERTIES READONLY =nameCostCenter(budgetDetail(d)), =canonicalNameCostItem(budgetDetail(d))
+    PROPERTIES (d) READONLY PANEL text, open SHOWIF hasFile(d)
+    FILTERS log(d) == l
+;
+DESIGN steplog {
+    OBJECTS { 
+        NEW pane { 
+            fill = 2; 
+            alignment = STRETCH; 
+        }
+        NEW details { 
+            fill = 1; 
+            caption = 'Details of purchase order log';
+            type = CONTAINERH; 
+            alignment = STRETCH; 
+            MOVE BOX(d) {
+                caption = '';
+                fill = 4;
+                alignment = STRETCH;
+            }
+            NEW comments {
+                fill = 1;
+                alignment = STRETCH;
+                type = CONTAINERV;
+                NEW files {
+                    type = CONTAINERH;
+                    alignment = STRETCH;
+                    MOVE PROPERTY (open(d)) { height = 40; width = 160; caption = 'Attachment';}
+                }
+                MOVE PROPERTY (text(d)) {
+                    fill = 1;
+                    alignment = STRETCH;
+                    panelCaptionVertical = TRUE;
+                }
+            }
+        }
+    }
+}
+@extendDetails(steplog,pane,h);
+@showStepAttributes(steplog,in);
+@showStepAttributes(steplog,out);
+
+//EXTEND FORM purchaseOrders OBJECTS l = StepLog PROPERTIES planned(l) READONLY FILTERS sbj(l) == o AND stepOut(l);
+//@extendDetails(purchaseOrders,proc,v);
+//@showStepAttributes(purchaseOrders,out);
+
+NAVIGATOR {
+    proc { NEW purchaseOrders BEFORE logging; }
+    logging { NEW steplog; }
+}
+
+// Load Invoices one-by-one
+
+EXTEND FORM invoiceLoad
+    PROPERTIES(i) READONLYIF paid(i) urgent,date, number, nameCurrency, amount, text, paidCash
+    //PROPERTIES (i) supply, nameContractor SHOWIF supply(i), nameContract SHOWIF supply(i), nameSupplier SHOWIF NOT supply(i)
+    PROPERTIES (i) READONLYIF paid(i) nameContractor, nameContract, nameEmployee
+    PROPERTIES (i) READONLYIF paid(i) BACKGROUND backgroundFill() longBudgetDetailName
+    PROPERTIES (i) READONLYIF paid(i) BACKGROUND backgroundFill() SHOWIF budgetDetail(i) READONLY balance, nameCostCenter, costItemName // planned, spent
+    PROPERTIES(i) open SHOWIF hasFile(i), file READONLYIF paid(i), openPayment SHOWIF hasPayment(i), payment SHOWIF afg(currentUser())
+;
+DESIGN invoiceLoad {
+    size = (800, 600);
+    OBJECTS {
+        type = CONTAINERH;
+        fill = 1;
+        alignment = STRETCH;
+        NEW invoice {        
+            type = CONTAINERV;
+            fill = 1;
+            alignment = STRETCH;   
+            NEW parameters {
+                alignment = STRETCH;
+                caption = 'Parameters';
+                type = CONTAINERH;
+                MOVE PROPERTY(urgent(i)) { panelCaptionVertical = TRUE; fontStyle = 'bold';}
+                MOVE PROPERTY(date(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 2;}
+                MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 4;}
+                MOVE PROPERTY(amount(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 1;}
+                MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 1;}
+                MOVE PROPERTY (paidCash(i)) { panelCaptionVertical = TRUE; }
+            }
+            NEW budget {
+                alignment = STRETCH;
+                height = 85;
+                NEW budgetItemLine {
+                    type = CONTAINERH;
+                    fill = 1;
+                    MOVE PROPERTY (longBudgetDetailName(i)) {
+                        flex = 6;
+                        panelCaptionVertical = TRUE;
+                        fontStyle = 'bold';
+                    }
+                    MOVE PROPERTY (balance(i)) {panelCaptionVertical = TRUE; flex = 1;}
+                }
+                NEW budgetItemDetails {
+                    type = CONTAINERH;
+                    fill = 1;
+                    MOVE PROPERTY (nameCostCenter(i)) {panelCaptionVertical = TRUE; flex = 1;}
+                    MOVE PROPERTY (costItemName(i)) {panelCaptionVertical = TRUE; flex = 1;}
+                }
+            }
+            NEW contract {
+                alignment = STRETCH;
+                caption = 'Supplier';
+                type = CONTAINERH;
+                alignment = STRETCH;
+                //MOVE PROPERTY (supply(i)) {caption = 'Known Supplier'; panelCaptionVertical = TRUE; }
+                //MOVE PROPERTY (nameSupplier(i)) {caption = 'Name of new Supplier if it is not known'; alignment = STRETCH;  panelCaptionVertical = TRUE;}
+                MOVE PROPERTY (nameContractor(i)) {alignment = STRETCH;  panelCaptionVertical = TRUE;}
+                MOVE PROPERTY (nameContract(i)) {alignment = STRETCH;  panelCaptionVertical = TRUE;}
+                MOVE PROPERTY (nameEmployee(i)) {alignment = STRETCH;  panelCaptionVertical = TRUE;}
+            }
+            NEW file {
+                alignment = STRETCH;
+                caption = 'Attachment';
+                type = CONTAINERH;
+                MOVE PROPERTY(file(i)) { fill = 1; height = 60; panelCaptionVertical = TRUE; caption = 'Load Attachment'; }
+                MOVE PROPERTY(open(i)) { fill = 1; height = 60; caption = 'Open Attachment'; }
+                MOVE PROPERTY(payment(i)) { fill = 1; height = 60; panelCaptionVertical = TRUE; caption = 'Load Payment'; }
+                MOVE PROPERTY(openPayment(i)) { fill = 1; height = 60; }
+            }
+            NEW tabs {
+                type = TABBED;
+                fill = 1;
+                NEW comment {
+                    caption = 'Comment';
+                    MOVE PROPERTY (text(i)) { caption = ''; fill = 1; }
+                }
+            }
+        }
+
+    }
+}
+
+loadPO 'Upload Invoice' () {
+    NEWSESSION {
+        NEW i = Invoice {
+            SHOW invoiceLoad OBJECTS i = i FLOAT WAIT; // NOWAIT by default would move the window into DOCKED tab
+        }
+    }
+} TOOLBAR;
+
+EXTEND FORM invoices PROPERTIES loadPO();
+//EXTEND FORM costCenterBudget PROPERTIES loadPO();
+
+EXTEND FORM contractors PROPERTIES (i) READONLY  budgetDetailName, costItemName, amountName;
+
+NAVIGATOR {
+    NEW loadPO BEFORE masterData;
+}
+
+// Budget Details handling with holding sums in accordance with in fact expenses
+
+CONSTRAINT LOCAL amountFix(BudgetDetail d) < MAX (OVERRIDE spent(d),0), (OVERRIDE invoiced(d),0) 
+    CHECKED BY amountFix[BudgetDetail] MESSAGE 'The reserve is too small for already executed amount of Invoices and Expenses';
+
+moveBudgetDetail 'Move' (BudgetDetail d) {
+
+    amountFix (BudgetDetail dd) <- NULL WHERE dd != d;
+    amountTransfer (BudgetDetail dd) <- NULL WHERE dd != d;
+    
+    amountFix(d) <- MAX (OVERRIDE ceil(spent(d)),0), (OVERRIDE ceil(invoiced(d)),0);
+    
+    IF amountFix(d) > 0 THEN {
+        DIALOG dialogMoveBudgetFix OBJECTS d = d, b INPUT DO {
+            IF quarterNumber(b) == quarterNumber(budget(d)) THEN {
+                IF amountTransfer(d) AND amountFix(d) THEN {
+                    NEW dn = BudgetDetail {
+                        planned(dn) <- amountTransfer(d);
+                        planned(d) <- amountFix(d);
+                        budget(dn) <- b;
+                        costCenter(dn) <- costCenter(d);
+                        costItem(dn) <- costItem(d);
+                        name(dn) <- name(d);
+                        description(dn) <- description(d);
+                        contractor(dn) <- contractor(d);
+                        sensitive(dn) <- sensitive(d);
+                        SEEK costCenterBudget.bm = b; 
+                        SEEK costCenterBudget.bmd = dn;
+                    }
+                }
+                ELSE MESSAGE 'The sum to transfer was not defined';
+            }
+            ELSE MESSAGE 'Movement is enabled within the current Quarter only';
+        }
+    }
+    ELSE {
+        DIALOG dialogMoveBudget OBJECTS d = d, b INPUT DO {
+            IF quarterNumber(b) == quarterNumber(budget(d)) THEN {
+                budget(d) <- b;
+                SEEK costCenterBudget.bm = b; 
+                SEEK costCenterBudget.bmd = d;
+            }
+            ELSE MESSAGE 'Movement is enabled within the current Quarter only';
+        }
+    }
+}
+
+FORM dialogDistributeBudget 'Transfer into another Budget Item'
+    OBJECTS d = BudgetDetail PANEL 
+    PROPERTIES (d) amountFix, amountTransfer
+    OBJECTS b = BudgetDetail
+    PROPERTIES(b) READONLY canonicalNameCostItem, name, planned 
+    FILTERS quarterNumber(budget(b)) == quarterNumber(budget(d)), costCenter(d) == costCenter(b), d != b, NOT sensitive(b),
+            fromDate(budget(b)) >= monthReadonlyDate()
+    FILTERGROUP sameBudget
+        FILTER 'Same budget' budget(d) = budget(b) DEFAULT
+;
+DESIGN dialogDistributeBudget {
+    OBJECTS {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        MOVE PROPERTY (amountFix(d));
+        MOVE PROPERTY (amountTransfer(d));
+        MOVE BOX (b);
+    }
+}
+
+distribBudgetDetail 'Distribute' (BudgetDetail d) {
+
+    amountFix (BudgetDetail dd) <- NULL WHERE dd != d;
+    amountTransfer (BudgetDetail dd) <- NULL WHERE dd != d;
+
+    amountFix(d) <- MAX (OVERRIDE ceil(spent(d)),0), (OVERRIDE ceil(invoiced(d)),0);
+
+    DIALOG dialogDistributeBudget OBJECTS d = d, b INPUT DO {
+        IF amountTransfer(d) AND amountFix(d) THEN {
+            //IF amountFix(d) = 0 AND NOT spent(d) AND NOT invoiced(d) THEN
+            //    DELETE d;
+            //ELSE
+                planned(d) <- amountFix(d);
+            planned(b) <- planned(b) + amountTransfer(d);
+        }
+        ELSE MESSAGE 'The sum to transfer was not defined';
+    }
+}
+
+EXTEND FORM costCenterBudget PROPERTIES(bmd) DRAW bmd TOOLBAR moveBudgetDetail, distribBudgetDetail; // READONLYIF readonlyProc(bmd, c)

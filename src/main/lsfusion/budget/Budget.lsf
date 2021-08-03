@@ -12,11 +12,16 @@ toDate 'To' = DATA DATE(Budget) IN id;
 
 name 'Name' = DATA STRING[50] (Budget) CHARWIDTH 8;
 
-description 'Description' (Budget b) = CONCAT '', name(b), '(' + fromDate(b) + ' - ' + toDate(b) + ')'; 
+description 'Description' (Budget b) = CONCAT ' ', name(b), '(' + fromDate(b) + ' - ' + toDate(b) + ')' CHARWIDTH 35; 
+
+budget 'Budget by Date' (DATE date) = GROUP LAST Budget b IF fromDate(b) <= date AND toDate(b) >= date;
+
+indexMonth 'Month ID' (Budget b) = PARTITION SUM 1 IF b IS Budget ORDER fromDate(b);
 
 FORM dialogBudgets 'Budget'
     OBJECTS o = Budget
     PROPERTIES(o) READONLY name, fromDate, toDate
+    ORDERS fromDate(o) DESC 
     
     LIST Budget OBJECT o
 ;
@@ -24,10 +29,18 @@ FORM dialogBudgets 'Budget'
 CLASS BudgetDetail 'Budget detail';
 TABLE budgetDetail(BudgetDetail);
 
+forceHidden 'Hide budgets that are being under approval' = DATA BOOLEAN ();
+EXTEND FORM options PROPERTIES forceHidden() ;
+DESIGN options { commons { MOVE PROPERTY(forceHidden()); } }
+hiddenSet = DATA BOOLEAN (BudgetDetail); // eliminate budgets that are being under approval
+hidden (BudgetDetail d) = TRUE IF hiddenSet(d) AND forceHidden(); // control hidding of budgets that are being under approval
 sensitive = ABSTRACT BOOLEAN (BudgetDetail) MATERIALIZED;
+isProcessing = DATA BOOLEAN (BudgetDetail); // enable Budget Detail items for user editing: TRUE is ALLOW
+isBudgeting (BudgetDetail d) = NOT isProcessing(d); // disable Budget Detail items for user editing: TRUE is READONLY
 
 budget = DATA Budget (BudgetDetail) NONULL DELETE;
 nameBudget 'Budget' (BudgetDetail d) = name(budget(d));
+descBudget 'Budget' (BudgetDetail d) = description(budget(d)) CHARWIDTH 35;
 
 costCenter = DATA CostCenter (BudgetDetail);
 nameCostCenter 'Cost Center' (BudgetDetail d) = name(costCenter(d));
@@ -44,6 +57,8 @@ CONSTRAINT costCenter(BudgetDetail d) AND NOT selected(budget(d), costCenter(d))
 
 name 'Name' = DATA STRING[100] (BudgetDetail) CHARWIDTH 30;
 description 'Description' = DATA RICHTEXT (BudgetDetail);
+longBudgetName 'Budget' (BudgetDetail d) = CONCAT ' - ', nameBudget(d), name(d); 
+dateTime 'Updated' = DATA DATETIME (BudgetDetail);
 
 mandatoryNameBudgetDetail 'Name required for budget detail' = DATA BOOLEAN (CostItem);
 EXTEND FORM costItem
@@ -60,44 +75,52 @@ planned 'Planned, USD' = DATA NUMERIC[16,3] (BudgetDetail);
 optimizedPlanned 'Optimized, USD' = DATA NUMERIC[16,3] (BudgetDetail);
 optimized 'Optimized, %' (BudgetDetail d) = NUMERIC[16,2](100.0 - (optimizedPlanned(d) * 100.0 / planned(d)));
 
+CONSTRAINT NOT name(BudgetDetail d) AND planned(d) MESSAGE 'Please specify Budget item name';
+
 CONSTRAINT (SETCHANGED(planned(BudgetDetail d)) OR CHANGED(name(d))) AND 
             mandatoryNameBudgetDetail(costItem(d)) AND planned(d) >= 5000 AND NOT name(d)
             MESSAGE 'Budget detail\'s name is required for spendings more then 5000';
+
+WHEN SETCHANGED (planned(BudgetDetail d)) DO dateTime(d) <- currentDateTime(); // logging
 
 // Readonly
 
 monthReadonlyDate 'Monthly budget readonly date' = DATA DATE(); 
 monthReadonlyDate 'Monthly budget readonly date' = DATA DATE(CostCenter); 
 
-readonly (Budget b, CostCenter c) = monthReadonlyDate() > toDate(b) OR monthReadonlyDate(c) > toDate(b); 
-readonly (BudgetDetail d, CostCenter c) = monthReadonlyDate() > toDate(budget(d)) OR monthReadonlyDate(c) > toDate(budget(d)); 
+readonly (Budget b, CostCenter c) = monthReadonlyDate() >= fromDate(b) OR monthReadonlyDate(c) >= fromDate(b); 
+readonly (BudgetDetail d, CostCenter c) = monthReadonlyDate() >= fromDate(budget(d)) OR monthReadonlyDate(c) >= fromDate(budget(d)); 
+readonly (BudgetDetail d) = monthReadonlyDate() >= fromDate(budget(d)) OR monthReadonlyDate(costCenter(d)) >= fromDate(budget(d)); 
 
 //
 
 budget = ABSTRACT Budget (ExpenseLedger) MATERIALIZED INDEXED;
 budgetDetail = ABSTRACT BudgetDetail (ExpenseLedger) MATERIALIZED INDEXED;
 spent 'Spent, USD' (BudgetDetail d) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budgetDetail(l);
+spentInteger 'Spent, USD' (BudgetDetail d) = INTEGER (spent(d));
 
-planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) BY budget(d), costItem(d), costCenter(d) CHARWIDTH 8; 
-childPlanned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
-childOptimizedPlanned 'Optimized, USD' = GROUP SUM optimizedPlanned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
-childOptimized 'Optimized, %' (Budget b, CostItem i, CostCenter c)= NUMERIC[16,2](100.0 - (childOptimizedPlanned(b, i, c) * 100.0 / childPlanned(b, i, c)));
+planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d), costItem(d), costCenter(d) CHARWIDTH 8; 
+childPlanned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) AND NOT hidden(d) BY budget(d), p, costCenter(d) CHARWIDTH 8; 
 childSpent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), CostItem p) AND NOT skip(l) BY budget(l), p, costCenter(l) CHARWIDTH 8;
 
-planned 'Planned, USD' (CostItem i, CostCenter c) = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), i) BY costCenter(d) CHARWIDTH 8;
+planned 'Planned, USD' (CostItem i, CostCenter c) = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), i) AND NOT hidden(d) BY costCenter(d) CHARWIDTH 8;
 
-planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) BY budget(d), p CHARWIDTH 8; 
+planned 'Planned, USD' = GROUP SUM planned(BudgetDetail d) IF level(costItem(d), CostItem p) AND NOT hidden(d) BY budget(d), p CHARWIDTH 8; 
 spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costItem(l) CHARWIDTH 8; 
 childSpent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF level(costItem(l), CostItem p) AND NOT skip(l) BY budget(l), p CHARWIDTH 8; 
 
-planned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) BY budget(d), costCenter(d);
-optimizedPlanned 'Optimized, USD'  (Budget b, CostCenter cp) = GROUP  SUM optimizedPlanned(BudgetDetail d) BY  budget(d), costCenter(d);
+planned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d), costCenter(d);
+optimizedPlanned 'Optimized, USD'  (Budget b, CostCenter cp) = GROUP  SUM optimizedPlanned(BudgetDetail d) IF NOT hidden(d) AND NOT profit(costCenter(d)) BY  budget(d), costCenter(d);
 optimized 'Optimized, %' (Budget b, CostCenter cp) = NUMERIC[16,2](100.0 - (optimizedPlanned(b, cp) * 100.0 / planned(b, cp)));
-insensitivePlanned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT sensitive(d) BY budget(d), costCenter(d); 
+insensitivePlanned 'Planned, USD' (Budget b, CostCenter cp) = GROUP SUM planned(BudgetDetail d) IF NOT sensitive(d) AND NOT hidden(d) AND NOT profit(costCenter(d)) BY budget(d), costCenter(d); 
 spent 'Spent, USD' = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l), costCenter(l); 
+spentInteger 'Spent, USD' (Budget b,CostCenter c) = INTEGER (spent(b,c));
 
-planned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) BY budget(d); 
+planned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY budget(d); 
+insensitivePlanned 'Planned, USD' (Budget b) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) AND NOT sensitive(d) BY budget(d); 
+plannedInteger 'Planned, USD' (Budget b) = INTEGER (planned(b));
 spent 'Spent, USD' (Budget b) = GROUP SUM amountUSD(ExpenseLedger l) IF NOT skip(l) BY budget(l); 
+spentInteger 'Spent, USD' (Budget b) = INTEGER (spent(b));
 
 FORM budget 'Budget'
     OBJECTS b = Budget PANEL
@@ -107,17 +130,21 @@ FORM budget 'Budget'
     PROPERTIES(cp) READONLY name
     PROPERTIES READONLY planned(b, cp), spent(b, cp)
     FILTERS selected(b, cp)
+    
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(cp) DEFAULT
 
     TREE costItems ci = CostItem PARENT parent(ci)
     PROPERTIES(ci) READONLY order, name
     PROPERTIES READONLY planned(b, ci), childSpent(b, ci)
-    ORDER order(ci) 
+    ORDERS order(ci) 
     
     OBJECTS d = BudgetDetail
-    PROPERTIES(d) nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
-    PROPERTIES(d) NEW, DELETE
+    PROPERTIES(d) READONLYIF isProcessing(d) nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
+    PROPERTIES(d) SHOWIF isBudgeting(d) NEW, DELETE
     FILTERS budget(d) == b,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(d)
     
     FILTERGROUP costCenter
         FILTER 'By cost center' costCenter(d) == cp
@@ -156,7 +183,6 @@ DESIGN budget {
                 }
                 NEW costItems {
                     fill = 1.5;
-                    type = SPLITV;
                     MOVE BOX(TREE costItems) {
                         fill = 3;
                     }
@@ -172,7 +198,7 @@ DESIGN budget {
                     type = TABBED;
                     NEW description {
                         caption = 'Description';
-                        MOVE PROPERTY(description(d)) { panelCaptionAbove = TRUE; fill = 1;}
+                        MOVE PROPERTY(description(d)) { panelCaptionVertical = TRUE; fill = 1;}
                     }
                     MOVE BOX(e);
                 }
@@ -183,7 +209,7 @@ DESIGN budget {
 
 FORM budgets 'Budgets'
     OBJECTS b = Budget
-    PROPERTIES(b) READONLY name, fromDate, toDate, planned, spent
+    PROPERTIES(b) READONLY name, fromDate, toDate, plannedInteger, spent
     PROPERTIES(b) NEWSESSION NEW, EDIT, DELETE
 ;
 
@@ -199,25 +225,95 @@ DESIGN budgets {
     }
 }
 
+//FORM budgetDetails 'Budget details'
+//    PROPERTIES() nameFilterCostCenter, nameFilterCostItem
+//    
+//    OBJECTS d = BudgetDetail
+//    PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
+//    FILTERS costCenter(d) == filterCostCenter() OR NOT filterCostCenter(),
+//            costItem(d) == filterCostItem() OR NOT filterCostItem(),
+//            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+//            NOT hidden(d) 
+//        
+//    LIST BudgetDetail OBJECT d
+//;
+
+filterBudget = DATA LOCAL NESTED Budget();
+nameFilterBudget 'Budget' () = name(filterBudget());
+
 FORM budgetDetails 'Budget details'
-    PROPERTIES() nameFilterCostCenter, nameFilterCostItem
+    PROPERTIES () nameFilterBudget 
+
+    OBJECTS c = CostCenter PANEL 
+    PROPERTIES (c) name BACKGROUND RGB(255, 255, 224) SELECTOR 
+    
+    TREE costItems t = CostItem PARENT parent(t)
+    PROPERTIES(t) READONLY order SHOWIF NULL, name
+    ORDERS order(t) 
     
     OBJECTS d = BudgetDetail
-    PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
-    FILTERS costCenter(d) == filterCostCenter() OR NOT filterCostCenter(),
-            costItem(d) == filterCostItem() OR NOT filterCostItem(),
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+    PROPERTIES(d) READONLY nameBudget, name, planned, spent, canonicalNameCostItem
+    PROPERTIES dateSorting = toDate(budget(d)) SHOWIF NULL 
+    ORDERS dateSorting DESC 
+    FILTERS costCenter(d) == c,
+            isParent(costItem(d),t),
+            budget(d) == filterBudget() OR NOT filterBudget(),
+            //(hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT sensitive(d),
+            NOT hidden(d) 
         
     LIST BudgetDetail OBJECT d
 ;
 
 DESIGN budgetDetails {
+    size = (1000, 600);
     OBJECTS {
         NEW filters FIRST {
             type = CONTAINERH;
-            MOVE PROPERTY(nameFilterCostCenter());
-            MOVE PROPERTY(nameFilterCostItem());
+            alignment = STRETCH;
+            //MOVE PROPERTY(nameFilterCostCenter());
+            //MOVE PROPERTY(nameFilterCostItem());
+            MOVE PROPERTY(name(c)) {alignment = STRETCH; caption = 'Select Cost Center'; }
+            //MOVE PROPERTY(canonicalName(t)) {alignment = STRETCH;}
         }
+        NEW items {
+            type = CONTAINERH;
+            fill = 1;
+            alignment = STRETCH;
+            NEW selectors {
+                type = CONTAINERV;
+                fill = 1;
+                alignment = STRETCH;
+                MOVE PROPERTY (nameFilterBudget()) { alignment = STRETCH; }
+                MOVE BOX (TREE costItems) { 
+                    fill = 1;
+                    caption = 'Cost Items'; 
+                }
+            }
+            MOVE BOX (d) { 
+                fill = 3;
+                PROPERTY (nameBudget(d)) {fontStyle = 'bold';}
+            }
+        }
+    }
+}
+
+FORM budgetDetailAdd 'Add Single Budget Item'
+    OBJECTS d = BudgetDetail PANEL
+    PROPERTIES (d) descBudget, name, nameCostCenter, canonicalNameCostItem, planned BACKGROUND RGB(255, 255, 224), description
+;
+
+DESIGN budgetDetailAdd {
+    size = (1000, 600);
+    OBJECTS {
+        type = CONTAINERV;
+        fill = 1;
+        MOVE PROPERTY (nameCostCenter(d)) { notNull = TRUE; alignment = STRETCH; }
+        MOVE PROPERTY (canonicalNameCostItem(d)) { notNull = TRUE; alignment = STRETCH; }
+        MOVE PROPERTY (descBudget(d)) { notNull = TRUE; alignment = STRETCH; }
+        MOVE PROPERTY (name(d)) { notNull = TRUE; alignment = STRETCH; }
+        MOVE PROPERTY (planned(d)) { notNull = TRUE; }
+        MOVE PROPERTY (description(d)) { alignment = STRETCH; fill = 1; panelCaptionVertical = TRUE; }
     }
 }
 

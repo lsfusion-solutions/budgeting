@@ -1,0 +1,13 @@
+MODULE ContractorMyCompany;
+
+REQUIRE Contractor, LegalEntity, SystemEvents;
+
+NAMESPACE Contractor;
+
+EXTEND CLASS Contractor : LegalEntity;
+
+name[LegalEntity](Contractor c) <- name[Contractor] (c) WHEN name[Contractor] (c); 
+
+onStarted() + {
+    name[LegalEntity](Contractor c) <- name[Contractor](c) WHERE name[Contractor](c); 
+}

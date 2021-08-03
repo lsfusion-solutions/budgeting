@@ -1,11 +1,34 @@
 MODULE Contractor;
 
-REQUIRE MasterData, Currency, CostItem;
+REQUIRE MasterData, Currency, CostItem, CostCenter, Cycle, Connector;
 
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);
 
-name 'Name' = DATA ISTRING[50](Contractor) IN id;
+CLASS AccountingName 'Name in Xero/1C';
+TABLE accountingname (AccountingName);
+contractor 'Contractor' = DATA Contractor(AccountingName) INDEXED;
+
+name 'Name' = DATA ISTRING[50](Contractor) IN id CHARWIDTH 20;
+regID 'Registration ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
+taxID 'Tax ID' = DATA BPSTRING (Contractor) IN id CHARWIDTH 12;
+name 'Name' = DATA ISTRING(AccountingName) IN id CHARWIDTH 20 NONULL;
+nameContractor 'Contractor' (AccountingName a) = name(contractor(a));
+
+autoReconcile 'Auto Reconcile' = DATA BOOLEAN (Contractor);
+
+CONSTRAINT regID(Contractor c) AND NOT onlyDigits(regID(c)) CHECKED BY regID[Contractor] MESSAGE 'Registration ID must contain only digits';
+CONSTRAINT taxID(Contractor c) AND NOT onlyDigits(taxID(c)) CHECKED BY taxID[Contractor] MESSAGE 'Tax ID must contain only digits';
+// @ToDo TaxID viewer depending on its format 
+contractorReg 'Contractor' = GROUP AGGR Contractor c BY regID(c);
+contractorTax 'Contractor' = GROUP AGGR Contractor c BY taxID(c);
+accountingName 'Accounting Name' = GROUP AGGR AccountingName c BY lower(name(c));
+accountingContractor 'Contractor by Accounting Name' (ISTRING c) = contractor(accountingName(c));
+
+//CONSTRAINT LOCAL SETCHANGED(regID(Contractor c)) AND contractorReg(regID(c))
+//    MESSAGE 'Contractor with this registration ID already exists in the database.  Please use filter search.';
+//CONSTRAINT LOCAL SETCHANGED(taxID(Contractor c)) AND contractorTax(taxID(c))
+//    MESSAGE 'Contractor with this tax ID already exists in the database.  Please use filter search.';
 
 // Type
 CLASS Type {
@@ -21,17 +44,26 @@ FORM types 'Contractor types'
     
     LIST Type OBJECT t
 ;
-type 'Type' = DATA Type(Contractor) NONULL;
+type 'Type' = DATA Type(Contractor);
 nameType 'Type' (Contractor c) = name(type(c));
 
-costItem 'Cost type' = DATA CostItem (Contractor) NONULL;
+isRegular 'Regular Contractor (Monthly Labour)' = DATA BOOLEAN (Contractor);
+costItem 'Cost type' = DATA CostItem (Contractor);
 nameCostItem 'Cost type' (Contractor c) = canonicalName(costItem(c));
+
+costItemReconcile 'Cost type for Reconcile' = DATA CostItem (Contractor); 
+nameCostItemReconcile 'Cost type for Reconcile' (Contractor c) = canonicalName(costItemReconcile(c));
+
+costCenter 'Cost Center for Reconcile' = DATA CostCenter(Contractor);
+nameCostCenter 'Cost Center for Reconcile' (Contractor c) = name(costCenter(c));
 
 contractor 'For other contractors' = DATA BOOLEAN (CostItem);
 EXTEND FORM costItem
     PROPERTIES(c) contractor
 ;
 
+CONSTRAINT Contractor i IS Contractor AND (NOT name(i) OR NOT type(i)) MESSAGE 'Plese provide required Contractor details: Name, Type';
+CONSTRAINT isRegular(Contractor c) AND NOT costItem(c) MESSAGE 'Please specify Cost type for the regular Contractor';
 CONSTRAINT costItem(Contractor c) AND NOT contractor(costItem(c)) CHECKED BY costItem[Contractor] MESSAGE 'Cost type for the contractor is not valid';
 
 changeCostItem (Contractor o)  { 
@@ -41,30 +73,157 @@ changeCostItem (Contractor o)  {
 currency 'Currency' = DATA Currency (Contractor);
 nameCurrency 'Currency' (Contractor c) = name(currency(c));
 
+sensitive 'Sensitive' = DATA BOOLEAN (Contractor);
+
 rate 'Rate, per hour' = DATA NUMERIC[10,2] (Contractor);  
 // Формы
 
+hideContracts 'Hide contracts list' = DATA LOCAL BOOLEAN ();
+
 FORM contractor 'Contractor'
     OBJECTS c = Contractor PANEL
-    PROPERTIES(c) name, nameType, nameCostItem ON CHANGE changeCostItem(c), nameCurrency, rate
+    PROPERTIES(c) name, regID, taxID, nameType, isRegular, nameCostItem ON CHANGE changeCostItem(c) SHOWIF isRegular(c), nameCurrency, rate
+    PROPERTIES hideContracts()
 
     EDIT Contractor OBJECT c
 ;
 
+DESIGN contractor {
+    size = (800, 480);
+    OBJECTS {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        fill = 1;
+        MOVE PROPERTY (name(c)) { notNull = TRUE; }
+        MOVE PROPERTY (nameType(c)) { notNull = TRUE; }
+        NEW id {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY (regID(c));
+            MOVE PROPERTY (taxID(c));
+        }
+        NEW regular {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY (isRegular(c));
+            MOVE PROPERTY (nameCostItem(c)) { notNull = TRUE; }
+        }
+        NEW rate {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY (nameCurrency(c));
+            MOVE PROPERTY (rate(c));
+        }
+    }
+    TOOLBAR {
+        MOVE PROPERTY (hideContracts());
+    }
+}
+
+enableEditContract 'Edit Contractors' = DATA LOCAL BOOLEAN ();
+
 FORM contractors 'Contractors'
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLY name, nameType, nameCostItem, nameCurrency, rate
+    PROPERTIES(c) READONLYIF NOT enableEditContract() name//, taxID
+    PROPERTIES (c) PANEL READONLYIF NOT enableEditContract() sensitive SHOWIF afg(currentUser()), regID, nameType, isRegular, nameCostItem, nameCurrency, rate
+    ORDERS name(c)
 
-    PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE 
+    PROPERTIES(c) TOOLBAR SHOWIF enableEditContract() NEW, EDIT, DELETE 
+    
+    PROPERTIES enableEditContract() TOOLBAR DRAW c
+    
+    OBJECTS an = AccountingName
+    PROPERTIES (an) SHOWIF afg(currentUser()) READONLYIF NOT enableEditContract() name
+    PROPERTIES(an)  TOOLBAR SHOWIF (enableEditContract() AND afg(currentUser())) NEW, DELETE 
+    PROPERTIES (c) SHOWIF afg(currentUser()) DRAW an PANEL autoReconcile, nameCostItemReconcile, nameCostCenter
+    FILTERS contractor(an) == c
+    
+    OBJECTS al = AccountingName
+    PROPERTIES (al) SHOWIF afg(currentUser()) nameContractor, name, NEW, DELETE 
+    
+    FILTERGROUP account
+    FILTER 'Show not linked names only' NOT contractor(al) DEFAULT 
 ;
 
+filterContractor 'Search' = DATA LOCAL NESTED ISTRING ();
+
 FORM dialogContractor 'Select contractor'
+    PROPERTIES () filterContractor 
+    
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLY name, nameType
+    PROPERTIES(c) READONLY name, nameType, taxID
+    ORDERS name(c)
+    FILTERS isSubstring(lower(name(c)), lower(filterContractor())) OR isSubstring(taxID(c), filterContractor()) OR isSubstring(regID(c), filterContractor()) OR NOT filterContractor()
     
     LIST Contractor OBJECT c
 ;
 
+DESIGN dialogContractor { 
+    OBJECTS { 
+        alignment = STRETCH; 
+        fill = 1; 
+        type = CONTAINERV;
+        MOVE PROPERTY(filterContractor()) { alignment = STRETCH; } 
+        MOVE BOX (c);
+    }
+}
+
+addContractor '+ Add' () {
+    NEWSESSION {
+        hideContracts() <- TRUE;
+        NEW c = Contractor {
+            SHOW contractor OBJECTS c = c FLOAT WAIT;
+            SEEK dialogContractor.c = c;
+        }
+    }
+} TOOLBAR;
+
+editContractor 'Edit' (Contractor c) {
+    NEWSESSION {
+        SHOW contractor OBJECTS c = c FLOAT WAIT;
+    }
+} TOOLBAR;
+
+EXTEND FORM dialogContractor PROPERTIES addContractor() DRAW c,editContractor(c);
+
 NAVIGATOR {
     NEW contractors; 
 }
+
+//--- Get EGRUL values from Dadata ---
+
+ogrn = DATA LOCAL ISTRING (INTEGER);
+legalShort = DATA LOCAL ISTRING(INTEGER);
+legalLong = DATA LOCAL ISTRING(INTEGER);
+legalType = DATA LOCAL ISTRING(INTEGER);
+
+GROUP data;
+GROUP name : data;
+
+FORM dadata
+    OBJECTS suggestions = INTEGER 
+    PROPERTIES IN data ogrn = ogrn(suggestions), type = legalType(suggestions)
+    PROPERTIES IN name short = legalShort(suggestions), full = legalLong(suggestions)
+;
+
+getEgrulData 'Get data from EGRUL' (Contractor c) {
+    LOCAL result = FILE();
+    EXTERNAL HTTP POST 'http://suggestions.dadata.ru/suggestions/api/4_1/rs/findById/party' HEADERS dadataHeader PARAMS JSONFILE ('\{"query": "'+taxID(c)+'"\}') TO result;
+    IMPORT dadata JSON FROM result();
+    FOR ogrn(INTEGER suggestions) DO {
+         regID(c) <- ogrn(suggestions);
+         name(c) <- ISTRING[50](OVERRIDE legalShort(suggestions), legalLong(suggestions));
+         IF legalType(suggestions) == 'INDIVIDUAL' THEN type(c) <- Type.individual;
+         ELSE type(c) <- Type.company;
+         IF NOT accountingName(lower(name(c))) THEN {
+            NEW n = AccountingName {
+                contractor(n) <- c;
+                name(n) <- name(c);
+            }
+         }
+    }
+}
+
+EXTEND FORM contractor PROPERTIES getEgrulData(c);
+
+DESIGN contractor { id { MOVE PROPERTY (getEgrulData(c)); } };

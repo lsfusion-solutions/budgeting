@@ -1,0 +1,260 @@
+MODULE Dashboard;
+
+REQUIRE CashFlowBI, Expense;
+
+NAMESPACE BudgetBI;
+
+// Months
+
+budgetByDate = budget(date(ExpenseLedger e));
+
+// Metrics
+
+monthExpenses 'Expences by Cost Center in Currecy by Month, USD' = GROUP SUM amountUSD(ExpenseLedger e) IF NOT skip(e) BY budgetByDate(e), currency(e), costCenter(e);
+
+monthExpenses 'Expences by Cost Type by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency cur, CostCenter c) BY b,c;
+
+monthExpenses 'Expences by Cost Type in Currecy by Month, USD' = GROUP SUM amountUSD(ExpenseLedger e) IF NOT skip(e) BY budgetByDate(e), currency(e), costItem(e);
+            
+monthExpenses 'Expences in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, c;
+
+monthExpenses 'Expences in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c) BY b;
+
+monthCostItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, c, costItem3(t);
+monthCostItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, costItem3(t);
+
+monthCostRootItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, c, costItem2(t);
+monthCostRootItem 'Expences by top Cost Type in Currecy by Month, USD' = GROUP SUM monthExpenses(Budget b, Currency c, CostItem t) BY b, costItem2(t);
+
+// --- Details Pop-up ----
+
+FORM dashUpCostItem 'Expense Details by Cost Type'
+    OBJECTS b = Budget PANEL
+    OBJECTS t = CostItem PANEL 
+    
+    OBJECTS e = ExpenseLedger
+    PROPERTIES(e) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS NOT skip(e),
+            budgetByDate(e) == b,
+            level(costItem(e), t),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDERS amountUSD(e) DESC
+;
+
+dashUpCostItem 'Expense Details by Cost Type' (Budget b, CostItem t) {
+    DIALOG dashUpCostItem OBJECTS b = b, t = t FLOAT MANAGESESSION;
+};
+
+FORM dashUpCostCenter 'Expense Details by Cost Center'
+    OBJECTS b = Budget PANEL
+    OBJECTS c = CostCenter PANEL 
+    
+    OBJECTS e = ExpenseLedger
+    PROPERTIES(e) READONLY date, amountUSD, note, nameCostItem, info, reference, nameCurrency, amount
+    FILTERS NOT skip(e),
+            budgetByDate(e) == b,
+            costCenter(e) == c,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDERS amountUSD(e) DESC
+;
+
+dashUpCostCenter 'Expense Details by Cost Center' (Budget b, CostCenter c) {
+    DIALOG dashUpCostCenter OBJECTS b = b, c = c FLOAT MANAGESESSION; //t = NULL, , b = NULL
+};
+
+FORM dashUpBudget 'Expense Details'
+    OBJECTS b = Budget PANEL 
+    
+    OBJECTS e = ExpenseLedger
+    PROPERTIES(e) READONLY date, amountUSD, nameCostItem, nameCostCenter, note, reference, info, nameCurrency, amount
+    FILTERS NOT skip(e),
+            budgetByDate(e) == b,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDERS amountUSD(e) DESC
+;
+
+dashUpBudget 'Expense Details by Month' (Budget b) {
+    DIALOG dashUpBudget OBJECTS b = b FLOAT MANAGESESSION;
+};
+
+// ---- Dashboard ----
+
+filterBudgetMonths 'Do not filter Budget Months' = DATA LOCAL NESTED BOOLEAN ();
+filterBudgetMonths 'Show' = DATA LOCAL NESTED BOOLEAN (Budget);
+
+// group months
+
+monthsCostItem 'Expenses by Cost Types for selected months' = GROUP SUM monthCostItem(Budget b, Currency c, CostItem t) IF filterBudgetMonths(b) BY c, t;
+
+monthsCostRootItem 'Expenses by root Cost Types for selected months' = GROUP SUM monthCostRootItem(Budget b, Currency c, CostItem t) IF filterBudgetMonths(b) BY c, t;
+
+monthsCostRootItem 'Expenses by root Cost Types for selected months, total' = GROUP SUM monthCostRootItem(Budget b, CostItem t) IF filterBudgetMonths(b) BY t;
+
+monthsExpenses 'Expenses by Cost Centers for selected months' = GROUP SUM monthExpenses(Budget b, Currency cur, CostCenter c) IF filterBudgetMonths(b) BY cur,c;
+
+monthsExpenses 'Expenses by Cost Centers for selected months' = GROUP SUM monthsExpenses(Currency cur, CostCenter c) BY c;
+
+plannedMonths 'Planned by Cost Types for selected months' = GROUP SUM planned(Budget b, CostItem t)  IF filterBudgetMonths(b) BY t;
+
+plannedMonths 'Planned by Cost Centers for selected months' = GROUP SUM planned(Budget b, CostCenter t)  IF filterBudgetMonths(b) BY t;
+
+// --- Details Pop-up ----
+
+FORM dashUpsCostItem 'Expenses Details by Cost Type'
+    OBJECTS t = CostItem PANEL 
+    
+    OBJECTS e = ExpenseLedger
+    PROPERTIES(e) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
+    FILTERS NOT skip(e),
+            filterBudgetMonths(budgetByDate(e)),
+            level(costItem(e), t),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDERS amountUSD(e) DESC
+;
+
+dashUpsCostItem 'Expenses Details by Cost Type' (CostItem t) {
+    DIALOG dashUpsCostItem OBJECTS t = t FLOAT MANAGESESSION;
+};
+
+FORM dashUpsCostCenter 'Expenses Details by Cost Center'
+    OBJECTS c = CostCenter PANEL 
+    
+    OBJECTS e = ExpenseLedger
+    PROPERTIES(e) READONLY date, amountUSD, note, nameCostItem, info, reference, nameCurrency, amount
+    FILTERS NOT skip(e),
+            filterBudgetMonths(budgetByDate(e)),
+            costCenter(e) == c,
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDERS amountUSD(e) DESC
+;
+
+dashUpsCostCenter 'Expenses Details by Cost Center' (CostCenter c) {
+    DIALOG dashUpsCostCenter OBJECTS c = c FLOAT MANAGESESSION; //t = NULL, , b = NULL
+};
+
+FORM dashUpsBudget 'Expenses Details'
+    OBJECTS e = ExpenseLedger
+    PROPERTIES(e) READONLY date, amountUSD, nameCostItem, nameCostCenter, note, reference, info, nameCurrency, amount
+    FILTERS NOT skip(e),
+            filterBudgetMonths(budgetByDate(e)),
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser())) 
+    ORDERS amountUSD(e) DESC
+;
+
+dashUpsBudget 'Expenses Details by Months' () {
+    DIALOG dashUpsBudget FLOAT MANAGESESSION;
+};
+
+FORM dashboard 'Dashboard'
+    //OBJECTS b = Budget PANEL 
+    //PROPERTIES name(b) SELECTOR, planned(b), sumUSD=monthExpenses(b,currencyName('USD')), sumRUR=monthExpenses(b,currencyName('RUR')) , monthExpenses(b)
+    
+    OBJECTS t = CostItem 
+    PROPERTIES ON CHANGE dashUpsCostItem(t) name(t), plannedMonths(t), monthsCostRootItem(t), sumRootUSD=monthsCostRootItem(currencyName('USD'),t), sumRootRUB=monthsCostRootItem(currencyName('RUR'),t), orderLevel(t) SHOWIF NULL
+    ORDERS orderLevel(t)
+    FILTERS costItem2(t) == t AND monthsCostRootItem(t) > 0
+    
+    OBJECTS i = CostItem 
+    PROPERTIES ON CHANGE dashUpsCostItem(i) nameCostItem2(i), name(i), plannedMonths(i), sumItemUSD=monthsCostItem(currencyName('USD'),i), sumItemRUB=monthsCostItem(currencyName('RUR'),i), orderLevel(i) SHOWIF NULL
+    ORDERS orderLevel(i)
+    FILTERS costItem3(i) == i AND (monthsCostItem(currencyName('USD'),i) > 0 OR monthsCostItem(currencyName('RUR'),i) > 0)
+    
+    OBJECTS c = CostCenter 
+    PROPERTIES ON CHANGE dashUpsCostCenter(c) name(c), plannedMonths(c), sumCenterUSD=monthsExpenses(currencyName('USD'),c), sumCenterRUB=monthsExpenses(currencyName('RUR'),c), monthsExpenses(c)
+    ORDERS name(c)
+    FILTERS plannedMonths(c) > 0 OR monthsExpenses(currencyName('USD'),c) > 0 OR monthsExpenses(currencyName('RUR'),c) > 0
+    
+    OBJECTS bm = Budget
+    PROPERTIES (bm) filterBudgetMonths //SHOWIF filterBudgetMonths()
+    PROPERTIES (bm) ON CHANGE dashUpsBudget() name, planned, indexMonth SHOWIF NULL, monthExpenses
+    PROPERTIES sumUSD=monthExpenses(bm,currencyName('USD')), sumRUR=monthExpenses(bm,currencyName('RUR'))
+    ORDERS indexMonth(bm) DESC
+    //FILTERS indexMonth(bm) >= (indexMonth(b) - 2) AND indexMonth(bm) <= (indexMonth(b) + 1)
+    FILTERS //indexMonth(bm) == indexMonth(b) OR filterBudgetMonths(bm) OR filterBudgetMonths (),
+            planned(bm),
+            monthExpenses(bm)
+    //PROPERTIES filterBudgetMonths() DRAW bm TOOLBAR
+    
+    EVENTS ON INIT {
+        SEEK FIRST dashboard.bm;
+    }
+;
+
+DESIGN dashboard {
+    OBJECTS {
+        type = CONTAINERV ;
+        NEW deassetails {
+            alignment = STRETCH;
+            type = SPLITH;
+            height = 200;
+            MOVE BOX (bm) {
+                PROPERTY (monthExpenses(bm)) { caption = 'Total Amount, USD'; }
+                PROPERTY (sumUSD) { caption = 'U.S. Amount, USD'; }
+                PROPERTY (sumRUR) { caption = 'Russia Amount, USD'; }
+            }
+            MOVE BOX (t) {
+                PROPERTY (sumRootUSD) { caption = 'U.S. Amount, USD'; }
+                PROPERTY (sumRootRUB) { caption = 'Russia Amount, USD'; }
+                PROPERTY (monthsCostRootItem(t)) { caption = 'Total Amount, USD'; }
+            }
+        }
+        NEW details {
+            alignment = STRETCH;
+            fill = 1;
+            type = SPLITH;
+            MOVE BOX (i) {
+                PROPERTY (nameCostItem2(i)) { caption = 'Category'; }
+                PROPERTY (sumItemUSD) { caption = 'U.S. Amount, USD'; }
+                PROPERTY (sumItemRUB) { caption = 'Russia Amount, USD'; }
+            }
+            MOVE BOX (c) {
+                PROPERTY (sumCenterUSD) { caption = 'U.S. Amount, USD'; }
+                PROPERTY (sumCenterRUB) { caption = 'Russia Amount, USD'; }
+                PROPERTY (monthsExpenses(c)) { caption = 'Total Amount, USD'; }
+            }
+        }
+    }
+}
+
+FORM dashboardExport 'Dashboard Spreadsheet'
+    OBJECTS bm = Budget
+    PROPERTIES (bm) name, planned, monthExpenses
+    PROPERTIES sumUSD=monthExpenses(bm,currencyName('USD')), sumRUR=monthExpenses(bm,currencyName('RUR'))
+    FILTERS filterBudgetMonths(bm)
+    
+    OBJECTS t = CostItem 
+    PROPERTIES name(t), plannedMonths(t), monthsCostRootItem(t), sumRootUSD=monthsCostRootItem(currencyName('USD'),t), sumRootRUB=monthsCostRootItem(currencyName('RUR'),t)
+    FILTERS costItem2(t) == t AND monthsCostRootItem(t) > 0
+    
+    OBJECTS i = CostItem 
+    PROPERTIES nameCostItem2(i), name(i), plannedMonths(i), sumItemUSD=monthsCostItem(currencyName('USD'),i), sumItemRUB=monthsCostItem(currencyName('RUR'),i)
+    FILTERS costItem3(i) == i AND (monthsCostItem(currencyName('USD'),i) > 0 OR monthsCostItem(currencyName('RUR'),i) > 0)
+    
+    OBJECTS c = CostCenter 
+    PROPERTIES name(c), plannedMonths(c), sumCenterUSD=monthsExpenses(currencyName('USD'),c), sumCenterRUB=monthsExpenses(currencyName('RUR'),c)
+    ORDERS name(c)
+    FILTERS plannedMonths(c) > 0 OR monthsExpenses(currencyName('USD'),c) > 0 OR monthsExpenses(currencyName('RUR'),c) > 0
+;
+
+DESIGN dashboardExport {
+    PROPERTY (monthExpenses(bm)) { caption = 'Total Amount, USD'; }
+    PROPERTY (sumUSD) { caption = 'U.S. Amount, USD'; }
+    PROPERTY (sumRUR) { caption = 'Russia Amount, USD'; }
+    PROPERTY (sumRootUSD) { caption = 'U.S. Amount, USD'; }
+    PROPERTY (sumRootRUB) { caption = 'Russia Amount, USD'; }
+    PROPERTY (monthsCostRootItem(t)) { caption = 'Total Amount, USD'; }
+    PROPERTY (nameCostItem2(i)) { caption = 'Category'; }
+    PROPERTY (sumItemUSD) { caption = 'U.S. Amount, USD'; }
+    PROPERTY (sumItemRUB) { caption = 'Russia Amount, USD'; }
+    PROPERTY (sumCenterUSD) { caption = 'U.S. Amount, USD'; }
+    PROPERTY (sumCenterRUB) { caption = 'Russia Amount, USD'; }
+}
+
+exportDashboard 'Export selected Months'()  { 
+            PRINT dashboardExport XLSX;
+} TOOLBAR;
+EXTEND FORM dashboard PROPERTIES () exportDashboard;
+
+NAVIGATOR {
+    NEW dashboard BEFORE budgets;
+}

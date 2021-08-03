@@ -4,14 +4,15 @@ REQUIRE PurchaseInvoice, Contractor, BudgetContract, BudgetPurchaseInvoiceExpens
 
 NAMESPACE Budget;
 
-contractor = DATA Contractor(Invoice);
-nameContractor 'Contractor' (Invoice i) = name(contractor(i));
+contractor = DATA Contractor(Invoice) INDEXED;
+nameContractor 'Contractor' (Invoice i) = name(contractor(i)) CHARWIDTH 20;
 
 contract = DATA Contract(Invoice);
-nameContract 'Contract' (Invoice i) = number(contract(i));
+nameContract 'Contract' (Invoice i) = number(contract(i)) CHARWIDTH 20;
 
-CONSTRAINT contractor(contract(Invoice i)) != contractor(i) CHECKED BY contract[Invoice] MESSAGE 'Contract\'s contractor doesn\'t match invoice\'s contractor';
-CONSTRAINT contractor(Invoice i) AND NOT contractor(budgetDetail(i)) == contractor(i) CHECKED BY budgetDetail[Invoice] MESSAGE 'Budget Detail\'s contractor doesn\'t match invoice\'s contractor';
+CONSTRAINT NOT nameContractor(Invoice i) AND amount(i) MESSAGE 'Please specify contractor';
+CONSTRAINT contractor(contract(Invoice i)) != contractor(i) CHECKED BY contract[Invoice],contractor[Invoice] MESSAGE 'Contract\'s contractor doesn\'t match invoice\'s contractor';
+//CONSTRAINT contractor(Invoice i) AND NOT contractor(budgetDetail(i)) == contractor(i) CHECKED BY budgetDetail[Invoice] MESSAGE 'Budget Detail\'s contractor doesn\'t match invoice\'s contractor';
 
 WHEN LOCAL CHANGED (contract(Invoice i)) DO {
     contractor(i) <- contractor(contract(i));    
@@ -46,8 +47,8 @@ EXTEND FORM dialogInvoices
     PROPERTIES(i) READONLY nameContractor, nameContract
 ;
 
-invoiced 'Invoiced, USD' (Contract c) = GROUP SUM round2(amount(Invoice i) / defaultRateOn(currency(i), date(i))) BY contract(i);
-invoiced 'Invoiced, USD' (Contractor c) = GROUP SUM round2(amount(Invoice i) / defaultRateOn(currency(i), date(i))) BY contractor(i);
+invoiced 'Invoiced, USD' (Contract c) = GROUP SUM round2(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate()))) BY contract(i);
+invoiced 'Invoiced, USD' (Contractor c) = GROUP SUM round2(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate()))) BY contractor(i);
 
 spent 'Spent, USD' (Contract c) = GROUP SUM spentUSD(Invoice i) BY contract(i);
 spent 'Spent, USD' (Contractor c) = GROUP SUM spentUSD(Invoice i) BY contractor(i);
@@ -56,3 +57,12 @@ overCopy(Invoice ni, Invoice i) + {
     contract(ni) <- contract(i);
     contractor(ni) <- contractor(i);
 }
+
+EXTEND FORM contractors
+    OBJECTS i = Invoice
+    PROPERTIES (i) READONLY date, number, nameCostCenter
+    PROPERTIES (i) TOOLBAR open SHOWIF hasFile(i)
+    FILTERS contractor(i) == c
+;
+
+DESIGN contractors { detailContractor { MOVE BOX (i) FIRST;} }

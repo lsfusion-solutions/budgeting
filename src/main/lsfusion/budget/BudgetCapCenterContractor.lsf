@@ -1,6 +1,6 @@
 MODULE BudgetCapCenterContractor;
 
-REQUIRE BudgetCapCenter, Contractor, BudgetCapCenterApproval, Utils;
+REQUIRE BudgetCapCenter, Contractor, BudgetCapCenterApproval, Utils, BudgetCapCenterEmployee;
 
 NAMESPACE Budget;
 
@@ -9,7 +9,7 @@ sum 'Fixed amount' = DATA NUMERIC[10,2] (Period, Contractor);
 
 CONSTRAINT DROPPED(Contractor c IS Contractor) AND PREV(hours(Period p, c)) MESSAGE 'Cannot delete a contractor with assigned hours';
 
-contractors 'Total amount, USD' (Period p, Contractor e) = NUMERIC[16,3](round0((rate(e) * hours(p, e) (+) sum(p, e)) / defaultRateOn(currency(e), fromDate(p))));
+contractors 'Total quote, USD' (Period p, Contractor e) = NUMERIC[16,3](round0((rate(e) * hours(p, e) (+) sum(p, e)) / defaultRateOn(currency(e), fromDate(p))));
 
 contractors (Period p, CostItem i) = 
     GROUP SUM contractors(p, Contractor e) BY costItem(e) MATERIALIZED;
@@ -20,17 +20,33 @@ EXTEND CLASS ExtraCap {
 cap (ExtraCap e, Period p, CostItem i) += WHEN e == ExtraCap.contractors AND contractors(p, i) THEN contractors(p, i); 
 
 EXTEND FORM costCenterBudget
-    OBJECTS cc = Contractor
-    PROPERTIES(cc) READONLY name, nameType, nameCostItem, nameCurrency, rate
-    PROPERTIES(cc) NEWSESSION NEW, EDIT, DELETE
-    PROPERTIES hours(p, cc), sum(p, cc), contractors(p, cc)
+    PROPERTIES () filterContractor
+    
+    OBJECTS cpc = (pc = Period, cc = Contractor)
+    PROPERTIES(cc) READONLYIF readonlyProcAll(bm, c) ON CHANGE editContractor(cc) name, nameCostItem, nameType, rate, nameCurrency
+    PROPERTIES READONLYIF readonlyProcAll(bm, c) hours(pc, cc), sum(pc, cc), contractors(pc, cc)
+    ORDERS name(cc)
+    FILTERS isSubstring(lower(name(cc)), lower(filterContractor())) OR isSubstring(taxID(cc), filterContractor()) OR isSubstring(regID(cc), filterContractor()) OR NOT filterContractor(),
+            pc == period(c,bm)
 ;
 
+addContractorBudget '+ Add' () {
+    NEWSESSION {
+        hideContracts() <- TRUE;
+        NEW c = Contractor {
+            SHOW contractor OBJECTS c = c FLOAT WAIT;
+            SEEK costCenterBudget.cc = c;
+        }
+    }
+} TOOLBAR;
+EXTEND FORM costCenterBudget PROPERTIES addContractorBudget() DRAW cpc;
+
 DESIGN costCenterBudget {
-    periodRightPane {
-        NEW contractorsPane {
+    monthlyTabPane {
+        NEW contractorsPane AFTER budgetDetail {
             caption = 'Contractors';
-            MOVE BOX(cc);
+            MOVE PROPERTY (filterContractor()) { alignment = STRETCH; }
+            MOVE BOX(cpc);
         }
     }
 }
@@ -48,25 +64,28 @@ CONSTRAINT contractor(BudgetDetail d) AND NOT [ GROUP SUM 1 IF hours(Period p, C
     CHECKED BY contractor[BudgetDetail] MESSAGE 'Selected contractor for budget detail doesn\'t have assigned hours or sum for the cost center';
 
 budgetDetail (CostCenter c, Budget b, Contractor cc) = GROUP LAST BudgetDetail d BY costCenter(d), budget(d), contractor(d);
-contractors 'Total amount, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM planned(BudgetDetail d) BY costCenter(d), budget(d), contractor(d);
+contractors 'Total amount, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY costCenter(d), budget(d), contractor(d);
 contractors 'Total amount (for month), USD' (Period p, Budget b, Contractor cc) = contractors(costCenter(p), b, cc); 
 
-monthlyContractors 'Total amount monthly, USD' (Period p, Contractor cc) = GROUP SUM contractors(costCenter(p), Budget b, cc) IF selected(p, b);
+monthlyContractors 'Total in Period, USD' (Period p, Contractor cc) = GROUP SUM contractors(costCenter(p), Budget b, cc) IF selected(p, b);
+monthlyContractorsQuarter 'Total in Period, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM contractors(c, Budget be, cc) IF quarterNumber(be) == quarterNumber(b);
 
 changeContractors (CostCenter c, Budget b, Contractor cc)  { 
-    INPUT q = NUMERIC[16,3] DO { // запрашиваем число
-        IF budgetDetail(c, b, cc) THEN { // проверяем, есть ли хоть одна строка
-            IF q THEN // ввели число
-                planned(BudgetDetail d) <- q IF d == budgetDetail(c, b, cc) WHERE costCenter(d) == c AND budget(d) == b AND contractor(d) == cc; // записываем количество в последнюю строку с такой книгой
-            ELSE // сбросили число - удаляем строку
+    INPUT q = NUMERIC[16,3] DO { // wait for user input of integer
+        IF budgetDetail(c, b, cc) THEN { // look up for existing budget item
+            IF q THEN // once number provider
+                planned(BudgetDetail d) <- q IF d == budgetDetail(c, b, cc) WHERE costCenter(d) == c AND budget(d) == b AND contractor(d) == cc; // update the linked budget item
+            ELSE // when number is empty aqain, then drop the budget details
                 DELETE BudgetDetail d WHERE costCenter(d) == c AND budget(d) == b AND contractor(d) == cc;   
         } ELSE
             IF q THEN
-                NEW d = BudgetDetail { // создаем новую строку
+                NEW d = BudgetDetail { // create connected Budget item
                     costCenter(d) <- c;
                     budget(d) <- b;
                     contractor(d) <- cc;
                     planned(d) <- q;
+                    name(d) <- name(cc);
+                    description(d) <- 'Created when added plan of involvement of ' + name(cc);
                 }
     }
 }
@@ -75,21 +94,19 @@ changeContractors (Period p, Budget b, Contractor cc)  {
     changeContractors(costCenter(p), b, cc);
 }
 EXTEND FORM costCenterBudget
-    PROPERTIES(p, cc) READONLY monthlyContractors
-    
     OBJECTS cb = Budget
-    PROPERTIES(cb) READONLY fromDate, toDate, name
-    PROPERTIES(p, cb, cc) READONLYIF readonly(cb, costCenter(p)) contractors ON CHANGE changeContractors(p, cb, cc)
-    FILTERS selected(p, cb)
+    FILTERS quarterNumber(cb) == quarterNumber(bm)
+    //PROPERTIES(cb) READONLY fromDate, toDate, name
+    PROPERTIES READONLYIF readonly(cb, c) contractors(c, cb, cc) ON CHANGE changeContractors(c, cb, cc) DRAW cpc COLUMNS (cb) HEADER name(cb)
+    //FILTERS selected(p, cb)
+    
+    PROPERTIES(c, bm, cc) READONLY monthlyContractorsQuarter DRAW cpc
     
     PROPERTIES(bmd) nameContractor
 ;
 
-DESIGN costCenterBudget {
-    contractorsPane {
-        MOVE BOX(cb);
-    }
-}
+//DESIGN costCenterBudget { contractorsPane { MOVE BOX(cb); } }
+
 // Period approval
 
 EXTEND FORM periodApproval
@@ -111,12 +128,12 @@ sum 'Fixed amount' (Contractor c) = GROUP SUM sum(Period p, c);
 contractors 'Total amount, USD' (Contractor c) = GROUP SUM contractors(Period p, c);
 
 EXTEND FORM contractors
-    PROPERTIES(c) READONLY hours, sum, contractors
+    PROPERTIES(c) PANEL READONLY hours, sum, contractors
     
-    OBJECTS p = Period
-    PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate
-    PROPERTIES(p, c) READONLY hours, sum
-    FILTERS hours(p, c) OR sum(p, c)
+    //OBJECTS p = Period
+    //PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate
+    //PROPERTIES(p, c) READONLY hours, sum
+    //FILTERS hours(p, c) OR sum(p, c)
 ;
 
 
@@ -136,15 +153,37 @@ FORM dialogCopyFromBudget 'Budgets'
 
 copyFrom 'Copy from' (Budget bb, CostCenter c) {
     DIALOG dialogCopyFromBudget OBJECTS c = c, b INPUT DO {
-        FOR budget(BudgetDetail d) == b AND costCenter(d) == c DO NEW bd = BudgetDetail {
-            budget(bd) <- bb;
-            costCenter(bd) <- c;
-            costItem(bd) <- costItem(d);
-            name(bd) <- name(d);
-            planned(bd) <- planned(d);
-            contractor(bd) <- contractor(d);
+        IF quarterNumber(bb) > quarterNumber(b) THEN {        
+            FOR budget(BudgetDetail d) == b AND costCenter(d) == c AND NOT sensitive(d) NEW bd = BudgetDetail DO {
+                budget(bd) <- bb;
+                costCenter(bd) <- c;
+                costItem(bd) <- costItem(d);
+                name(bd) <- name(d);
+                planned(bd) <- planned(d);
+                contractor(bd) <- contractor(d);
+                sensitive(bd) <- sensitive(d);
+            }
         }
+        ELSE MESSAGE 'Coping enabled from the previous quarters only.\nFor operations within selected quarter use Move button.';
     }
 }
 
-EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) copyFrom(bm, c) DRAW bmd TOOLBAR;
+copyTo 'Copy to' (BudgetDetail bb) {
+    DIALOG dialogCopyFromBudget OBJECTS c = costCenter(bb), b INPUT DO {
+        IF quarterNumber(budget(bb)) <= quarterNumber(b) AND NOT readonly(b, costCenter(bb)) THEN {        
+            NEW bd = BudgetDetail {
+                budget(bd) <- b;
+                costCenter(bd) <- costCenter(bb);
+                costItem(bd) <- costItem(bb);
+                name(bd) <- name(bb);
+                planned(bd) <- planned(bb);
+                contractor(bd) <- contractor(bb);
+                sensitive(bd) <- sensitive(bb);
+            }
+        }
+        ELSE MESSAGE 'Coping enabled into next quarters only\nand it should be opened for editing.';
+    }
+}
+
+EXTEND FORM costCenterBudget PROPERTIES READONLYIF readonly(bmd, c) copyFrom(bm, c) DRAW bmd TOOLBAR; 
+EXTEND FORM costCenterBudget PROPERTIES(bmd) copyTo TOOLBAR; 

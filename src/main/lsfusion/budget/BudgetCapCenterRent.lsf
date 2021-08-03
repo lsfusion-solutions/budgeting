@@ -1,6 +1,6 @@
 MODULE BudgetCapCenterRent;
 
-REQUIRE BudgetCapCenterEmployee, BudgetRent, Utils;
+REQUIRE BudgetCapCenterEmployee, BudgetRent, Utils, BudgetCapCenterContractor;
 
 NAMESPACE Budget;
 
@@ -24,6 +24,46 @@ EXTEND FORM periodApproval
     PROPERTIES READONLY rent(p, e), rent(p, e, eb)
 ;
 
+changeLocation (Employee e, Budget b)  { 
+    DIALOG dialogLocation OBJECTS c INPUT DO {
+        dataLocation(e,b) <- c;
+    }
+}
+
+isAssignedQRent 'Pay for rent' (CostCenter c, Budget b, Employee e) = TRUE IF GROUP MAX rent(c,e,Budget rb) IF quarterNumber(rb) == quarterNumber(b);
+locationQuarter 'Locations' (Employee e, Budget b) = GROUP CONCAT name(Location l),', ' IF l == location(e,Budget rb) AND quarterNumber(rb) == quarterNumber(b);
+
+searchByRent 'Search' = DATA LOCAL NESTED ISTRING ();
+EXTEND FORM costCenterBudget
+    PROPERTIES() searchByRent
+    
+    OBJECTS rb = Budget
+    FILTERS quarterNumber(rb) == quarterNumber(bm)
+
+    OBJECTS rpr = (er = Employee, rl = Location)
+    PROPERTIES(er) READONLY name, namePosition // firstName, lastName
+    PROPERTIES(er) READONLYIF (readonlyProc(bm, c) OR NOT afg(currentUser())) nameLocation
+    PROPERTIES =name(location(er, rb)) READONLYIF (readonlyProc(bm, c) OR NOT afg(currentUser())) ON CHANGE changeLocation(er, rb) COLUMNS (rb) HEADER name(rb)
+    PROPERTIES READONLYIF (readonlyProc(bm, c) OR NOT afg(currentUser())) rent(c, er, rb) COLUMNS (rb) HEADER name(rb)
+    ORDERS name(er)
+    FILTERS isSubstring(lower(name(er)), lower(searchByRent())) OR isSubstring(lower(locationQuarter(er,bm)), lower(searchByRent())) OR NOT searchByRent(),
+            rl == location(er,bm),
+            isAssignedQuarter(c,bm,er)
+            
+    //FILTERGROUP rentteam
+    //    FILTER 'Show the only assigned rental items for the Cost Center this quarter' isAssignedQRent(c,bm,er)
+;
+
+DESIGN costCenterBudget {
+    monthlyTabPane {
+        NEW rentPane AFTER contractorsPane {
+            caption = 'Rent';
+            MOVE PROPERTY (searchByRent()) { alignment = STRETCH; }
+            MOVE BOX(rpr);
+        }
+    }
+}
+
 // create budget detail
 
 CLASS RentBudgetDetail 'Budget detail (Rent)' : BudgetDetail;
@@ -42,6 +82,33 @@ WHEN SETCHANGED(budget[RentBudgetDetail](RentBudgetDetail d)) DO
 
 WHEN SETCHANGED(RentBudgetDetail d IS RentBudgetDetail) DO
     name[BudgetDetail](d) <- 'Rent';
+    
+WHEN SETCHANGED(RentBudgetDetail d IS RentBudgetDetail) DO
+    description[BudgetDetail](d) <- 'Sum of all Renting budgets within Cost Type in this budgeting month.';
 
 WHEN SETCHANGED(rent(costCenter(RentBudgetDetail d), costItem(d), budget(d))) DO
     planned[BudgetDetail](d) <- rent(costCenter(d), costItem(d), budget(d));
+
+// Editor of Budget items on Project Budget form
+
+isInherited 'Inherited and automotically created' (BudgetDetail d) = TRUE IF (d IS RentBudgetDetail) OR (d IS SalaryBudgetDetail);
+
+readonlyProc (BudgetDetail d) = (isSubmitted(partQuarter(d)) OR readonly(d)) AND NOT freeCostCenter(costCenter(d));
+readonlyProcInh (BudgetDetail d) = (isSubmitted(partQuarter(d)) OR readonly(d)) AND NOT freeCostCenter(costCenter(d)) OR isInherited(d);
+
+EXTEND FORM costCenterBudget
+    PROPERTIES(bmd) READONLYIF readonlyProcInh(bmd) 
+                               canonicalNameCostItem, name, planned, optimizedPlanned, spentInteger, description PANEL, sensitive
+    PROPERTIES(bmd) READONLYIF readonlyProc(bmd) new = NEW, delete = DELETE SHOWIF NOT isInherited(bmd) 
+;
+DESIGN costCenterBudget { 
+    description {
+        MOVE PROPERTY(description(bmd)) { caption = ''; fill = 1; } 
+    } 
+    TOOLBAR(bmd) {
+        MOVE PROPERTY (new);
+        MOVE PROPERTY (delete);
+        MOVE PROPERTY (copyFrom(bm, c));
+        MOVE PROPERTY (copyTo(bmd));
+    }
+}

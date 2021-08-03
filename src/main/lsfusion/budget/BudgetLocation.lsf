@@ -1,6 +1,6 @@
 MODULE BudgetLocation;
 
-REQUIRE Budget, Location;
+REQUIRE Budget, LocationB;
 
 NAMESPACE Budget;
 

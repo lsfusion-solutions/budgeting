@@ -15,5 +15,5 @@ overCap 'Cap, USD' (Budget b, CostItem i) = OVERRIDE cap(b, i), childCap(b, i);
 cap 'Cap, USD' (Budget b) = GROUP SUM cap(b, CostItem i);
 
 EXTEND FORM budgets
-    PROPERTIES(b) READONLY cap BEFORE planned(b)
+    PROPERTIES(b) READONLY cap BEFORE plannedInteger(b)
 ; 

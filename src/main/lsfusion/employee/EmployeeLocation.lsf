@@ -1,6 +1,6 @@
 MODULE EmployeeLocation;
 
-REQUIRE Employee, Location;
+REQUIRE EmployeeB, LocationB;
 
 NAMESPACE Employee;
 

@@ -9,9 +9,13 @@ nameCostCenter 'Cost center' (Invoice i) = name(costCenter(i));
 
 budgetDetail 'Budget detail' = DATA BudgetDetail (Invoice);
 
-CONSTRAINT costCenter(Invoice i) != costCenter(budgetDetail(i)) CHECKED BY budgetDetail[Invoice] MESSAGE 'Cost center is not equal to cost center of budget detail'; 
+CONSTRAINT Invoice i IS Invoice AND NOT budgetDetail(i) MESSAGE 'Plese specify Budget detail';
+CONSTRAINT costCenter(Invoice i) != costCenter(budgetDetail(i)) CHECKED BY budgetDetail[Invoice],costCenter[Invoice] MESSAGE 'Cost center is not equal to cost center of budget detail'; 
+WHEN LOCAL CHANGED (budgetDetail(Invoice i)) DO { costCenter(i) <- costCenter(budgetDetail(i)); }
 
 completeNameBudgetDetail 'Budget detail' (Invoice i) = completeName(budgetDetail(i));
+nameBudget 'Budget' (Invoice i) = nameBudget(budgetDetail(i));
+itemBudgetDetail 'Budget item' (Invoice i) = name(budgetDetail(i));
 
 EXTEND FORM invoice
     PROPERTIES(i) nameCostCenter, completeNameBudgetDetail
@@ -29,16 +33,62 @@ DESIGN invoice {
     }
 }
 
-EXTEND FORM invoices
+
+FORM invoices 'Purchase Invoices'
+    PROPERTIES() nameFilterCostCenter, nameFilterBudget
+    
+    TREE costItems t = CostItem PARENT parent(t)
+    PROPERTIES(t) READONLY order SHOWIF NULL, name
+    ORDERS order(t) 
+
+    OBJECTS i = Invoice
+    PROPERTIES(i) READONLY date, number, nameSupplier, nameCurrency, amount //, approved, dateTimeApproved, nameUserApproved, note
+    PROPERTIES(i) TOOLBAR open SHOWIF hasFile(i), copy
     PROPERTIES(i) READONLY nameCostCenter, completeNameBudgetDetail
+    PROPERTIES(i) NEWSESSION EDIT, DELETE
+    ORDERS date(i) DESC 
+    FILTERS costCenter(budgetDetail(i)) == filterCostCenter() OR NOT filterCostCenter(),
+            budget(budgetDetail(i)) == filterBudget() OR NOT filterBudget(),
+            isParent(costItem(budgetDetail(i)),t) OR NOT budgetDetail(i)
 ;
 
-invoiced 'Invoiced, USD' (BudgetDetail d) = GROUP SUM round0(amount(Invoice i) / defaultRateOn(currency(i), date(i))) BY budgetDetail(i); 
-EXTEND FORM budgetDetails
-    PROPERTIES(d) READONLY invoiced
-;
+DESIGN invoices {
+    OBJECTS {
+        NEW filters FIRST {
+            type = CONTAINERH;
+            alignment = STRETCH;
+            MOVE PROPERTY(nameFilterCostCenter()) {alignment = STRETCH; caption = 'Select Cost Center'; }
+        }
+        NEW items {
+            type = CONTAINERH;
+            fill = 1;
+            alignment = STRETCH;
+            NEW selectors {
+                type = CONTAINERV;
+                fill = 1;
+                alignment = STRETCH;
+                MOVE PROPERTY (nameFilterBudget()) { alignment = STRETCH; }
+                MOVE BOX (TREE costItems) { 
+                    fill = 1;
+                    caption = 'Cost Items'; 
+                }
+            }
+            MOVE BOX (i) { 
+                fill = 3;
+                PROPERTY (amount(i)) { pattern = '#,##0.00'; }
+            }
+        }
+    }
+}
+
+invoiced 'Invoiced, USD' (Invoice i) = NUMERIC[14,2](round0(amount(i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate()))));
 
 overCopy(Invoice ni, Invoice i) + {
     costCenter(ni) <- costCenter(i);
     budgetDetail(ni) <- budgetDetail(i);
+}
+
+
+NAVIGATOR {
+    NEW invoices;
 }

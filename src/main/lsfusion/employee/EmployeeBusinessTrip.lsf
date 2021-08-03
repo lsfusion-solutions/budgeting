@@ -1,6 +1,6 @@
 MODULE EmployeeBusinessTrip;
 
-REQUIRE Employee, Location, Time;
+REQUIRE EmployeeB, LocationB, Time;
 
 NAMESPACE Employee;
 

@@ -13,7 +13,7 @@ name 'Name' = DATA STRING[200] (GLAccount) CHARWIDTH 30;
 GLAccount = GROUP AGGR GLAccount a BY name(a);  
 
 GLAccount 'General ledger account' = DATA GLAccount (Expense);
-nameGLAccount 'General ledger account' (Expense e) = name(GLAccount(e));
+nameGLAccount 'General ledger account' (Expense e) = name(GLAccount(e)) CHARWIDTH 6;
 
 costItem 'Cost type' = DATA CostItem (GLAccount);
 nameCostItem 'Cost type' (GLAccount a) = canonicalName(costItem(a));
@@ -62,7 +62,7 @@ importXero 'Import from Xero' ()  {
         
         expense(INTEGER i) <- [GROUP MAX Expense e BY date(e), amount(e), note(e)](date(i), (debit(i) (-) credit(i)), note(i));
         
-        FOR imported(INTEGER i) AND i > 4 ORDER i DO {
+        FOR imported(INTEGER i) AND i > 3 ORDER i DO {
             IF NOT debit(i) AND NOT credit(i) AND NOT note(i) AND NOT reference(i) THEN {
                 IF dateRow(i) != '' AND NOT GLAccount(dateRow(i)) THEN NEW g = GLAccount {
                     name(g) <- dateRow(i);
@@ -98,7 +98,7 @@ import1C 'Import from 1C' ()  {
 
         IMPORT XLS NOHEADER FROM f TO date = A;
         
-        FOR imported(INTEGER i) AND i > 9 ORDER i DO {
+        FOR imported(INTEGER i) AND i > 7 ORDER i DO { // previous version: i > 9
             IF date(i) AND creditAccount(i) == '51' THEN NEW e = Expense {
                 date(e) <- date(i);
                 currency(e) <- currencyName('RUR');
@@ -133,14 +133,15 @@ split 'Split' (Expense e)  {
         } 
     } 
 }
-toReconcile (Expense e) = e IS Expense AND NOT costItem(e) AND NOT skip(e); 
+//toReconcile (Expense e) = e IS Expense AND NOT costItem(e) AND NOT skip(e); 
+toReconcile (Expense e) = e IS Expense AND NOT budgetDetail(e) AND NOT skip(e); 
 
 FORM reconcileBudgetDetail 'Reconcile budget detail'
     OBJECTS dt = DATE PANEL
     
     OBJECTS d = BudgetDetail
     PROPERTIES(d) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, spent
-    FILTERS (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+    FILTERS (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) AND NOT hidden(d)
     
     FILTERGROUP date
         FILTER 'Same month' dt >= fromDate(budget(d)) AND dt <= toDate(budget(d)) DEFAULT
@@ -159,12 +160,13 @@ EXTEND FORM expenses
     PROPERTIES(c) name SELECTOR 
     
     OBJECTS ie = Expense
-    PROPERTIES(ie) expenseType READONLY, date, nameGLAccount READONLY, note, reference, nameCurrency READONLY, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie), descriptionPurchaseInvoice, split TOOLBAR 
-    PROPERTIES(ie) DELETE
+    PROPERTIES(ie) date, note READONLY, nameCostCenter, nameCostItem, completeNameBudgetDetail ON CHANGE changeBudgetDetail(ie), amount
+    PROPERTIES(ie) PANEL expenseType READONLY, nameGLAccount READONLY, nameCurrency READONLY, reference
+    PROPERTIES(ie) TOOLBAR split, DELETE  
     FILTERS date(ie) >= dFrom AND date(ie) <= dTo,
             currency(ie) == c,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(ie)) OR NOT hideSensitive(mainRole(currentUser())) 
-    ORDER date(ie), nameGLAccount(ie)
+    ORDERS date(ie), nameGLAccount(ie)
     
     FILTERGROUP toReconcile
         FILTER 'To reconcile' CHANGED(toReconcile(ie)) OR toReconcile(ie)
@@ -230,18 +232,32 @@ DESIGN expenses {
                     fill = 2;
                 }
                 NEW expensePane {
-                    height = 150;
+                    //height = 150;
                     caption = 'Expense parameters';
-                    fill = 1;
+                    //fill = 1;
                     type = CONTAINERH;
                     NEW expenseMark {
+                        height = 120;
                         caption = 'Mark as';
                         type = CONTAINERV;
-                        MOVE PROPERTY(nameBudget(ie));
                         MOVE PROPERTY(markAsExpense(ie));
                     }
                     NEW expenseParams {
                         fill = 1;
+                        alignment = STRETCH;
+                        //height = 150;
+                        NEW budgetDetails {
+                            alignment = STRETCH;
+                            type = CONTAINERH;
+                            MOVE PROPERTY (expenseType(ie)) {panelCaptionVertical = TRUE; }
+                            MOVE PROPERTY (nameGLAccount(ie)) {panelCaptionVertical = TRUE; }
+                            MOVE PROPERTY (nameCurrency(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+                            MOVE PROPERTY (reference(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+                        }
+                        NEW purchaseDetails AFTER budgetDetails {
+                            type = CONTAINERH;
+                            alignment = STRETCH;
+                        }
                     }
                 }
             }

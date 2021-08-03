@@ -1,0 +1,165 @@
+MODULE BudgetExpenseReconcileContractor;
+
+REQUIRE BudgetExpenseReconcile, BudgetContract, BudgetExpense, PaymentCycle;
+
+NAMESPACE Budget;
+
+contractor 'Contractor' = ABSTRACT Contractor(ExpenseLedger);
+contractorManual 'Contractor' = DATA Contractor(Expense) INDEXED;
+
+contractorAutomate 'Automotive Search' (Expense e) = GROUP LAST contractor(AccountingName a) IF isSubstring(lower(note(e)), lower(name(a))) OR isSubstring(lower(reference(e)),lower(name(a))) ORDER a;
+
+WHEN SETCHANGED (note(Expense e)) OR SETCHANGED (reference(e)) AND NOT contractorManual(e) DO {
+    contractorManual(e) <- contractorAutomate(e);
+}
+
+contractorCandidate 'Contractor' (Expense e) = OVERRIDE contractorManual(e), contractor(invoice(part(e))), contractor(purchaseInvoice(e)), contractorAutomate(e);
+contractor 'Contractor' (Expense e) = OVERRIDE contractor(purchaseInvoice(e)), contractorManual(e), contractor(invoice(part(e))) MATERIALIZED INDEXED;
+
+contractor(Expense e) += contractor(e);
+
+selectContractor (Expense e)  { 
+    DIALOG dialogContractor OBJECTS c INPUT DO {
+        contractorManual(e) <- c;
+    }
+}
+
+nameContractorCandidate 'Contractor' (Expense e) = name(contractorCandidate(e));
+nameContractor 'Contractor' (ExpenseLedger e) = name(contractor(e));
+
+paidCurrency 'Paid Currency' = GROUP SUM amount(Expense e) BY contractor(e),currency(e) MATERIALIZED;
+//paidUSD 'Paid, USD' (Contractor c) = GROUP SUM round2 (paidCurrency(c,Currency cur) / defaultRateOn(cur, currentDate())) MATERIALIZED;
+paidUSD 'Paid, USD' = GROUP SUM amountUSD(Expense e) BY contractor(e) MATERIALIZED;
+noteText 'Note & Reference' (Expense e) = CONCAT '\nReference: ',TEXT (note(e)), TEXT (reference(e));
+assigned 'Assigned, %' (Expense x, Employee e) = (OVERRIDE dataAssigned(period(costCenter(x),budget(date(x))), budget(date(x)), e), 
+    (assigned(period(costCenter(x),budget(date(x))), e) IF selected(period(costCenter(x),budget(date(x))), budget(date(x))))) 
+        IF NOT date(x) < fromDate(monthFrom(e)) AND NOT date(x) > fromDate(monthTo(e)) MATERIALIZED     ; 
+
+searchInvoiceByName 'Search' = DATA LOCAL NESTED ISTRING ();
+
+FORM reconcilePurchaseOrder 'Reconcile Purchase Invoice'
+    PROPERTIES() searchByName
+    OBJECTS amount = NUMERIC[16,2] PANEL
+    
+    OBJECTS d = Invoice
+    PROPERTIES(d) READONLY date, number, completeNameBudgetDetail, nameContractor, amountName, paid
+    ORDERS date(d) DESC 
+    FILTERS isSubstring(lower(completeNameBudgetDetail(d)), lower(searchByName())) OR isSubstring(lower(nameContractor(d)), lower(searchByName())) OR NOT searchByName()
+    
+    FILTERGROUP amount
+        FILTER 'Same amount' amount == amount(d) DEFAULT
+        
+    FILTERGROUP paid
+        FILTER 'Paid' paid(d) DEFAULT
+;
+DESIGN reconcilePurchaseOrder {
+    size = (1200, 480);
+    OBJECTS {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        fill = 1;
+        MOVE PROPERTY (searchByName()) { alignment = STRETCH; }
+        MOVE BOX (d) {
+            PROPERTY (amountName(d)) { charWidth = 20; }
+        }
+    }
+}
+changePurchaseOrder (Expense e)  { 
+    DIALOG reconcilePurchaseOrder OBJECTS d = purchaseInvoice(e) CHANGE, amount = amount(e);
+}
+
+EXTEND FORM expenses
+    PROPERTIES (e) READONLY nameContractor
+    PROPERTIES (ie) PANEL descriptionPurchaseInvoice ON CHANGE changePurchaseOrder(ie), nameContractorCandidate ON CHANGE selectContractor(ie)
+    
+    OBJECTS cc = Currency
+    
+    OBJECTS ct = Contractor
+    PROPERTIES(ct) READONLY name
+    PROPERTIES paidCurrency(ct,cc) COLUMNS (cc) HEADER name(cc)
+    
+    OBJECTS ec = Expense
+    PROPERTIES (ec) READONLY date, nameCurrency, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail, descriptionPurchaseInvoice, nameGLAccount, noteText PANEL 
+    FILTERS contractor(ec) == ct
+    
+    OBJECTS em = Employee
+    //PROPERTIES READONLY nameCostCenter(ec) DRAW em
+    PROPERTIES (em) READONLY firstName, lastName, namePosition
+    PROPERTIES assigned(ec,em)
+    FILTERS assigned(ec,em) > 0
+    
+    FILTERGROUP contractors
+    FILTER 'Have expenses' paidUSD(ct) > 0 DEFAULT 
+;
+
+DESIGN expenses {
+    pane {
+        NEW contractor AFTER budget {
+            caption = 'Contractors';
+            type = CONTAINERH;
+            fill = 1;
+            alignment = STRETCH;
+            NEW listContractor {
+                width = 500;
+                alignment = STRETCH;
+                MOVE BOX (ct);
+            }
+            NEW detailContractor {
+                type = CONTAINERV;
+                fill = 1;
+                MOVE BOX (ec);
+                MOVE PROPERTY (noteText(ec)) { panelCaptionVertical = TRUE; alignment = STRETCH; }
+                MOVE BOX (em);
+            }
+        }
+        purchaseDetails {
+            MOVE PROPERTY (descriptionPurchaseInvoice(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+            MOVE PROPERTY (nameContractorCandidate(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
+        }
+    }
+}
+
+EXTEND FORM contractors
+    OBJECTS cc = Currency
+    
+    PROPERTIES paidCurrency(c,cc) COLUMNS (cc) HEADER name(cc)
+    //PROPERTIES (c) paidUSD
+    FILTERS (NOT sensitive(c) AND paidUSD(c) > 0) OR afg(currentUser())
+
+    OBJECTS e = Expense
+    PROPERTIES (e) expenseType, date, nameGLAccount, note, reference, nameCurrency, amount, nameCostCenter, nameCostItem, completeNameBudgetDetail, descriptionPurchaseInvoice
+    FILTERS contractor(e) == c
+;
+    
+DESIGN contractors { detailContractor { MOVE BOX (e) FIRST; } }
+
+//WHEN SETCHANGED (purchaseInvoice(Expense e)) DO {
+//    contractorManual(e) <- contractor(purchaseInvoice(e));
+//}
+
+reconcileAuto () + {
+    costItem(Expense e) <- costItemReconcile(contractorCandidate(e)) 
+            WHERE toReconcile(e) AND costItemReconcile(contractorCandidate(e)) AND autoReconcile(contractorCandidate(e)) AND [ FILTER expenses.ie](e);
+}
+
+reconcileAuto () + { 
+    costCenter(Expense e) <- costCenter(contractorCandidate(e)) 
+            WHERE toReconcile(e) AND costCenter(contractorCandidate(e)) AND autoReconcile(contractorCandidate(e)) AND [ FILTER expenses.ie](e);
+}
+
+reconcileAuto() + { 
+    LOCAL locRec = BOOLEAN (Expense);
+    locRec(Expense e) <- toReconcile(e) AND [ FILTER expenses.ie](e);
+    
+    LOCAL locInv = Invoice (Expense);
+    //locInv (Expense e) <- (GROUP LAST Invoice i IF contractor(i) == contractorAutomate(e) AND amount(i) == amount(e) AND paid(i)) WHERE locRec(e);
+    locInv (Expense e) <- (GROUP LAST Invoice i IF amount(i) == amount(e) AND budget(budgetDetail(i)) == budget(date(e)) AND paid(i) AND NOT purchaseInvoice(e) ORDER date(i)) WHERE locRec(e);
+    
+    purchaseInvoice(Expense e) <- locInv(e) WHERE locInv(e);
+}
+
+WHEN LOCAL CHANGED (purchaseInvoice(Expense e)) DO {
+    budgetDetail(e) <- budgetDetail(purchaseInvoice(e));
+    costItem(e) <- costItem(budgetDetail(purchaseInvoice(e)));
+    costCenter(e) <- costCenter(budgetDetail(purchaseInvoice(e)));  
+}

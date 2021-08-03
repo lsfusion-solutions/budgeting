@@ -1,0 +1,54 @@
+MODULE POCycleCompany;
+
+REQUIRE POCycle, EmployeeCompany, PurchaseInvoiceCompany;
+
+NAMESPACE Purchase;
+
+showCompany 'Show company' = DATA BOOLEAN (CostCenter);
+EXTEND FORM costCenter
+    PROPERTIES(c) showCompany
+;
+DESIGN costCenter {
+    flag {
+        MOVE PROPERTY(showCompany(c));
+    }
+}
+
+// --- Company
+countInvoice (PurchaseOrder o, Company c) = GROUP SUM 1 IF part(Invoice i) = o AND company(i) = c MATERIALIZED;
+countCompanies (PurchaseOrder o) = GROUP SUM 1 IF countInvoice(o, Company c) MATERIALIZED;
+companies 'Companies' (PurchaseOrder o) = GROUP CONCAT name(Company c) IF countInvoice(o, c), ',' ORDER c MATERIALIZED CHARWIDTH 15;
+skip(Employee e, Assign s) += company(e) AND countCompanies(sbj(s)) AND NOT countInvoice(sbj(s), company(e)); 
+
+EXTEND FORM invoiceLoad
+    PROPERTIES(i) nameCompany SHOWIF showCompany(costCenter(i))
+;
+
+DESIGN invoiceLoad {
+    budgetItemDetails {
+        MOVE PROPERTY(nameCompany(i)) { caption = 'Paying company'; notNull = TRUE; panelCaptionVertical = TRUE; flex = 4;}
+    }
+}
+
+CONSTRAINT SETCHANGED(costCenter(Invoice i)) AND showCompany(costCenter(i)) AND NOT company(i)
+    MESSAGE 'You must specify a paying company';
+
+companies 'Companies' (Assign s) = companies(sbj(s)); 
+EXTEND FORM assignments
+    PROPERTIES(s) READONLY companies
+;
+
+EXTEND FORM approve PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM enter PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM purchaseOrder PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM reject PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM review PROPERTIES(d) READONLY nameCompany;
+EXTEND FORM update PROPERTIES(d) READONLY nameCompany;
+
+// notification
+
+processNotification(PurchaseOrder o) + {
+    notificationHeader() <- replace(notificationHeader(), 'company(s)', OVERRIDE companies(o), '');
+    notificationText() <- replace(notificationText(), 'company(s)', OVERRIDE companies(o), '');
+    notificationDetails() <- replace(notificationDetails(), 'company(s)', OVERRIDE companies(o), '');
+}

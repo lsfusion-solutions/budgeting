@@ -1,0 +1,825 @@
+MODULE Connector;
+
+REQUIRE Utils, Time;
+
+//------------ Google Sheets API --------------
+
+// https://developers.google.com/sheets/api/reference/rest
+gsssEndpoint 'GSheets API Endpoint' = DATA STRING ();
+gsssSpreadsheets 'REST Resource for Spreadsheets' = DATA STRING ();
+gsssDeveloperMetadata 'REST Resource for Develper Metadata' = DATA STRING ();
+gsssSheets 'REST Resource for Sheets' = DATA STRING ();
+gsssValues 'REST Resource for Values' = DATA STRING ();
+
+// Credentials from the API Console  https://console.developers.google.com/
+gsssLogin 'GSheets API Login' = DATA STRING ();
+gsssClientID 'GSheets API Client ID' = DATA STRING ();
+gsssProjectID 'GSheets API Project ID' = DATA STRING ();
+gsssAuthURI 'GSheets Authentication URI' = DATA STRING ();
+gsssTokenURI 'GSheets Token URI' = DATA STRING ();
+gsssAuthProvider 'GSheets Authentication Provider X509 Certificate URL' = DATA STRING ();
+gsssClientSecret 'Standartization Secret key GSheets API' = DATA STRING ();
+gsssRedirectURI 'Our Redirect URI' = DATA STRING ();
+gsssAccessTokenRefresh 'GSheets API Refresh Access Token' = DATA STRING ();
+
+// Our Spreadsheets
+gsssScope 'Authorization Scope' = DATA STRING (); // https://www.googleapis.com/auth/spreadsheets
+// Spreadsheet with Team List
+gsssTeam 'Team List' = DATA STRING ();
+gsssTeamSheet 'Team List sheet' = DATA INTEGER ();
+gsssTeamColumns 'Team List columns' = DATA INTEGER (); // amount of columns used for basic filter
+gsssTeamLink 'Team List Key column' = DATA INTEGER (); // column containing the key value
+// Spreadsheet with Organigram
+gsssOrg 'Organigram' = DATA STRING ();
+gsssOrgSheet 'Organigram sheet' = DATA INTEGER ();
+// Add new Spreadsheets here
+
+// A1 notation
+
+// ASCII codes of column letters: A is 65 to Z is 90 - 26 in order
+toASCII (symbol) = FORMULA INTEGER 'ascii($1)'; // ASCII code of the first byte of the argument
+toCHR (ascii) = FORMULA TEXT 'chr($1)'; // Character with the given ASCII code
+columnLength 'Number of letters' (INTEGER i) = i > 26; // when TRUE, then two letters are used, space until 26*27 = 702
+columnOrder 'Order of AA notation' (INTEGER i) = INTEGER (floor ((i-1)/26) + 64);
+columnIndex 'Number of column in the order' (INTEGER i) = INTEGER (mod((i-1),26) + 65);
+columnLetter 'AA notation' (INTEGER i) = IF columnLength(i) 
+    THEN (CONCAT '',toCHR(columnOrder(i)),toCHR(columnIndex(i)))
+    ELSE toCHR(columnIndex(i));
+a1notation 'A1 notation' (INTEGER i, INTEGER j) = CONCAT '',columnLetter(i),STRING(j);// First index is column, second index is row
+
+//--- Basic methods ---
+// Authentication https://developers.google.com/identity/protocols/oauth2/web-server
+gsssAuthorizationCode 'GSheets API Authorization Code' = DATA STRING ();
+gsssAuthorizationCodeDatetime 'Date/Time of Authorization Code receipt' = DATA DATETIME();
+gsssAccessToken 'GSheets API Access Token' = DATA STRING ();
+gsssAccessTokenDatetime 'Date/Time of Access Token receipt' = DATA DATETIME();
+gsssAccessTokenValidity 'Date/Time of Access Token validity' = DATA DATETIME();
+gsssAccessTokenType 'GSheets API Access Token Authentication type' = DATA STRING ();
+gsssAccessTokenScope 'GSheets API Access Token Scope' = DATA STRING ();
+
+// Manual way to obtain Authorization Code is to copy the generated string and run it in the browser:
+gsssAuthorizationCodeRequestString 'GSheets API Authorization Code Request String' = gsssAuthURI() + 
+    '?scope=' + gsssScope() +               // https://www.googleapis.com/auth/spreadsheets
+    '&access_type=online' +                 // to enable refresh of access token use access_type=offline
+    '&include_granted_scopes=true' +        // optional
+    '&response_type=code' +                 // required by documentation
+    '&redirect_uri=' + gsssRedirectURI() +  // from Credentials
+    '&client_id=' + gsssClientID() +        // from Credentials
+    '&login_hint=' + gsssLogin() +          // the system' Google ID
+    '&prompt=none';                         // If consent hasn't accepted yet, then run with &prompt=consent
+                                            // If the access_type is offline, prompt must be consent
+
+gsssAuth 'Authorization' = IF gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime() THEN 'Bearer ' + gsssAccessToken() ELSE NULL;
+gsssHeader (STRING name) = CASE
+    WHEN name == 'Content-Type' THEN 'application/x-www-form-urlencoded';
+gsssAuthHeader (STRING name) = CASE
+    WHEN name == 'Authorization' THEN gsssAuth() // 
+    WHEN name == 'Content-Type' THEN 'application/json';
+
+gsssAuthorizationCodeGet 'Request new Authorization Code from the Google Sheets API Authentication URI' () {
+    // https://developers.google.com/identity/protocols/oauth2/web-server#creatingclient
+    // This function do not work from bare start (before consent accepted)
+    // The Authorisation Code to be received via callback
+    IF gsssScope() AND gsssRedirectURI() AND gsssClientID() AND gsssLogin() THEN {
+        NEWSESSION {
+            LOCAL response = FILE();
+            EXTERNAL HTTP POST gsssAuthURI()
+                BODYURL 'scope=$1&access_type=online&include_granted_scopes=true&response_type=code&redirect_uri=$2&client_id=$3&login_hint=$4&prompt=none' 
+                // access_type=offline allows obtain of a new access token if the access token expires and should be done only once
+                PARAMS gsssScope(), gsssRedirectURI(), gsssClientID(), gsssLogin();
+        }
+    }
+    ELSE MESSAGE 'No Google Sheets API Parameters defined' NOWAIT;
+}
+
+gsssAuthorizationCodeSet 'Receive new Authorization Code from the Google Sheets API' (STRING code, STRING scope, STRING error) {
+    // This function is not finished (and doesn't work)
+    IF NOT error THEN {
+        gsssAuthorizationCode() <- code;
+        gsssAuthorizationCodeDatetime() <- currentDateTime();
+        printToLog('Google Sheets API Authorization Code received: ' + gsssAuthorizationCode() + ' valid for scope '+scope);
+        EXPORT JSON FROM code = '1', message = 'OK';
+        APPLY;
+    }
+    ELSE {
+        printToLog('Google Sheets API Authorization error received: ' + error);
+        EXPORT JSON FROM code = '0', message = error;
+    }
+} @@api @@noauth;
+
+gsssAccessTokenGet 'Request new Access Token (online) from the Google Sheets API OAuth2 authorization server' () {
+    // https://developers.google.com/identity/protocols/oauth2/web-server#exchange-authorization-code
+    // Used to refresh Access Token using online type of access from the Authorization step
+    // Offline case is in gsssAccessTokenUpdate
+    
+    // Article on Troubleshooting with 404 response "error": "invalid_grant":
+    // https://blog.timekit.io/google-oauth-invalid-grant-nightmare-and-how-to-fix-it-9f4efaf1da35
+    
+    //IF NOT gsssAuthorizationCode() THEN gsssAuthorizationCodeGet(); // In case of online access type
+    IF gsssAuthorizationCode() THEN {
+        IF gsssClientID() AND gsssClientSecret() AND gsssRedirectURI() THEN {
+            NEWSESSION {
+                LOCAL result = FILE();
+                EXTERNAL HTTP POST gsssTokenURI()
+                    BODYURL 'code=$1&client_id=$2&client_secret=$3&redirect_uri=$4&grant_type=authorization_code' 
+                    PARAMS gsssAuthorizationCode(), gsssClientID(), gsssClientSecret(), gsssRedirectURI() 
+                    // The commented code below describes receive of offline based access token 
+                    //BODYURL 'client_id=$1&client_secret=$2&refresh_token=$3&grant_type=refresh_token' 
+                    //PARAMS gsssClientID(), gsssClientSecret(), gsssAccessTokenRefresh() 
+                    TO result;
+                fileToString(result(), 'UTF-8');
+                printToLog('Response to Access Token request received from the Google Sheets API: ' + resultString());
+                    
+                LOCAL access_token = STRING();
+                LOCAL expires_in = INTEGER(); // The remaining lifetime of the access token in seconds.
+                LOCAL token_type = STRING(); // The type of token returned. At this time, this field's value is always set to Bearer.
+                LOCAL scope = STRING(); // The scopes of access granted by the access_token expressed as a list of space-delimited, case-sensitive strings.
+                //LOCAL refresh_token = STRING(); // This field is only present if the access_type parameter set to offline
+                IMPORT FROM result() TO() access_token,expires_in,token_type,scope;
+                gsssAccessToken() <- access_token();
+                gsssAccessTokenDatetime() <- currentDateTime();
+                gsssAccessTokenValidity() <- sumSeconds(gsssAccessTokenDatetime(),expires_in());
+                gsssAccessTokenType() <- token_type();
+                gsssAccessTokenScope() <- scope();
+                printToLog('Google Sheets API Access Toke received: ' + gsssAccessToken());
+                
+                // Clean the used Authorisation Code
+                gsssAuthorizationCode() <- NULL;
+                APPLY;
+            }
+        }
+        ELSE MESSAGE 'No Google Sheets API Parameters defined' NOWAIT;
+        //ELSE printToLog('No Google Sheets API Parameters defined');
+    }
+    ELSE MESSAGE 'No Google Sheets API Authorization Code established' NOWAIT;
+    //ELSE printToLog('No offline refresh Access Toke provided to access Google Sheets API.');
+}
+
+gsssAccessTokenUpdate 'Request new Access Token (offline) from the Google Sheets API OAuth2 authorization server' () {
+    // https://developers.google.com/identity/protocols/oauth2/web-server?authuser=5#offline
+    // Used to refresh Access Token using offline type of access from the Authorization step
+    // Online case is in gsssAccessTokenGet
+    
+    // Article on Troubleshooting with 404 response "error": "invalid_grant":
+    // https://blog.timekit.io/google-oauth-invalid-grant-nightmare-and-how-to-fix-it-9f4efaf1da35
+    
+    IF gsssAccessTokenRefresh() THEN {
+        IF gsssClientID() AND gsssClientSecret() THEN {
+            NEWSESSION {
+                LOCAL result = FILE();
+                EXTERNAL HTTP POST gsssTokenURI()
+                    BODYURL 'client_id=$1&client_secret=$2&refresh_token=$3&grant_type=refresh_token' 
+                    PARAMS gsssClientID(), gsssClientSecret(), gsssAccessTokenRefresh()
+                    TO result;
+                fileToString(result(), 'UTF-8');
+                printToLog('Response to Access Token refresh request received from the Google Sheets API: ' + resultString());
+                    
+                LOCAL access_token = STRING();
+                LOCAL expires_in = INTEGER(); // The remaining lifetime of the access token in seconds.
+                LOCAL token_type = STRING(); // The type of token returned. At this time, this field's value is always set to Bearer.
+                LOCAL scope = STRING(); // The scopes of access granted by the access_token expressed as a list of space-delimited, case-sensitive strings.
+                //LOCAL refresh_token = STRING(); // This field is only present if the access_type parameter set to offline
+                IMPORT FROM result() TO() access_token,expires_in,scope,token_type;
+                gsssAccessToken() <- access_token();
+                gsssAccessTokenDatetime() <- currentDateTime();
+                gsssAccessTokenValidity() <- sumSeconds(gsssAccessTokenDatetime(),expires_in());
+                gsssAccessTokenType() <- token_type();
+                gsssAccessTokenScope() <- scope();
+                printToLog('Google Sheets API Access Toke was refreshed: ' + gsssAccessToken());
+                APPLY;
+            }
+        }
+        ELSE MESSAGE 'No Google Sheets API Parameters defined' NOWAIT;
+        //ELSE printToLog('No Google Sheets API Parameters defined');
+    }
+    ELSE MESSAGE 'No Google Sheets API Refresh Token established' NOWAIT;
+    //ELSE printToLog('No offline refresh Access Toke provided to access Google Sheets API.');
+}
+
+EXTEND FORM integrationData
+    PROPERTIES() gsssEndpoint, gsssSpreadsheets, gsssDeveloperMetadata, gsssSheets, gsssValues
+    PROPERTIES() gsssLogin, gsssClientID, gsssProjectID, gsssAuthURI, gsssTokenURI, gsssAuthProvider, gsssClientSecret, gsssRedirectURI
+    PROPERTIES() gsssTeam, gsssTeamSheet, gsssTeamColumns, gsssTeamLink, gsssOrg, gsssOrgSheet, gsssScope, gsssAccessTokenUpdate//, gsssAuthorizationCodeGet, gsssAccessTokenGet
+    //PROPERTIES gsssAuthorizationCodeRequestText = TEXT(gsssAuthorizationCodeRequestString())
+    PROPERTIES() READONLY gsssAccessTokenRefresh, gsssAuthorizationCode, gsssAuthorizationCodeDatetime, gsssAccessToken, gsssAccessTokenDatetime, gsssAccessTokenValidity, gsssAccessTokenType, gsssAccessTokenScope
+;
+
+DESIGN integrationData {
+    pane {
+        NEW gsss {
+            caption = 'Google Sheets';
+            NEW gsssEndpoints {
+                type = CONTAINERV;
+                caption = 'API Endpoints';
+                alignment = STRETCH;
+                MOVE PROPERTY(gsssEndpoint());
+                MOVE PROPERTY(gsssSpreadsheets());
+                MOVE PROPERTY(gsssDeveloperMetadata());
+                MOVE PROPERTY(gsssSheets());
+                MOVE PROPERTY(gsssValues());
+            }
+            NEW gsssCredentials {
+                type = CONTAINERV;
+                caption = 'Our Credentials';
+                alignment = STRETCH;
+                MOVE PROPERTY(gsssLogin());
+                MOVE PROPERTY(gsssClientID());
+                MOVE PROPERTY(gsssProjectID());
+                MOVE PROPERTY(gsssAuthURI());
+                MOVE PROPERTY(gsssTokenURI());
+                MOVE PROPERTY(gsssAuthProvider());
+                MOVE PROPERTY(gsssClientSecret());
+                MOVE PROPERTY(gsssRedirectURI());
+            }
+            NEW gsssSpreadsheets {
+                type = CONTAINERV;
+                caption = 'Application';
+                alignment = STRETCH;
+                NEW gsssSpreadsheetTeam {
+                    caption = 'Team List';
+                    type = CONTAINERH;
+                    alignment = STRETCH;
+                    MOVE PROPERTY(gsssTeam()) { panelCaptionVertical = TRUE; }
+                    MOVE PROPERTY(gsssTeamSheet()) { panelCaptionVertical = TRUE; }
+                    MOVE PROPERTY(gsssTeamColumns()) { panelCaptionVertical = TRUE; }
+                    MOVE PROPERTY(gsssTeamLink()) { panelCaptionVertical = TRUE; }
+                }
+                NEW gsssSpreadsheetOrg {
+                    caption = 'Organigram';
+                    type = CONTAINERH;
+                    alignment = STRETCH;
+                    MOVE PROPERTY(gsssOrg());
+                    MOVE PROPERTY(gsssOrgSheet());
+                }
+                MOVE PROPERTY(gsssScope());
+                //MOVE PROPERTY(gsssAuthorizationCodeGet());
+                //MOVE PROPERTY(gsssAuthorizationCodeRequestText) { panelCaptionVertical = TRUE; }
+                //MOVE PROPERTY(gsssAccessTokenGet());
+                MOVE PROPERTY(gsssAccessTokenUpdate());
+            }
+            NEW gsssAccess {
+                type = CONTAINERH;
+                caption = 'Access Tokens';
+                alignment = STRETCH;
+                MOVE PROPERTY(gsssAccessTokenRefresh()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAuthorizationCode()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAuthorizationCodeDatetime()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessToken()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenDatetime()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenValidity()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenType()) { panelCaptionVertical = TRUE; }
+                MOVE PROPERTY(gsssAccessTokenScope()) { panelCaptionVertical = TRUE; }
+            }
+        }
+    }
+}
+
+//--- Set Spreadsheet properties ---
+
+batchUpdateRequest  = DATA LOCAL TEXT ();
+batchUpdateResponse = DATA LOCAL FILE ();
+
+gsssBatchUpdate (STRING spreadsheetId) {
+    // Setup Spreadsheet parameters: e.g. filters
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/batchUpdate
+    //      spreadsheetId - ID of the Google Spreadsheet
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        IF batchUpdateRequest() THEN {
+            batchUpdateRequest() <- '\{"requests": ['+ batchUpdateRequest() + '],"includeSpreadsheetInResponse":false\}';
+            printToLog('Sending Batch update request to Google Spreadsheet: ' + batchUpdateRequest());
+            
+            TRY {
+                EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + ':batchUpdate' 
+                    HEADERS gsssAuthHeader 
+                    PARAMS JSONFILE (batchUpdateRequest()) 
+                    TO batchUpdateResponse;
+            } CATCH {
+                fileToString(batchUpdateResponse(), 'UTF-8');
+                MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString() NOWAIT;
+            }
+                
+            fileToString(batchUpdateResponse(), 'UTF-8');
+            printToLog('Google Spreadsheet Batch Update: ' + resultString());
+        }
+        ELSE MESSAGE 'Wrong data for Basic filter update' NOWAIT;
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
+}
+
+gsssBatchUpdateMerge  (STRING spreadsheetId, INTEGER sheetId, INTEGER startRow, INTEGER endRow, INTEGER startColumn, INTEGER endColumn) {
+    // Merge set of cells
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#mergecellsrequest
+    //      spreadsheetId - ID of the Google Spreadsheet
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    
+    batchUpdateRequest() <- '\{"mergeCells":\{' + 
+                                    '"range":\{' +
+                                           '"sheetId":' + sheetId + ',' +
+                                           '"startRowIndex": ' + startRow + ',' +
+                                           '"endRowIndex": ' + endRow + ',' +
+                                           '"startColumnIndex": ' + startColumn + ',' +
+                                           '"endColumnIndex": ' + endColumn + '\},' +
+                                      '"mergeType":"MERGE_ROWS"\}\}';
+    gsssBatchUpdate(spreadsheetId);
+}
+
+gsssBatchUpdateFilter (STRING spreadsheetId, INTEGER sheetId, INTEGER rows, INTEGER columns) {
+    // Update Basic Filter
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#UpdateFilterViewRequest
+    //      spreadsheetId - ID of the Google Spreadsheet
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    
+    batchUpdateRequest() <- '\{"setBasicFilter":\{'+
+                                    '"filter":\{'+
+                                                '"range": \{'+
+                                                    '"sheetId": ' + sheetId + ',' + 
+                                                    '"startRowIndex": 0,' +
+                                                    '"endRowIndex": ' + rows + ',' + // valuable rows amount from append output
+                                                    '"startColumnIndex": 0,' +
+                                                    '"endColumnIndex": ' + columns + // valuable columns amount from append output
+                                                '\}'+
+                                                //'"sortSpecs": [\{\}],'+
+                                                //'"criteria": \{\},'+ // criteria field is deprecated in favor of filterSpecs
+                                                //'"filterSpecs": [\{\}]'+
+                                    '\}\}\}';
+    gsssBatchUpdate(spreadsheetId);
+}
+
+gsssBatchUpdateDeleteRow (STRING spreadsheetId, INTEGER sheetId, INTEGER index) {
+    // Delete Row
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#deletedimensionrequest
+    //      spreadsheetId - ID of the Google Spreadsheet
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    
+    batchUpdateRequest() <- '\{"deleteDimension":\{'+
+                                    '"range": \{'+
+                                        '"sheetId": ' + sheetId + ',' + 
+                                        '"dimension": "ROWS",' + 
+                                        '"startIndex": ' + index+ ',' +
+                                        '"endIndex": ' + (index + 1) + 
+                                '\}\}\}';
+    gsssBatchUpdate(spreadsheetId);
+}
+
+gsssBatchUpdateDeleteRows (STRING spreadsheetId, INTEGER sheetId, INTEGER indexFrom, INTEGER indexTo) {
+    // Delete Rows
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#deletedimensionrequest
+    //      spreadsheetId - ID of the Google Spreadsheet
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    
+    batchUpdateRequest() <- '\{"deleteDimension":\{'+
+                                    '"range": \{'+
+                                        '"sheetId": ' + sheetId + ',' + 
+                                        '"dimension": "ROWS",' + 
+                                        '"startIndex": ' + indexFrom + ',' +
+                                        '"endIndex": ' + (indexTo + 1) + 
+                                '\}\}\}';
+    gsssBatchUpdate(spreadsheetId);
+}
+
+//--- Handle Spreadsheet metadata ---
+
+// Representation for Resource: ValueRange
+// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values#ValueRange
+GROUP valueranges;
+GROUP valuerange;
+majorDimension = DATA LOCAL STRING();
+majordimension = DATA LOCAL STRING(INTEGER);
+valueRange = DATA LOCAL ISTRING(INTEGER);
+range = DATA LOCAL STRING();
+values = DATA LOCAL STRING(INTEGER);
+valuerangesValues = DATA LOCAL INTEGER(INTEGER);
+valuerangeValues = DATA LOCAL INTEGER(INTEGER);
+
+FORM gsssValueRange
+    PROPERTIES() majorDimension, range
+    OBJECTS values = INTEGER 
+    PROPERTIES(values) valueRange EXTID 'value'
+;
+
+FORM gsssValueRanges
+    OBJECTS valueranges = INTEGER
+
+    OBJECTS values = INTEGER IN valuerange
+    FILTERS valuerangesValues(values) == valueranges
+    PROPERTIES(values) values EXTID 'value'
+    FILTERS valuerangeValues(values) == values
+;
+
+// Representation for Resource: DeveloperMetadata - shortened to necessary
+// not used either, because the Id is being generated in system itself with proper uniqueness control
+// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata
+GROUP developerMetadata;
+GROUP location : developerMetadata;
+GROUP dimensionRange : location;
+metadataId = DATA LOCAL INTEGER ();
+startIndex = DATA LOCAL INTEGER (INTEGER);
+
+FORM gsssMetadataId PROPERTIES() IN developerMetadata metadataId;
+
+FORM matchedDeveloperMetadata
+    OBJECTS matchedDeveloperMetadata = INTEGER
+    PROPERTIES(matchedDeveloperMetadata) IN dimensionRange startIndex;
+;
+
+META gsssMetadataHandle (List, key, sheets, column)
+    // Define link of Object to Google Spreadsheet by the following parameters:
+    //      List - name of Object
+    //      key - key property for one-to-one link
+    //      sheets - name of global property, which contains the Spreadsheet spreadsheetId
+    //      column - name of Column containing the key value, use Spreadsheets addressing notation 'A:A' 
+    
+gsssMetadataId 'Metadata ID' = DATA INTEGER (List);
+gsssMetadataIdIndex 'Metadata ID current position (index)' = DATA INTEGER (List);
+gsssMetadataIdArch 'Metadata ID archive' = DATA INTEGER (List);
+
+metadataId 'Object by Metadata ID' = GROUP AGGR List obj BY gsssMetadataId(obj); // Metadata ID must be unique
+
+// Resource: DeveloperMetadata
+// https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata?authuser=5#DeveloperMetadata
+gsssMetadataGet 'Create Metadata JSON' (List obj, INTEGER index) = '\{"developerMetadata":\{'+
+                                                            '"metadataId": ' + gsssMetadataId(obj) + ',' + // alternative option, drop and let let Google to create the ID
+                                                            '"metadataKey": ' + '"LSFusionRows"' + ',' + // there may be multiple metadata in a spreadsheet with the same key
+                                                            '"metadataValue": ' + '"Row is synchronized with LSFusion ERP"' + ',' + // Data associated with the metadata's key.
+                                                            '"location": \{' + // there are several options of locations: row, column, sheet and spreadsheet
+                                                                //'"locationType": "ROW",' +  // is readonly and must not be specified.
+                                                                '"dimensionRange": \{' +    // used for rows and columns locations
+                                                                    '"sheetId": ' + gsss###sheets##Sheet() + ',' + 
+                                                                    '"dimension": "ROWS",' + // ROW is used for syncing link
+                                                                    '"startIndex": ' + index + ',' + // the start index is inclusive
+                                                                    '"endIndex": ' + (index + 1) + // the end index is exclusive
+                                                                '\}' +
+                                                                // '"spreadsheet": true' + // alternative location options cannot be combined with each other
+                                                                // '"sheetId": sheetId' +
+                                                            '\},'+
+                                                            '"visibility": "DOCUMENT"' +
+                                                    '\}\}';
+
+gsssMetadataLookup 'Search Metadata JSON' (List obj) = '\{"developerMetadataLookup":\{'+
+                                                            '"metadataId": ' + gsssMetadataId(obj) + ',' + // alternative option, drop and let let Google to create the ID
+                                                            '"metadataKey": ' + '"LSFusionRows"' + ',' + // there may be multiple metadata in a spreadsheet with the same key
+                                                            '"metadataValue": ' + '"Row is synchronized with LSFusion ERP"' + ',' + // Data associated with the metadata's key.
+                                                            '"visibility": "DOCUMENT"' +
+                                                    '\}\}';
+
+gsssMetadataCreate (List obj, INTEGER index) {
+    // Create Metadata for single record (row)
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets/request#createdevelopermetadatarequest
+    //      spreadsheetId  - ID of the Google Spreadsheet
+    //      sheetId        - ID of working Sheet in the Spreadsheet
+    //      index          - ID of the Row to link with Metadata  
+    
+    batchUpdateResponse() <- NULL; // initialize interface
+    // metadataId() <- NULL; // Received Metadata
+    
+    IF NOT gsssMetadataId(obj) THEN {
+        NEWSESSION {
+            gsssMetadataId(obj) <- (GROUP LAST gsssMetadataId(List l) ORDER gsssMetadataId(l)) (+) 1;
+            
+            batchUpdateRequest() <- '\{"createDeveloperMetadata":' + gsssMetadataGet(obj, index) + '\}';
+
+            gsssBatchUpdate(gsss###sheets());
+            // When Metadata ID created by Google:
+            // IMPORT gsssMetadataId JSON FROM batchUpdateResponse();
+            // gsssMetadataId(obj) <- metadataId();
+            APPLY;
+        }
+    }
+    ELSE MESSAGE 'Meatadata ID is already set' NOWAIT;
+}
+
+gsssMetadataSync 'Sync records with Google Spreadsheet' () {
+    // Synchronize data integration with a spreadsheet
+    // The link way is column, to be abstracted to other dimension types
+    // Obtains amount of records, searches first entry of the given data and assigns Metadata to it
+    // https://developers.google.com/sheets/api/guides/metadata#creating_new_metadata
+    
+    LOCAL indexIterate  = INTEGER();
+    LOCAL indexSearch   = INTEGER();
+    LOCAL indexRequest  = TEXT();
+    LOCAL indexResponse = FILE();
+    LOCAL indexRange    = FILE();
+    LOCAL searchObject  = List();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate(); // NOT gsssAccessToken() OR gsssAccessTokenValidity() < currentDateTime()
+    
+    IF gsssAuth() AND gsss###sheets() AND gsss###sheets##Sheet() AND gsss###sheets##Link() THEN { // gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime()
+
+        TRY {
+            EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + '/' + column + ':' + column + '?majorDimension=ROWS' 
+                // alternative option COLUMNS will put column' data in CSV-like format
+                HEADERS gsssAuthHeader
+                TO indexRange;
+        } CATCH {
+            fileToString(indexRange(), 'UTF-8');
+            MESSAGE 'Error returned by Google Spreadsheet ' + gsssValues() + ' service.\n' + resultString() NOWAIT;
+        }
+            
+        IMPORT gsssValueRange JSON FROM indexRange();
+        
+        indexIterate() <- 0;
+        indexSearch() <- NULL;
+        FOR valueRange(INTEGER item) AND item > 0 AND item < 5 DO {
+            indexRequest() <- '\{'+
+                                //'"majorDimension": "ROWS",' + 
+                                //'"valueRenderOption": "FORMATTED_VALUE",' + 
+                                //'"dateTimeRenderOption": "FORMATTED_STRING",' + 
+                                '"dataFilters": [' + // filter can be only one of three types, A1 range is used below
+                                    '\{'+
+                                        //'"a1Range": "' + column + STRING (indexIterate()) + '"' +
+                                        '"gridRange": \{'+ // alternative option: GridRange 
+                                            '"sheetId": ' + gsss###sheets##Sheet() + ',' + 
+                                            '"startRowIndex": ' + item + ',' + 
+                                            '"endRowIndex": ' + (item + 1) + ',' + // valuable rows amount from append output
+                                            '"startColumnIndex": ' + gsss###sheets##Link() + ',' + // integer representation of column name
+                                            '"endColumnIndex": ' + (gsss###sheets##Link() + 1) + // end index is exclusive, while start is included
+                                          '\}'+
+                                    '\}' +
+                                ']\}';
+                                
+            IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+
+            TRY {
+                EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + ':batchGetByDataFilter' 
+                    HEADERS gsssAuthHeader 
+                    PARAMS JSONFILE (indexRequest()) 
+                    TO indexResponse;
+            } CATCH {
+                fileToString(indexResponse(), 'UTF-8');
+                MESSAGE 'Error returned by Google Spreadsheet batchGetByDataFilter service.\n' + indexResponse() NOWAIT;
+            }
+            
+            IMPORT gsssValueRanges JSON FROM indexResponse();
+            FOR values(INTEGER ranges) DO MESSAGE values(ranges) NOWAIT;
+            fileToString(indexResponse(), 'UTF-8');
+            
+            searchObject() <- NULL;
+            FOR values(INTEGER j) DO {
+                searchObject() <- GROUP LAST List obj IF isSubstring(lower(values(j)), lower(key(obj)));
+                printToLog('Record from Google spreadsheet ' + values(j));
+            }
+            IF searchObject() THEN {
+                IF NOT gsssMetadataId(searchObject()) THEN printToLog('New sync for ' + lower(resultString()) + ' in line +' + STRING(item)); //gsssMetadataCreate(searchObject(),item);
+                ELSE printToLog('Record from Google spreadsheet for ' + lower(resultString()) + ' in line +' + STRING(item) + ' was synced previously.');
+                gsssMetadataIdIndex(searchObject()) <- item;
+            }
+            ELSE {
+                printToLog('Record from Google spreadsheet was not found in the database: ' + lower(resultString()));
+                MESSAGE 'Record from Google spreadsheet was not found in the database: ' + lower(resultString()) NOWAIT;
+            }            
+            //IF isSubstring(lower(resultString()), lower(key(obj))) THEN indexSearch() <- indexIterate() - 1; // GridRange enumerates starting from 0, while A1 range from 1
+        }
+    }
+    ELSE MESSAGE 'The Google Sheets API Access was not setup properly' NOWAIT;
+} TOOLBAR;
+
+gsssSearchMetadata (List obj) {
+    // Search current properties of the linked Googla Spreadsheet record
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.developerMetadata/search
+    
+    LOCAL payload  = TEXT();
+    LOCAL response  = FILE();
+    LOCAL startIndex = INTEGER(); // The found position
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        IF gsssMetadataId(obj) THEN {
+            payload() <- '\{"dataFilters": ['+ gsssMetadataLookup(obj) + ']\}';
+            printToLog('Sending Metadata search request to Google Spreadsheet: ' + payload());
+            
+            TRY {
+                EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/developerMetadata:search' 
+                    HEADERS gsssAuthHeader 
+                    PARAMS JSONFILE (payload()) 
+                    TO response;
+            } CATCH {
+                fileToString(response(), 'UTF-8');
+                MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString() NOWAIT;
+            }
+                
+            fileToString(response(), 'UTF-8');
+            printToLog('Google Spreadsheet Metadata Search: ' + resultString());
+            
+            IMPORT matchedDeveloperMetadata JSON FROM response();
+            FOR startIndex(INTEGER i) DO gsssMetadataIdIndex(obj) <- startIndex(i);
+        }
+        ELSE MESSAGE 'Metadata ID is absent' NOWAIT;
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
+}
+END
+
+//--- Edit lines ---
+
+//https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/append?authuser=5#response-body
+GROUP updates;
+updatedRange = DATA LOCAL STRING();
+
+FORM gsssValueAppendResponse
+    PROPERTIES() updatedRange IN updates
+;
+
+gsssLastAppendedRow = DATA LOCAL NESTED INTEGER ();
+
+gsssAppend (STRING spreadsheetId, INTEGER sheetId, TEXT valuesRange) {
+    // Append new line into Google Spreadsheet by the following parameters:
+    //      spreadsheetId - ID of the Google Spreadsheet
+    //      sheetId       - ID of the Sheet (List) within the Spreadsheet  
+    //      valuesRange   - data to be written (appended)
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/append
+    
+    LOCAL response = FILE();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        NEWSESSION {
+            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + '/A1:append?valueInputOption=USER_ENTERED' 
+                HEADERS gsssAuthHeader 
+                PARAMS JSONFILE ('\{' + 
+                                    //'"range": "A1"' + // appending to the end of speadsheet, so the parameter is dropped
+                                    '"majorDimension": "ROWS",' + // default value as well, so the parameter ay be dropped 
+                                    '"values": ['+ valuesRange + ']\}') 
+                TO response;
+                
+            IMPORT gsssValueAppendResponse FROM response(); // Link by report on the range, which was defined before the apend
+            gsssLastAppendedRow() <- INTEGER (substrFrom(updatedRange(),strpos(updatedRange(),':')+2));
+            
+            fileToString(response(), 'UTF-8');
+            printToLog('Data were successfully appended to Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+            //MESSAGE 'Data were successfully appended to Google Spreadsheet in row ' + (gsssLastAppendedRow()) NOWAIT; // 
+            gsssBatchUpdateFilter(spreadsheetId, sheetId , gsssLastAppendedRow() , gsssTeamColumns()+1);
+        }
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
+}
+
+gsssUpdate (STRING[10] type, STRING spreadsheetId, STRING range, TEXT valuesRange) {
+    // Update (replace) existing data in Google Spreadsheet by A1 type address link:
+    //      type          - majorDimension, with range=A1:B2 and dataset [[1,2],[3,4]] will set:
+    //                      ROWS A1=1,B1=2,A2=3,B2=4
+    //                      COLUMNS A1=1,B1=3,A2=2,B2=4
+    //      spreadsheetId - ID of the Google Spreadsheet
+    //      range         - A1 notation; when appending, represents the range to search for a table, after which values will be appended
+    //      valuesRange   - data to be written, array of columns
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdate
+    
+    LOCAL payload = TEXT ();
+    LOCAL response = FILE();
+    LOCAL totalUpdatedCells = INTEGER();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        payload() <- '\{' +
+                         '"valueInputOption": "USER_ENTERED",' +
+                         '"data": [\{' + 
+                             '"range": "' + range + '",' + // take care to address the needed sheet
+                             '"majorDimension": "' + type + '",' + 
+                             '"values": ['+ valuesRange + ']\}]\}';
+        TRY {
+            printToLog('Data sent to Google Spreadsheets: ' + payload());
+            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + ':batchUpdate' 
+                HEADERS gsssAuthHeader 
+                PARAMS JSONFILE (payload()) 
+                TO response;
+        } CATCH {
+            fileToString(response(), 'UTF-8');
+            MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString() NOWAIT;
+        }
+        
+        IMPORT FROM response() TO() totalUpdatedCells;
+        
+        fileToString(response(), 'UTF-8');
+        IF totalUpdatedCells() > 0 THEN {
+            printToLog('Data in ' + totalUpdatedCells() + ' cells were updated on Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+        }
+        ELSE {
+            printToLog('Error accured during Google Spreadsheet update: ' + resultString());  // Enabled for debugging purposes only
+            MESSAGE 'Error accured during Google Spreadsheet update.\nContact Administrator' NOWAIT;
+        }
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
+}
+
+gsssUpdateDataFilter (STRING spreadsheetId, INTEGER metadataId, TEXT valuesRange) {
+    // Update (replace) existing line in Google Spreadsheet by Metadata based link:
+    //      spreadsheetId - ID of the Google Spreadsheet
+    //      metadataId    - Metadata link created using @gsssMetadataHandle routines
+    //      valuesRange   - data to be written into the linked row
+    // https://developers.google.com/sheets/api/reference/rest/v4/spreadsheets.values/batchUpdateByDataFilter
+    
+    LOCAL response = FILE();
+    LOCAL totalUpdatedRows = INTEGER();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() THEN {
+        TRY {
+            EXTERNAL HTTP POST gsssEndpoint() + gsssSpreadsheets() + '/' + spreadsheetId + '/' + gsssValues() + ':batchUpdateByDataFilter' 
+                HEADERS gsssAuthHeader 
+                PARAMS JSONFILE ('\{' +
+                                    '"valueInputOption": "USER_ENTERED",' +
+                                    '"data": [\{' + 
+                                        '"dataFilter": \{' + // use one of three options for addressing needed row, alternatives are A1 range and GridRange
+                                            '"developerMetadataLookup": \{' + // https://developers.google.com/sheets/api/reference/rest/v4/DataFilter?authuser=5#DeveloperMetadataLookup
+                                                '"metadataId": ' + metadataId + '\}\},' + // matching by matadataId only
+                                        '"majorDimension": "ROWS",' + 
+                                        '"values": [['+ valuesRange + ']]\}]\}') 
+                TO response;
+        } CATCH {
+            fileToString(response(), 'UTF-8');
+            MESSAGE 'Error returned by Google Spreadsheet service.\n' + resultString() NOWAIT;
+        }
+        
+        IMPORT FROM response() TO() totalUpdatedRows;
+        
+        fileToString(response(), 'UTF-8');
+        IF totalUpdatedRows() == 1 THEN {
+            printToLog('Data were successfully updated on Google Spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+            MESSAGE 'Data were successfully updated on Google Spreadsheet' NOWAIT;
+        }
+        ELSE {
+            printToLog('Error accured during Google Spreadsheet update: ' + resultString());  // Enabled for debugging purposes only
+            MESSAGE 'Error accured during Google Spreadsheet update.\nContact Administrator' NOWAIT;
+        }
+    }
+    ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
+}
+
+META gsssRowNumberGet (List, key, sheets, column)
+    // Define link of Object to Google Spreadsheet by the following parameters:
+    //      List - name of Object
+    //      key - key property for one-to-one link
+    //      sheets - name of global property, which contains the Spreadsheet spreadsheetId
+    //      column - name of Column containing the key value, use Spreadsheets addressing notation 'A:A' 
+    gsss###sheets##Row 'Number of linked Row in Google Spreadsheet' = DATA INTEGER (List);
+    
+    gsss###sheets##RowGet 'Get Row number with linked object' (List obj) {
+        // The function returns current number of a Row, which kontains the Key value in given Column
+        // In basic realisation key value is an Email
+        gsss###sheets##Row(obj) <- NULL;
+        
+        IF NOT gsssAuth() THEN gsssAccessTokenUpdate(); // NOT gsssAccessToken() OR gsssAccessTokenValidity() < currentDateTime()
+        
+        IF gsssAuth() THEN { // gsssAccessToken() AND gsssAccessTokenValidity() > currentDateTime()
+            NEWSESSION {
+                LOCAL response = FILE();
+                
+                EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsss###sheets() + '/' + gsssValues() + '/' + column + '?majorDimension=ROWS' 
+                    // alternative option COLUMNS will put column' data in CSV-like format
+                    HEADERS gsssAuthHeader
+                    TO response;
+                fileToString(response(), 'UTF-8');
+                printToLog('Column value received from spreadsheet: ' + resultString());  // Enabled for debugging purposes only
+                IMPORT gsssValueRange JSON FROM response();
+                
+                
+                FOR valueRange(INTEGER i) DO {
+                    IF lower(valueRange(i)) == lower(key(obj)) THEN gsss###sheets##Row(obj) <- i;
+                    IF i < 6 THEN MESSAGE i + ': ' + valueRange(i) NOWAIT; // Enabled for debugging purposes only
+                }
+                APPLY;
+            }
+        }
+        ELSE MESSAGE 'The Google Sheets API Access expired' NOWAIT;
+    }
+END
+
+//--------- End of Google Sheets API ----------
+
+
+//---------------- DaData.ru ------------------
+
+dadataEndpoint 'Dadata Endpoint' = DATA STRING ();
+dadataAPIkey 'API-key Dadata' = DATA STRING ();
+dadataAPIsecret 'Standartization Secret key Dadata' = DATA STRING ();
+dadataAuth 'Authorization' = 'Token ' + dadataAPIkey();
+dadataHeader (STRING name) = CASE // in Comments Dadata fields
+    WHEN name == 'Authorization' THEN dadataAuth() // 
+    WHEN name == 'Content-Type' THEN 'application/json';
+
+EXTEND FORM integrationData
+    PROPERTIES() dadataEndpoint, dadataAPIkey, dadataAPIsecret
+;
+
+DESIGN integrationData {
+    pane {
+        NEW egrul {
+            caption = 'DaData.ru';
+            MOVE PROPERTY(dadataEndpoint());
+            MOVE PROPERTY(dadataAPIkey());
+            MOVE PROPERTY(dadataAPIsecret());
+        }
+    }
+}
+
+//----------------- End of DaData.ru -------------------

@@ -1,6 +1,7 @@
 MODULE PurchaseInvoiceEmployee;
 
-REQUIRE PurchaseInvoice, Employee;
+REQUIRE PurchaseInvoice, EmployeeB,
+        POCycle;
 
 NAMESPACE Purchase;
 
@@ -19,7 +20,7 @@ supplier 'Supplier' (InvoiceEmployeeLine l) = nameSupplier(invoice(l));
 employee 'Employee' = DATA Employee (InvoiceEmployeeLine) NONULL DELETE;
 firstName 'First name' (InvoiceEmployeeLine l) = firstName(employee(l));
 lastName 'Last Name' (InvoiceEmployeeLine l) = lastName(employee(l));
-position 'position' (InvoiceEmployeeLine l) = namePosition(employee(l));
+position 'Position' (InvoiceEmployeeLine l) = namePosition(employee(l));
 location 'Location' (InvoiceEmployeeLine l) = nameLocation(employee(l));
 
 type 'Type' = DATA InvoiceEmployeeType (InvoiceEmployeeLine) NONULL;
@@ -47,7 +48,6 @@ totalExpenses 'Total expenses' (InvoiceEmployeeType t) = GROUP SUM amount(Invoic
                                                         IF type(l) = t;                                                       
 totalExpenses 'Total expenses' (Employee e) = GROUP SUM totalExpenses(e, Currency c);
 
-added 'Add' = DATA BOOLEAN (Invoice, Employee);
 add 'Add'= DATA LOCAL BOOLEAN (Employee);
 
 FORM employeeList
@@ -84,23 +84,19 @@ calculateAmount 'Calculate amount' (Invoice i) {
 }
 
 addEmployees 'Add employees' (Invoice i) {
-    FOR add(Employee e) DO {
-        add(e) <- NULL;
-    }
+    add(Employee e) <- NULL;
     
     DIALOG employeeList DO {
-        added(i,Employee e) <- add(e);
-    }
-    
-    FOR added(i, Employee e) DO {
-        NEW l = InvoiceEmployeeLine {
-            invoice(l) <- i;
-            employee(l) <- e;
+        FOR add(Employee e) DO {
+            NEW l = InvoiceEmployeeLine {
+                invoice(l) <- i;
+                employee(l) <- e;
+            }
         }
     }
 }
 
-EXTEND FORM invoice
+EXTEND FORM invoiceLoad
     OBJECTS iel = InvoiceEmployeeLine
     PROPERTIES(iel) firstName, lastName, position, location, nameType, ratio, amount, nameCurrency, notes
     PROPERTIES (iel) DELETE
@@ -111,16 +107,15 @@ EXTEND FORM invoice
 
 ;
 
-DESIGN invoice {
-    OBJECTS {
-        pane {
-            NEW expenses {
-                caption = 'Expenses';
-                fill = 1;
-                MOVE BOX (iel);
-                PROPERTY (nameType(iel)){notNull = TRUE;}
-                PROPERTY (amount(iel)){notNull = TRUE;}
-            }
+DESIGN invoiceLoad {
+    tabs {
+        NEW expenses {
+            showIf = afg(currentUser());
+            caption = 'Expenses';
+            fill = 1;
+            MOVE BOX (iel);
+            PROPERTY (nameType(iel)){notNull = TRUE;}
+            PROPERTY (amount(iel)){notNull = TRUE;}
         }
     }
 }
@@ -131,7 +126,7 @@ EXTEND FORM employees
     OBJECTS emp = Employee
     PROPERTIES (emp) READONLY firstName, lastName, namePosition, nameLocation
     PROPERTIES totalExpenses(emp, cur) COLUMNS (cur) HEADER name(cur)
-    FILTERS totalExpenses(emp)
+    FILTERS totalExpenses(emp) AND NOT isCandidate(emp)
     
     OBJECTS t = InvoiceEmployeeType
     PROPERTIES(t) READONLY name

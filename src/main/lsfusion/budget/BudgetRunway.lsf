@@ -46,13 +46,14 @@ EXTEND FORM budgets
     OBJECTS i = CostItem
     PROPERTIES(i) READONLY canonicalName
     PROPERTIES planned(bi, i) COLUMNS (bi) HEADER name(bi) ON CHANGE changePlanned(bi, i) ON CHANGEWYS changePlanned(bi, i) BACKGROUND changedPlanned(bi, i)
-    ORDER canonicalName(i)
+    ORDERS canonicalName(i)
     FILTERS level(i, ip)
 
     OBJECTS id = BudgetDetail
-    PROPERTIES(id) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
+    PROPERTIES(id) READONLYIF isProcessing(id) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
     FILTERS level(costItem(id), i),
-    (hideSensitive(mainRole(currentUser())) AND NOT sensitive(id)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(id)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(id) 
 ;
 
 DESIGN budgets {
@@ -106,11 +107,15 @@ EXTEND FORM budgets
     PROPERTIES(c) READONLY name
     PROPERTIES childPlanned(bic, i, c) COLUMNS (bic) HEADER name(bic) ON CHANGE changePlanned(bic, i, c) ON CHANGEWYS changePlanned(bic, i, c) BACKGROUND changedPlanned(bic, i, c)
 
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT
+
     OBJECTS icd = BudgetDetail
-    PROPERTIES(icd) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
+    PROPERTIES(icd) READONLYIF isProcessing(icd) nameBudget, nameCostCenter, nameCostItem, name, planned, spent, DELETE
     FILTERS level(costItem(icd), i),
             costCenter(icd) == c,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(icd)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(icd)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(icd)
     
 ;
 

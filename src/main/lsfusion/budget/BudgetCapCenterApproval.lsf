@@ -13,7 +13,7 @@ submit 'Submit' (Period p)  {
         submitted(p) <- NULL;
 } CONFIRM;
 
-EXTEND FORM costCenterBudget
+EXTEND FORM costCenterBudgetArch
     PROPERTIES(p) submitted, submit SHOWIF NOT submitted(p) TOOLBAR
 ;
 
@@ -60,18 +60,18 @@ employee 'Employee' = DATA Employee (PeriodDecision) NONULL;
 nameEmployee 'Employee' (PeriodDecision d) = name(employee(d));
 employee(PeriodDecision d) <- currentUser() WHEN SET(d IS PeriodDecision);
 
-EXTEND FORM costCenterBudget
+EXTEND FORM costCenterBudgetArch
     OBJECTS d = PeriodDecision
     PROPERTIES(d) approved, dateTime, nameEmployee, comment PANEL
     FILTERS period(d) == p
 ;
 
-DESIGN costCenterBudget {
+DESIGN costCenterBudgetArch {
     periodLeftTab {
         MOVE BOX(d) {
             caption = 'Approval';
             MOVE PROPERTY(comment(d)) {
-                panelCaptionAbove = TRUE;
+                panelCaptionVertical = TRUE;
                 fill = 1;
             }
         }
@@ -84,7 +84,7 @@ approved 'Approved' (Period p, Employee e) = GROUP LAST approved(PeriodDecision 
 CONSTRAINT employee(PeriodDecision d) AND NOT periodApproval(employee(d)) MESSAGE 'Period is approved by unauthorized person';
 
 approved 'Approved' (Period p) = (GROUP SUM 1 IF approved(p, Employee e)) == (GROUP SUM 1 IF periodApproval(Employee e)) MATERIALIZED;
-EXTEND FORM costCenterBudget
+EXTEND FORM costCenterBudgetArch
     PROPERTIES(p) READONLY approved
 ;
 
@@ -108,7 +108,7 @@ DESIGN rejectForm {
     size = (600, 400);
     OBJECTS {
         MOVE PROPERTY(comment(d)) {
-            panelCaptionAbove = TRUE;
+            panelCaptionVertical = TRUE;
             fill = 1;
         }
     }
@@ -124,7 +124,7 @@ reject 'Reject' (Period p)  {
 } TOOLBAR;
 
 showCostCenterBudget 'Show budget' (Period p)  { 
-    SHOW costCenterBudget OBJECTS c = costCenter(p), p = p DOCKED;
+    SHOW costCenterBudget OBJECTS c = costCenter(p) DOCKED;
 } TOOLBAR;
 
 FORM periodApproval 'Project approval'
@@ -152,7 +152,7 @@ FORM periodApproval 'Project approval'
     PROPERTIES(ci) READONLY order, name
     PROPERTIES(p, ci) READONLY totalChildCap BACKGROUND backgroundCap(p, ci)
     PROPERTIES(p, ci) READONLY childPlanned
-    ORDER order(ci)
+    ORDERS order(ci)
 ;
 
 DESIGN periodApproval {
@@ -169,7 +169,7 @@ DESIGN periodApproval {
                 MOVE BOX(d) {
                     caption = 'Approval';
                     MOVE PROPERTY(comment(d)) {
-                        panelCaptionAbove = TRUE;
+                        panelCaptionVertical = TRUE;
                         fill = 1;
                     }
                 }

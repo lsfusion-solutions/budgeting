@@ -20,7 +20,7 @@ EXTEND FORM budgets
     OBJECTS ci = CostItem
     PROPERTIES(ci) READONLY canonicalName
     PROPERTIES overCap(bci, ci) COLUMNS (bci) HEADER name(bci) BACKGROUND backgroundCap(bci, ci)
-    ORDER canonicalName(ci)
+    ORDERS canonicalName(ci)
     FILTERS level(ci, cip)
 ;
 

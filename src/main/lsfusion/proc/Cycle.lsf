@@ -1,0 +1,194 @@
+MODULE Cycle;
+
+REQUIRE Authentication, Time, Security, Country, EmployeeB, Currency;
+
+disableEvents = DATA LOCAL BOOLEAN ();
+backgroundFill = RGB(255, 255, 224);
+
+afg 'AFG' = DATA BOOLEAN (Employee);
+EXTEND FORM employee PROPERTIES(e) afg;
+DESIGN employee { application {MOVE PROPERTY(afg(e));}}
+
+// Process cycles
+
+CLASS Stage 'Procurement stages';
+TABLE stage(Stage);
+
+name (Stage s) = staticCaption(s) IF s IS Stage CHARWIDTH 30;
+color = DATA COLOR (Stage);
+
+
+FORM stages
+    OBJECTS s = Stage
+    PROPERTIES(s) READONLY name, color
+    LIST Stage OBJECT s
+;
+
+NAVIGATOR {
+    masterData {
+        NEW FOLDER cycles 'Budgeting' BEFORE regionalData {
+            NEW stages;
+        }
+    }
+}
+
+CLASS ABSTRACT Assign 'Assignment';
+TABLE assign(Assign) FULL;
+
+stage 'Stage' = ABSTRACT Stage (Assign) MATERIALIZED;
+nameStage 'Budgeting Stage' (Assign s)= name(stage(s));
+colorOwn 'Color' = ABSTRACT COLOR (Assign) MATERIALIZED;
+color 'Background Color' (Assign s)= OVERRIDE colorOwn(s),color(stage(s));
+
+desc 'Description' = ABSTRACT ISTRING(Assign) MATERIALIZED CHARWIDTH 50;
+sum 'Sum, USD' = ABSTRACT NUMERIC[16,2](Assign) MATERIALIZED CHARWIDTH 50;
+currency 'Currency' = ABSTRACT Currency(Assign) MATERIALIZED;
+exec 'Execute'  ABSTRACT (Assign);
+
+dateTimeStart 'Date/Time start' = ABSTRACT DATETIME (Assign) MATERIALIZED CHARWIDTH 20;
+dateStart 'Date start' (Assign s) = DATE(dateTimeStart(s)) MATERIALIZED INDEXED CHARWIDTH 10;
+dateLine 'Deadline' = ABSTRACT DATE (Assign) MATERIALIZED CHARWIDTH 20;
+overdue 'Overdue' (s) = dateLine(s) < currentDate();
+
+TABLE employeeTask (Employee, Assign);
+assigned = ABSTRACT BOOLEAN (Employee, Assign);
+skip = ABSTRACT BOOLEAN (Employee, Assign);
+in (Employee e, Assign s) = assigned(e, s) AND NOT skip(e, s);// MATERIALIZED;
+
+stage = DATA LOCAL Stage ();
+nameStage 'Select Stage' = name (stage());
+currency = DATA LOCAL Currency ();
+nameCurrency 'Select by Currency' = name (currency());
+
+showAllAssignments 'Show all assignments' = DATA BOOLEAN (Employee);
+EXTEND FORM employee
+    PROPERTIES(e) showAllAssignments 
+;
+DESIGN employee {
+    application {
+        MOVE PROPERTY(showAllAssignments(e));
+    }
+}
+
+FORM assignments 'Assignments'
+    PROPERTIES () nameStage, nameCurrency
+
+    OBJECTS s = Assign GRID
+    PROPERTIES(s) ON CHANGE exec(s) dateTimeStart, desc BACKGROUND color(s) , sum //, dateLine
+    ORDERS dateTimeStart(s)
+    FILTERS in(currentUser(), s) OR showAllAssignments(currentUser()),
+            stage(s) == stage() OR NOT stage(),
+            currency(s) == currency() OR NOT currency()
+    
+    FILTERGROUP overdue
+        FILTER 'Overdue' overdue(s) 
+;
+
+DESIGN assignments {
+    NEW filters FIRST {
+        type = CONTAINERH;
+        MOVE PROPERTY(nameStage());
+        MOVE PROPERTY(nameCurrency());
+    }
+    BOX(s) {
+        PROPERTY(sum(s)) { valueWidth = 20; }
+    }
+}
+
+NAVIGATOR {
+    NEW FOLDER proc 'Budgeting' WINDOW toolbar BEFORE masterData {
+        NEW assignments;
+        NEW FOLDER logging 'Logs';
+    }
+}
+
+CLASS AssignLog 'Logging';
+TABLE assignlog(AssignLog);
+
+nameStage 'Budgeing Stage' = DATA BPISTRING[100] (AssignLog) CHARWIDTH 30;
+nameStep 'Output Step' = DATA BPISTRING[100] (AssignLog) CHARWIDTH 30;
+startDateTime 'Date/Time Start' = DATA DATETIME (AssignLog) CHARWIDTH 20;
+dateLine 'deadline' = DATA DATE (AssignLog) CHARWIDTH 10;
+desc 'Description' = DATA STRING[1000](AssignLog) CHARWIDTH 50;
+
+userName 'User' = DATA STRING[100] (AssignLog) CHARWIDTH 30;
+dateTimeExec 'Date/Time Execution' = DATA DATETIME (AssignLog) CHARWIDTH 30;
+
+WHEN DROPPED(Assign o IS Assign) DO {
+    NEW l = AssignLog { 
+        nameStage(l) <- PREV(nameStage(o));
+        startDateTime(l) <- PREV(dateTimeStart(o));
+        dateLine(l) <- PREV(dateLine(o));
+        desc(l) <- PREV(desc(o));
+        userName(l) <- name(currentUser());
+        dateTimeExec(l) <- currentDateTime();
+    }
+}
+
+FORM assignLog 'Assignments Log'
+    OBJECTS t=AssignLog
+    PROPERTIES(t) READONLY nameStage, startDateTime, dateLine, desc, userName, dateTimeExec
+
+;
+
+// Email notifications
+
+CLASS Notification;
+TABLE notification(Notification);
+
+disableNotification = DATA LOCAL BOOLEAN ();
+
+stage 'Procurement Stage' = DATA Stage(Notification);
+nameStage 'Procurement Stage' (Notification n) = name(stage(n));
+
+header 'Email header' = DATA STRING (Notification);
+text 'Notification text' = DATA TEXT (Notification);
+details 'Notification details' = DATA TEXT (Notification);
+enabled 'Enabled' = DATA BOOLEAN (Notification);
+
+FORM notification
+    PROPERTIES logicsLogo()
+    OBJECTS r = TEXT PANEL
+    PROPERTIES(r) notification = VALUE
+    OBJECTS d = TEXT PANEL
+    PROPERTIES(d) details = VALUE
+;
+
+sendNotificationFile 'Send Notification' (STRING header, TEXT text, TEXT details, STRING[400] email, FILE attachment, STRING filename)  { 
+    LOCAL bodyFile = FILE ();
+    PRINT notification OBJECTS r = text, d = details HTML TO bodyFile;
+    EMAIL
+        SUBJECT header
+        TO email
+        BODY bodyFile()
+        ATTACH attachment NAME filename+'.'+getExtension(attachment);
+}
+
+sendNotification 'Send Notification' (STRING header, TEXT text, TEXT details, STRING[400] email)  { 
+    LOCAL bodyFile = FILE ();
+    PRINT notification OBJECTS r = text, d = details HTML TO bodyFile;
+    EMAIL
+        SUBJECT header
+        TO email
+        BODY bodyFile();
+}
+
+FORM notificationsForms 'Templates';
+DESIGN notificationsForms {
+    OBJECTS {
+        NEW tabPane {
+            fill = 1;
+            alignment = STRETCH;
+            type = TABBED;
+        }
+    }
+}
+
+NAVIGATOR {
+    logs {
+        NEW assignLog;
+    }
+    notification {
+        NEW notificationsForms;
+    }
+}

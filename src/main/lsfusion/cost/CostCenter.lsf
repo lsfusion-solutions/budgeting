@@ -1,33 +1,44 @@
 MODULE CostCenter;
 
+REQUIRE MasterData;
+
 NAMESPACE Cost;
 
 CLASS CostCenter 'Cost Center';
 TABLE costCenter(CostCenter);
 name 'Name' = DATA ISTRING[50] (CostCenter) IN id;
+profit 'Profit' = DATA BOOLEAN (CostCenter) IN id;
+archive 'Archive' = DATA BOOLEAN (CostCenter) IN id;
 
 FORM costCenter 'Cost Center'
     OBJECTS c = CostCenter PANEL
-    PROPERTIES(c) name
+    PROPERTIES(c) name,profit,archive
     
     EDIT CostCenter OBJECT c
 ;
 
 FORM costCenters 'Cost centers'
     OBJECTS c = CostCenter
-    PROPERTIES(c) READONLY name
+    PROPERTIES(c) READONLY name,archive,profit
     PROPERTIES(c) NEWSESSION NEW, EDIT, DELETE
+    ORDERS name(c)
 ;
 
 FORM listCostCenters 'Select cost center'
     OBJECTS c = CostCenter
     PROPERTIES(c) READONLY name
+    ORDERS name(c)
+
+    FILTERGROUP archive
+        FILTER 'Hide archive Cost Centers' NOT archive(c) DEFAULT
     
     LIST CostCenter OBJECT c
 ;
 
 NAVIGATOR {
-    NEW costCenters;
+    masterData {
+        NEW costCenters FIRST;
+    }
 }
 
 filterCostCenter = DATA LOCAL NESTED CostCenter();

@@ -4,7 +4,7 @@ REQUIRE Budget, Expense;
 
 NAMESPACE Budget;
 
-budgetDetail = DATA BudgetDetail (Expense);
+budgetDetail = DATA BudgetDetail (Expense) INDEXED;
 budgetDetail (Expense e) += budgetDetail(e);
 
 nameBudgetDetail 'Budget detail' (Expense e) = name(budgetDetail(e));
@@ -25,8 +25,10 @@ CONSTRAINT budgetDetail(Expense e) AND costItem(e) AND costItem(budgetDetail(e))
     MESSAGE 'Selected cost type is not equal to budget detail\'s cost type'; 
 
 budget = DATA Budget (Expense) NONULL;
-nameBudget 'Budget' (Expense e) = name(budget(e));;
+nameBudget 'Budget' (Expense e) = name(budget(e));
 budget (Expense e) += budget(e);
+
+INDEX budget(Expense e), currency(e);
 
 WHEN LOCAL SETCHANGED(budget(budgetDetail(Expense e))) DO {
     budget(e) <- budget(budgetDetail(e));
@@ -43,7 +45,8 @@ FORM expenses 'Expenses'
     OBJECTS d = BudgetDetail
     PROPERTIES(d) READONLY nameCostCenter, canonicalNameCostItem, name, planned, spent, description PANEL
     FILTERS budget(d) == b,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(d)
     
     OBJECTS e = Expense
     PROPERTIES(e) date, nameCurrency, amount, note, reference, NEW, DELETE
@@ -66,7 +69,7 @@ DESIGN expenses {
                     MOVE BOX(d) {
                         fill = 2;
                     }
-                    MOVE PROPERTY(description(d)) { panelCaptionAbove = TRUE; fill = 1;}
+                    MOVE PROPERTY(description(d)) { panelCaptionVertical = TRUE; fill = 1;}
                 }
                 MOVE BOX(e) {
                     width = 350;

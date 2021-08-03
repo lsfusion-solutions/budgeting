@@ -1,6 +1,6 @@
 MODULE EmployeeHiring;
 
-REQUIRE Employee, Country;
+REQUIRE EmployeeGroup, Country;
 
 NAMESPACE Employee;
 
@@ -143,6 +143,116 @@ scrum 'SCRUM on-boarding' = DATA BOOLEAN (Employee);
 brexCard 'Brex card' = DATA BOOLEAN (Employee); 
 ielts 'IELTS' = DATA ISTRING[50](Employee) CHARWIDTH 15;
 
+// Google Spreadsheet Connector
+//@gsssRowNumberGet (Employee, email, team, 'E:E');
+@gsssMetadataHandle (Employee, email, team, 'E');
+// Implementation of link to Google Spreadsheet by the following parameters:
+//      Employee - name of this Object
+//      email - key property for one-to-one link
+//      team - name of gsssTeam() global property, which contains the Spreadsheet spreadsheetId
+//      'E:E' - range address of the Spreadsheet' Column, which contains the key value
+
+toDateUS = FORMULA STRING[10] 'to_char(($1),\'MM/DD/YYYY\')';
+toMonthDay = FORMULA STRING[10] 'to_char(($1),\'Mon/DD\')';
+
+nameVisaFull 'Full Visa details' (Visa v) = nameCountry(v) + ' (' + nameVisaStatus(v) + ') until ' + toDateUS(to(v));
+nameVisaFull 'List of Visas for Employee' = GROUP CONCAT nameVisaFull(Visa v), ', ' BY employee(v) MATERIALIZED;
+
+gsssValuesRange 'Data fields for Google Spreadsheet' (Employee e) = 
+    '"' + (OVERRIDE firstName(e),' ') + '",' +
+    '"' + (OVERRIDE lastName(e),' ') + '",' +
+    '"' + (OVERRIDE namePosition(e),' ') + '",' +
+    '"' + (OVERRIDE nameTeam(e),' ') + '",' +
+    '"' + (OVERRIDE email(e),' ') + '",' +
+//    '"yes",' + // Flag
+    '"' + (OVERRIDE nameLocation(e),' ') + '",' +
+    '"' + (OVERRIDE toDateUS(hiringDate(e)),' ') + '",' +
+    '"' + (OVERRIDE toDateUS(probationDate(e)),' ') + '",' +
+    '"' + (OVERRIDE toMonthDay(birthday(e)),' ') + '",' +
+//    '" ",' + // No data is needed
+    '"' + (OVERRIDE phone(e),' ') + '",' + 
+    '"' + (OVERRIDE nameVisaFull(e),' ') + '"' COMPLEX;
+
+gsssAppendEmployee 'Append data to Google spreadsheet' (Employee e) {
+    IF NOT gsssMetadataId(e) THEN {
+        gsssAppend(gsssTeam(),gsssTeamSheet(),'[' + gsssValuesRange(e) + ']');
+        gsssMetadataCreate (e, gsssLastAppendedRow());
+    }
+    ELSE MESSAGE 'Data already exist on Google spreadsheet.\nUse Update record fuctionality' NOWAIT;
+}
+
+gsssUpdateEmployee 'Update record on Google Spreadsheet' (Employee e) {
+    IF gsssMetadataId(e) THEN  gsssUpdateDataFilter(gsssTeam(),gsssMetadataId(e),gsssValuesRange(e));
+    ELSE MESSAGE 'There is no linked Employee on Google spreadsheet List. Please append the new record or re-sync the records either contact administrator' NOWAIT;
+}
+
+gsssRemoveEmployee 'Delete record on Google Spreadsheet' (Employee e) {
+    IF gsssMetadataId(e) THEN { // Search current position of the record
+        NEWSESSION {
+            gsssSearchMetadata(e);
+            IF gsssMetadataIdIndex(e) THEN { // Delete record with links (arch previous ID)
+                gsssBatchUpdateDeleteRow(gsssTeam(),gsssTeamSheet(),gsssMetadataIdIndex(e));
+                gsssMetadataIdArch(e) <- gsssMetadataId(e);
+                gsssMetadataId(e) <- NULL;
+                APPLY;
+                MESSAGE 'Record ' + name[Contact](e) + ' was removed from Google Spreadsheet' NOWAIT;
+            }
+            ELSE MESSAGE 'A record by the provided Metadata ID for Employee ' + name[Contact](e) + ' was not found. Please contact administrator' NOWAIT;
+        }
+    }
+    ELSE MESSAGE 'Cannot delete record ' + name[Contact](e) + ' as it is not synced with Google Spreadsheet' NOWAIT;
+}
+
+gsssIndex 'Index' = DATA INTEGER (Employee);
+
+gsssValuesRange 'Data fields for Google Spreadsheet' () = 
+    GROUP CONCAT ('[' + TEXT(gsssValuesRange(Employee e)) + ']') IF e IS Employee AND NOT inactive(e) AND NOT isCandidate(e), ', ' ORDER gsssIndex(e), e;
+
+gsssSynchronize 'Synchronize with Google Spreadsheet' () {
+    LOCAL indexRange = FILE();
+    
+    IF NOT gsssAuth() THEN gsssAccessTokenUpdate();
+    
+    IF gsssAuth() AND gsssTeam() AND gsssTeamSheet() THEN {
+        TRY {
+            EXTERNAL HTTP GET gsssEndpoint() + gsssSpreadsheets() + '/' + gsssTeam() + '/' + gsssValues() + '/' + 'A2' + ':' + 'K' + '?majorDimension=ROWS'
+                // alternative option COLUMNS will put column' data in CSV-like format
+                HEADERS gsssAuthHeader
+                TO indexRange;
+        } CATCH {
+            fileToString(indexRange(), 'UTF-8');
+            MESSAGE 'Error returned by Google Spreadsheet ' + gsssValues() + ' service.\n' + resultString() NOWAIT;
+        }
+        
+        IMPORT gsssValueRange JSON FROM indexRange();
+        
+        LOCAL countRows = INTEGER ();
+        countRows() <- GROUP SUM 1 IF valueRange(INTEGER item);
+        
+        IF countRows() THEN {
+            gsssBatchUpdateDeleteRows(gsssTeam(),gsssTeamSheet(),1,countRows());
+        }
+        
+        gsssAppend(gsssTeam(),gsssTeamSheet(),gsssValuesRange());
+    }
+    ELSE MESSAGE 'The Google Sheets API Access was not setup properly' NOWAIT;
+}
+
+employeesChanged = DATA BOOLEAN ();
+
+WHEN (GROUP SUM 1 IF SET(Employee e IS Employee) AND NOT inactive(e) AND NOT isCandidate(e)) DO {
+    employeesChanged() <- TRUE;
+}
+WHEN (GROUP SUM 1 IF DROPPED(Employee e IS Employee) AND NOT PREV(inactive(e)) AND NOT PREV(isCandidate(e))) DO {
+    employeesChanged() <- TRUE;
+}
+WHEN (GROUP SUM 1 IF CHANGED(inactive(Employee e)) OR CHANGED(isCandidate(e)) OR CHANGED(firstName(e)) OR CHANGED(lastName(e)) OR
+      CHANGED(namePosition(e)) OR CHANGED(teamEmployee(e,currentDate())) OR CHANGED(email(e)) OR CHANGED(nameLocation(e)) OR
+      CHANGED(toDateUS(hiringDate(e))) OR CHANGED(toDateUS(probationDate(e))) OR CHANGED(toMonthDay(birthday(e))) OR
+      CHANGED(phone(e)) OR CHANGED(nameVisaFull(e))) DO {
+    employeesChanged() <- TRUE;
+}
+
 EXTEND FORM employees
     PROPERTIES(e) READONLY slackAccount, trelloEstablished, 
                            citizenships, nameLanguageLevel
@@ -150,10 +260,14 @@ EXTEND FORM employees
     PROPERTIES(e) READONLY laptop, pc
                   
     PROPERTIES(e) READONLY SHOWIF name(mainRole(e)) = 'Product Owner' scrum, brexCard
+    
+    PROPERTIES () TOOLBAR gsssMetadataSync
 ;
 
+DESIGN employees { TOOLBARBOX { MOVE PROPERTY(gsssMetadataSync()) BEFORE TOOLBARRIGHT; } }
+
 EXTEND FORM employee
-    PROPERTIES(e) slackAccount, trelloEstablished, 
+    PROPERTIES(e) slackAccount, trelloEstablished, gsssAppendEmployee, gsssUpdateEmployee, gsssRemoveEmployee, // gsssMetadataId, gsssMetadataIdIndex, gsssMetadataIdArch,
                   citizenships ON CHANGE changeCitizenships(e), nameLanguageLevel
                   
     PROPERTIES(e) laptop, pc, ielts
@@ -181,6 +295,11 @@ DESIGN employee {
             caption = 'Contact info';
             MOVE PROPERTY(slackAccount(e));
             MOVE PROPERTY(trelloEstablished(e));
+            //MOVE PROPERTY(gsssMetadataId(e));
+            //MOVE PROPERTY(gsssMetadataSync(e));
+            MOVE PROPERTY(gsssAppendEmployee(e));
+            MOVE PROPERTY(gsssUpdateEmployee(e));
+            MOVE PROPERTY(gsssRemoveEmployee(e));
         }
         NEW personalInfo {
             type = CONTAINERH;

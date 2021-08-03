@@ -16,7 +16,7 @@ assigned 'Assigned, %' (EmployeeExpense e, CostCenter c) =
 
 amount 'Amount' (EmployeeExpense e, CostCenter c) =
     PARTITION UNGROUP amount PROPORTION STRICT ROUND(2)
-        NUMERIC[16,2](assigned(e, c))
+        NUMERIC[16,2](assigned(e, c) IF assigned(e, c) > 0)
         ORDER c
         BY e;
         

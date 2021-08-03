@@ -1,6 +1,6 @@
 MODULE BudgetExecution;
 
-REQUIRE Budget, BudgetCapItem, BudgetCapCenterExpense, BudgetCapCenterApproval, BudgetAccount;
+REQUIRE Budget, BudgetCapItem, BudgetCapCenterExpense, BudgetCapCenterApproval, BudgetAccount, POCycle;
 
 NAMESPACE Budget;
 
@@ -8,12 +8,12 @@ selected 'Selected' = DATA LOCAL BOOLEAN (Budget);
 
 cap 'Cap, USD' (CostItem i) = GROUP SUM childCap(Budget b, i) IF selected(b);
 
-costCenterCap 'Cost center cap, USD' (CostItem i) = GROUP SUM totalChildCap(Budget b, i) IF selected(b);
+costCenterCap 'Cost center cap, USD' (CostItem i) = NUMERIC[17,2](GROUP SUM totalChildCap(Budget b, i) IF selected(b));
 
-planned 'Planned, USD' (CostItem i) = GROUP SUM planned(Budget b, i) IF selected(b);
+planned 'Planned, USD' (CostItem i) = NUMERIC[17,2](GROUP SUM planned(Budget b, i) IF selected(b));
 
 spent 'Spent, USD' (CostItem i) = GROUP SUM spent(Budget b, i) IF selected(b);
-childSpent 'Spent, USD' (CostItem i) = GROUP SUM childSpent(Budget b, i) IF selected(b);
+childSpent 'Spent, USD' (CostItem i) = NUMERIC[17,2](GROUP SUM childSpent(Budget b, i) IF selected(b));
 
 FORM budgetExecution 'Budget execution'
     OBJECTS b = Budget
@@ -22,13 +22,15 @@ FORM budgetExecution 'Budget execution'
     
     TREE costItems c = CostItem PARENT parent(c)
     PROPERTIES(c) READONLY order, name, cap, costCenterCap, planned, childSpent
-    ORDER order(c)
+    ORDERS order(c)
     
-    OBJECTS bd = BudgetDetail
-    PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    OBJECTS bd = BudgetDetail // By Cost type -> Detials
+    PROPERTIES(bd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, invoiced , paid, optimizedPlanned, optimized // 
     FILTERS selected(budget(bd)),
             level(costItem(bd), c),
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bd)) OR NOT hideSensitive(mainRole(currentUser()))
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bd)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(bd),
+            NOT archive(costCenter(bd))
 
     OBJECTS e = ExpenseLedger
     PROPERTIES(e) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
@@ -36,7 +38,7 @@ FORM budgetExecution 'Budget execution'
             NOT skip(e),
             level(costItem(e), c),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(e)) OR NOT hideSensitive(mainRole(currentUser()))
-    ORDER amountUSD(e) DESC
+    ORDERS amountUSD(e) DESC
             
     OBJECTS p = Period
     PROPERTIES(p) READONLY nameCostCenter, fromDate, toDate, nameOwner, submitted, approved, totalChildCap, planned, spentPercent, spent, spentCap BACKGROUND backgroundSpentCap(p)
@@ -44,14 +46,15 @@ FORM budgetExecution 'Budget execution'
     TREE periodCostItems pc = CostItem PARENT parent(pc)
     PROPERTIES(pc) READONLY order, name
     PROPERTIES(p, pc) READONLY totalChildCap, childPlanned, childSpentPercent, childSpent, spentCap BACKGROUND backgroundSpentCap(p, pc)
-    ORDER order(pc)
+    ORDERS order(pc)
 
-    OBJECTS pbd = BudgetDetail
-    PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned 
+    OBJECTS pbd = BudgetDetail // By period -> Period
+    PROPERTIES(pbd) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
     FILTERS selected(p, budget(pbd)),
             level(costItem(pbd), pc),
             costCenter(pbd) = costCenter(p),
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pbd)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pbd)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(pbd) 
 
     OBJECTS pe = ExpenseLedger
     PROPERTIES(pe) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
@@ -60,27 +63,28 @@ FORM budgetExecution 'Budget execution'
             level(costItem(pe), pc),
             costCenter(pe) = costCenter(p),
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(pe)) OR NOT hideSensitive(mainRole(currentUser())) 
-    ORDER amountUSD(pe) DESC
+    ORDERS amountUSD(pe) DESC
     
     OBJECTS cm = CostCenter PANEL 
     PROPERTIES (cm) name SELECTOR 
     
     OBJECTS bm = Budget
     PROPERTIES (bm) READONLY fromDate, toDate, name
-    PROPERTIES (bm, cm) READONLY averageCap, planned, optimizedPlanned, optimized, spent BACKGROUND backgroundSpent(bm, cm)
+    PROPERTIES (bm, cm) READONLY averageCap, planned,optimizedPlanned,optimized, spent BACKGROUND backgroundSpent(bm, cm)
     FILTERS planned(bm, cm) OR spent(bm, cm)
     
     TREE periodCostItemsM pcm = CostItem PARENT parent(pcm)
     PROPERTIES(pcm) READONLY order, name
-    PROPERTIES(bm, pcm, cm) READONLY averageCap, childPlanned, childOptimizedPlanned, childOptimized, childSpent BACKGROUND backgroundSpent(bm, pcm, cm)
-    ORDER order(pcm)
+    PROPERTIES(bm, pcm, cm) READONLY averageCap, childPlanned, childSpent BACKGROUND backgroundSpent(bm, pcm, cm)
+    ORDERS order(pcm)
 
-    OBJECTS bdm = BudgetDetail
-    PROPERTIES(bdm) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned, optimizedPlanned, optimized
+    OBJECTS bdm = BudgetDetail // By period -> Monthly
+    PROPERTIES(bdm) READONLY nameBudget, nameCostCenter, canonicalNameCostItem, name, planned , optimizedPlanned, optimized
     FILTERS level(costItem(bdm), pcm),
             costCenter(bdm) = cm,  
             budget(bdm) == bm,
-            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bdm)) OR NOT hideSensitive(mainRole(currentUser())) 
+            (hideSensitive(mainRole(currentUser())) AND NOT sensitive(bdm)) OR NOT hideSensitive(mainRole(currentUser())),
+            NOT hidden(bdm) 
 
     OBJECTS em = ExpenseLedger
     PROPERTIES(em) READONLY date, amountUSD, note, nameCostItem, nameCostCenter, info, reference, nameCurrency, amount
@@ -89,14 +93,14 @@ FORM budgetExecution 'Budget execution'
             costCenter(em) = cm,
             budget(em) == bm,
             (hideSensitive(mainRole(currentUser())) AND NOT sensitive(em)) OR NOT hideSensitive(mainRole(currentUser())) 
-    ORDER amountUSD(em) DESC
+    ORDERS amountUSD(em) DESC
     
     OBJECTS dates = (bf = Budget, bt = Budget) PANEL
     PROPERTIES 'Budget from' = name(bf) SELECTOR, 'Budget to' = name(bt) SELECTOR
     OBJECTS bc = Budget
     OBJECTS cc = CostItem
     PROPERTIES orderLevel(cc), orderName(cc), capAverage(cc, bc) COLUMNS (bc) HEADER name(bc)
-    ORDER orderLevel(cc)
+    ORDERS orderLevel(cc)
     FILTERS fromDate(bc) >= fromDate(bf) AND toDate(bc) <= toDate(bt)
 ;
 

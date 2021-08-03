@@ -1,0 +1,18 @@
+MODULE PurchaseInvoiceCompany;
+
+REQUIRE PurchaseInvoice, Company;
+
+NAMESPACE Purchase;
+
+company 'Company' = DATA Company (Invoice);
+nameCompany 'Company' (Invoice i) = name(company(i));
+
+EXTEND FORM invoice
+    PROPERTIES(i) nameCompany
+;
+
+DESIGN invoice {
+    parameters {
+        MOVE PROPERTY(nameCompany(i)) { notNull = TRUE; }
+    }
+}

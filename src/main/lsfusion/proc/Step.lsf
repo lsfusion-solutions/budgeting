@@ -1,0 +1,314 @@
+MODULE Step;
+
+REQUIRE Cycle;
+
+// Define Step
+META defineStep (id,capName,ClassName)
+    CLASS Step 'Stage Step';
+    TABLE step(Step);
+    name 'Stage Step' (Step s) = staticCaption(s) IF s IS Step CHARWIDTH 10;
+    //isSmall 'Small update' = DATA BOOLEAN(Step); // @ToDo
+    
+    step = DATA Step(##ClassName);
+    nameStep 'Stage Step' (##ClassName s) = staticCaption(step(s)) CHARWIDTH 10;
+    
+    CLASS StepLog 'Steps Log';
+    TABLE steplog(StepLog);
+    sbj = DATA ClassName(StepLog);
+    comment 'Notes' = DATA RICHTEXT(StepLog);
+    commentString 'Notes' (StepLog l) = STRING(comment(l));
+    lastComment 'Last Comment' = GROUP LAST comment(StepLog l) BY sbj(l);
+    
+    @defineStepAttributes(in,'step');
+    @defineStepAttributes(out,'result');
+    
+    stepLog = DATA StepLog(##ClassName);
+    WHEN SETCHANGED (step(##ClassName s)) DO {
+        NEW l = StepLog {
+            //comment(l) <- RICHTEXT('\n--- '+STRING(currentDateTime())+' ('+name(currentUser())+') ---\n'+comment(stepLog(s)));
+            stepLog(s) <- l;
+            sbj(l) <- s;
+            stepIn(l) <- step(s);
+        }
+    }
+    WHEN SETCHANGED (stepOut(StepLog l)) DO {
+        step(sbj(l)) <- stepOut(l);
+    }
+    //isSmall 'Is small change' (StepLog l) = isSmall(stepIn(l));
+    
+    FORM steps
+        OBJECTS s = Step GRID
+        PROPERTIES(s) READONLY name
+        LIST Step OBJECT s
+    ;
+
+    EXTEND FORM options
+        OBJECTS s##id = Step
+        PROPERTIES(s##id) READONLY name
+    ;
+    
+    DESIGN options {
+        pane {
+            NEW step##id {
+                caption = 'Steps of '##capName;
+                MOVE BOX(s##id);
+            }
+        }
+    }
+    
+    showVariants 'Output Options' = DATA BOOLEAN (Step,Step);
+    showVariants 'Output Options' (StepLog l) = showVariants(stepIn(l),stepOut(l));
+    CONSTRAINT NOT showVariants(Step sIn, Step sOut) AND stepIn(StepLog l) == sIn AND stepOut(l) == sOut CHECKED BY stepOut[StepLog] MESSAGE 'Output step is not allowed by procedure';
+    TABLE stepStep(Step,Step);
+    FORM steps###id ##capName
+        OBJECTS sOut = Step
+    
+        OBJECTS sIn = Step
+        PROPERTIES (sIn) name READONLY
+        PROPERTIES showVariants(sIn,sOut) COLUMNS (sOut) HEADER name(sOut)
+    ; 
+    NAVIGATOR { masterData { cycles { NEW steps###id; } } }
+    
+    toNotify 'Notify' = DATA BOOLEAN (Notification, Step);
+    notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n);
+END
+
+notificationHeader = DATA LOCAL TEXT ();
+notificationText = DATA LOCAL TEXT ();
+notificationDetails = DATA LOCAL TEXT ();
+
+META defineNotification (id,capName,ClassName,Category)
+    generateHeader (##ClassName s) = STRING(replace(replace(header(notification(step(s))),
+                                                                                   Category##'(s)', name###Category(s)),
+                                                                                   'planned(s)', STRING(INTEGER(planned(s)))));
+    generateNotification (##ClassName s) = TEXT(replace(replace(replace(text(notification(step(s))),
+                                                                                   Category##'(s)', name###Category(s)),
+                                                                                   'date(s)', toDateDDMMYY(currentDate())), 
+                                                                                   'planned(s)', STRING(INTEGER(planned(s)))));
+    processNotification ABSTRACT (ClassName); 
+    sendNotification 'Send Notification' (##ClassName s, Employee e) {
+        IF notification(step(s)) AND email(e) AND NOT disableNotification() AND NOT inactive(e) AND login(e) THEN {
+            notificationHeader() <- generateHeader(s);
+            notificationText() <- generateNotification(s);
+            notificationDetails() <- generateDetails(s);
+            processNotification(s);
+            IF attachment(s) THEN sendNotificationFile(notificationHeader(),notificationText(),notificationDetails(),email(e),attachment(s),attachmentName(s));
+            ELSE sendNotification(notificationHeader(),notificationText(),notificationDetails(),email(e));
+        }
+    } 
+    EXTEND FORM notificationsForms
+        OBJECTS note###id = Notification
+        PROPERTIES (note###id) header, enabled, text PANEL, details PANEL, NEW, DELETE TOOLBAR
+        FILTERS stage(note###id) == Stage.##id
+        
+        OBJECTS step###id = Step
+        PROPERTIES  name(step###id) READONLY, toNotify(note###id,step###id) DRAW step###id
+    ;
+    DESIGN notificationsForms {
+        tabPane {
+            NEW ##id {
+                type = CONTAINERV;
+                fill = 1;
+                alignment = STRETCH;
+                caption = ##capName;
+                NEW list###id {
+                    type = CONTAINERH;
+                    fill = 1;
+                    alignment = STRETCH;
+                    MOVE BOX (note###id) {fill = 4;}
+                    MOVE BOX (step###id) {fill = 1;}
+                }
+                MOVE PROPERTY(text(note###id)) {
+                    fill = 1;
+                    alignment = STRETCH;
+                    panelCaptionVertical = TRUE;
+                }
+                MOVE PROPERTY(details(note###id)) {
+                    fill = 1;
+                    alignment = STRETCH;
+                    panelCaptionVertical = TRUE;
+                }
+            }
+        }
+    }
+END
+
+// User, DateTime and Logging attributes
+META defineStepAttributes(type,det)
+    // Procedure In and Out Steps
+    step###type ###det = DATA Step(StepLog);
+    name###type ###det (StepLog s) = name(step###type(s)) CHARWIDTH 10;
+    // Users that started and finished the step
+    user###type det##' User' = DATA Employee(StepLog);
+    userName###type det##' set by' (StepLog s) = name(user###type(s)) CHARWIDTH 20;
+    // Timesteps of first start anf finish    
+    dateTime###type det##' Date/Time' = DATA DATETIME (StepLog);
+    date###type det##' Date' (StepLog s) = DATE(dateTime###type(s)) CHARWIDTH 10;
+    // initialization
+    WHEN SETCHANGED (step###type(StepLog l)) DO {
+        user###type(l) <- currentUser();
+        dateTime###type(l) <- currentDateTime();
+    }
+END
+
+META showStepAttributes(form,type)
+    EXTEND FORM form
+        PROPERTIES(l) READONLY name###type, userName###type, dateTime###type
+    ;
+END
+
+// Log viewer
+META extendDetails(form,pane,orientation)
+    EXTEND FORM form
+        PROPERTIES(l) READONLY PANEL comment
+        
+        //FILTERGROUP updates
+        //    FILTER 'Hide small updates' NOT isSmall(l) DEFAULT
+    ;
+    
+    DESIGN form {
+        pane {
+            NEW stepLog {
+                fill = 1;
+                alignment = STRETCH;
+                caption = 'Process steps log';
+                type = CONTAINER###orientation;
+                MOVE BOX(l) {
+                    caption = '';
+                    fill = 4;
+                    alignment = STRETCH;
+                }
+                MOVE PROPERTY(comment(l)) {
+                    fill = 1;
+                    alignment = STRETCH;
+                    panelCaptionVertical = TRUE;
+                }
+            }
+        }
+    }
+END
+
+// Assignment
+META defineAssignmentForm(subject,makeStep,header)
+
+    FORM makeStep header
+        OBJECTS o = ##subject PANEL
+        //PROPERTIES(o) lastComment BACKGROUND RGB(240,240,240) SHOWIF lastComment(o)
+        
+        OBJECTS l = StepLog PANEL
+        //PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
+        FILTERS l == stepLog(o)
+        
+        //OBJECTS lc = StepLog
+        //PROPERTIES(lc) BACKGROUND RGB(250,250,250) dateTimeOut, commentString, userNameOut
+        //ORDER dateTimeOut(lc) DESC
+        //FILTERS sbj(lc) == o
+    ;
+    
+    DESIGN makeStep {
+        OBJECTS {        
+            NEW step {
+                alignment = STRETCH;
+                type = CONTAINERH;
+                //MOVE PROPERTY(nameOut(l));
+                //height = 150;
+                NEW decisionButtons {
+                    type = CONTAINERV;
+                    alignment = CENTER;
+                    //MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionVertical = TRUE; caption = 'Overall comment for this Decision'; } //  height = 200;
+                }
+                //MOVE BOX (lc) {
+                //    fill = 3;
+                //    caption = 'Comments for previous decisions and procedure steps';
+                //    MOVE PROPERTY(commentString(lc)) {charWidth = 50;alignment =STRETCH;}
+                //    MOVE PROPERTY(userNameOut(lc)) {charWidth = 20;}
+                //    REMOVE TOOLBARLEFT(lc);
+                //}
+                NEW commentsArea {
+                    type = CONTAINERV;
+                    alignment = STRETCH;
+                    fill = 1;
+                    //MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionVertical = TRUE; } //  height = 200;
+                }
+            }
+        }
+    }
+    
+    exec (Assign###makeStep a) + { 
+	NEWSESSION {
+        SHOW makeStep OBJECTS o = sbj(a);
+        }
+    }
+
+END
+
+META defineAssignment(subject, staging, makeStep, header, summator)
+
+    CLASS Assign###makeStep header : Assign;
+    
+    step###makeStep (##subject s) = step(s) == Step.makeStep;
+    assign###makeStep = AGGR Assign###makeStep WHERE step###makeStep(##subject sbj) MATERIALIZED INDEXED;
+    //assign###makeStep (##subject sbj) = AGGR Assign###makeStep WHERE step##subject(sbj);
+    sbj (Assign###makeStep a) += sbj(a);
+    dateTimeStart (Assign###makeStep a) += dateTime(sbj(a)) IF a IS Assign###makeStep; // currentDateTime()
+    desc (Assign###makeStep a) += header + ': ' + nameExplain(sbj(a)) IF a IS Assign###makeStep;
+    sum (Assign###makeStep a) += ##summator(sbj(a)) IF a IS Assign###makeStep;
+    currency (Assign###makeStep a) += GROUP LAST currency(sbj(a)) IF a IS Assign###makeStep;
+    colorOwn (Assign###makeStep a) += color(sbj(a)) IF a IS Assign###makeStep;
+    
+    stage (Assign###makeStep a) += Stage.staging IF a IS Assign###makeStep;
+    
+    makeStep header = DATA BOOLEAN (UserRole) IN role###staging;
+    EXTEND FORM securityPolicy
+        PROPERTIES(ur) staging###makeStep = makeStep PANEL
+    ;
+    
+    has###makeStep(Employee e)  = GROUP SUM 1 IF has(e AS Employee, UserRole role) AND makeStep(role) MATERIALIZED;
+    //assigned (Employee e, Assign###makeStep s) += has###makeStep(e) AND s IS Assign###makeStep; 
+    
+    WHEN SET(Assign###makeStep s IS Assign###makeStep) DO {
+        FOR in(Employee e, s) AND email(e) != email(currentUser()) DO {
+            sendNotification(sbj(s), e);
+        }
+    }
+    
+    @defineAssignmentForm(subject,makeStep,header);
+    
+    FORM complete###makeStep header
+        OBJECTS l = StepLog PANEL
+        PROPERTIES(l) comment //nameOut BACKGROUND backgroundFill(),
+        PROPERTIES plan = planned(sbj(l))
+    ;
+    
+    DESIGN complete###makeStep {
+    //height = 400; width =480; 
+        NEW pane FIRST {
+            fill = 1;
+            type = CONTAINERV;
+            //MOVE PROPERTY(nameOut(l)) {alignment = STRETCH;}
+            NEW decisionButtons {
+                type = CONTAINERH;
+                alignment = CENTER;
+                MOVE PROPERTY(plan) {alignment = STRETCH; caption = 'Total planned, USD';}
+            }
+            MOVE PROPERTY(comment(l)) {panelCaptionVertical = TRUE;  alignment = STRETCH; fill = 1;}
+        }
+    }
+    
+END
+
+META buttonDecisions(makeStep,variant,nameCaption)
+    button###makeStep###variant (StepLog l) {
+        stepOut(l) <- Step.##variant;
+        APPLY;
+        formClose();
+    }
+    
+    EXTEND FORM complete###makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
+    DESIGN complete###makeStep {  decisionButtons { 
+            MOVE PROPERTY(button###makeStep###variant(l)) FIRST {caption = ##nameCaption; alignment = STRETCH; fontStyle = 'bold'; } } }
+            
+    EXTEND FORM ##makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
+    DESIGN ##makeStep {  decisionButtons { 
+            MOVE PROPERTY(button###makeStep###variant(l)) FIRST {caption = ##nameCaption; alignment = STRETCH; fontStyle = 'bold'; } } }
+END

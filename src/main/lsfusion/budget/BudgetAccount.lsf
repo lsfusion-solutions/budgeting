@@ -1,6 +1,6 @@
 MODULE BudgetAccount;
 
-REQUIRE Account, Budget, BudgetBI;
+REQUIRE AccountB, Budget, BudgetBI;
 
 NAMESPACE Budget;
 

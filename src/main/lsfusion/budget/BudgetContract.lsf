@@ -8,12 +8,27 @@ CLASS Contract 'Contract';
 TABLE contract (Contract);
 
 contractor 'Contractor' = DATA Contractor (Contract) NONULL DELETE;
-period 'Period' = DATA Period (Contract) NONULL;
+period 'Period' = DATA Period (Contract);
 
 number 'Number' = DATA STRING[30] (Contract) CHARWIDTH 10;
 date 'Date' = DATA DATE (Contract);
+validity 'Validity' = DATA DATE (Contract);
+nameContractor 'Contractor' (Contract c) = name(contractor(c));
+taxIDcontractor 'Contractor' (Contract c) = taxID(contractor(c));
+fileLink 'Agreement Link' = DATA LINK(Contract);
+readFile 'Open Contract' (Contract c) {open(fileLink(c));} TOOLBAR ;
 
 note 'Note' = DATA STRING[500] (Contract) CHARWIDTH 30;
+
+// Type
+CLASS Regular {
+    month 'Monthly',
+    quarter 'Quarterly',
+    year 'Yearly'
+}
+name 'Name' (Regular t) = staticCaption(t) IF t IS Regular CHARWIDTH 10;
+regular 'Regularity' = DATA Regular (Contract);
+regularity 'Regularity' (Contract c) = name(regular(c));
 
 currency 'Currency' = DATA Currency (Contract);
 nameCurrency 'Currency' (Contract c) = name(currency(c));
@@ -32,8 +47,113 @@ prevMonthPercentComplete 'Complete (prev month), %' (Contract c, Budget b) =
           
 FORM dialogContracts 'Contracts'
     OBJECTS c = Contract
-    PROPERTIES (c) READONLY number, date, note, nameCurrency, amount, amountUSD
-    ORDER date(c)
+    PROPERTIES (c) READONLY number, date, validity, note, nameCurrency, amount, amountUSD
+    ORDERS date(c)
     
     LIST Contract OBJECT c
 ;
+
+enableEdit 'Edit contracts' = DATA LOCAL BOOLEAN ();
+WHEN LOCAL SET (hideContracts()) DO enableEdit() <- NULL;
+WHEN LOCAL SET (NOT hideContracts()) DO enableEdit() <- TRUE;
+
+EXTEND FORM contractor
+    OBJECTS ct = Contract
+    PROPERTIES (ct) SHOWIF NOT hideContracts() READONLYIF NOT enableEdit() number, date, validity, regularity, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) SHOWIF NOT hideContracts() READONLYIF NOT enableEdit() PANEL note
+    PROPERTIES (ct) SHOWIF NOT hideContracts() TOOLBAR SHOWIF enableEdit() NEW, DELETE
+    PROPERTIES (ct) SHOWIF NOT hideContracts() readFile SHOWIF fileLink(ct)
+    FILTERS contractor(ct) == c AND (NOT sensitive(contractor(ct)) OR afg(currentUser()))
+    
+    PROPERTIES SHOWIF NOT hideContracts() enableEdit() TOOLBAR DRAW ct
+;
+
+DESIGN contractor {
+    OBJECTS {
+        MOVE BOX (ct) { 
+            fill = 1;
+            alignment = STRETCH;
+            TOOLBAR(ct) {
+                MOVE PROPERTY (enableEdit());
+            } 
+        }
+        MOVE PROPERTY (note(ct)) { 
+            alignment = STRETCH;
+            panelCaptionVertical = TRUE;
+            caption = 'Notes for the contract';
+            height = 80;
+        }
+    }
+}
+
+EXTEND FORM contractors
+    PROPERTIES SHOWIF afg(currentUser()) enableEdit() TOOLBAR
+    
+    OBJECTS ct = Contract
+    PROPERTIES (ct) SHOWIF afg(currentUser()) READONLYIF NOT enableEdit() number, date, validity, nameContractor, taxIDcontractor, note, regularity, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ct) TOOLBAR  SHOWIF (enableEdit() AND afg(currentUser())) NEW, DELETE
+    PROPERTIES (ct) readFile SHOWIF (fileLink(ct) AND afg(currentUser()))
+    FILTERS (ct IS Contract AND afg(currentUser()))
+    
+    OBJECTS ctl = Contract
+    PROPERTIES (ctl) READONLY number, date, validity, note, regularity, nameCurrency, amount, amountUSD, fileLink
+    PROPERTIES (ctl) readFile SHOWIF fileLink(ct)
+    FILTERS contractor(ctl) == c
+;
+
+DESIGN contractors {
+    OBJECTS {
+        NEW tabPane {
+            type = TABBED;
+            alignment = STRETCH;
+            fill = 1;
+            NEW contractors {
+                caption = 'Contractors';
+                fill = 1;
+                alignment = STRETCH;
+                type = CONTAINERH;
+                MOVE BOX (c);
+                NEW detailContractor {
+                    type = TABBED;
+                    fill = 2;
+                    alignment = STRETCH;
+                    MOVE BOX (ctl);
+                    MOVE BOX (an);
+                    //MOVE BOX (p);
+                    NEW details {
+                        caption = 'Details';
+                        fill = 1;
+                        alignment = STRETCH;
+                        type = CONTAINERV;
+                        MOVE PROPERTY (sensitive(c));
+                        MOVE PROPERTY (regID(c));
+                        MOVE PROPERTY (nameType(c));
+                        MOVE PROPERTY (isRegular(c));
+                        MOVE PROPERTY (nameCostItem(c));
+                        MOVE PROPERTY (nameCurrency(c));
+                        MOVE PROPERTY (rate(c));
+                        MOVE PROPERTY (hours(c));
+                        MOVE PROPERTY (sum(c));
+                        MOVE PROPERTY (contractors(c));
+                    }
+                }
+            }
+            NEW contracts {
+                caption = 'Contracts (Agreements)';
+                fill = 1;
+                alignment = STRETCH;
+                MOVE BOX (ct) {
+                    TOOLBAR(ct) {
+                        MOVE PROPERTY (enableEdit());
+                    }
+                }
+            }
+            NEW account {
+                caption = 'Accounting Names';
+                fill = 1;
+                alignment = STRETCH;
+                MOVE BOX (al);
+            }
+        }
+    }
+}

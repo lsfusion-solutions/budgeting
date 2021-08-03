@@ -1,0 +1,18 @@
+MODULE EmployeeCompany;
+
+REQUIRE EmployeeB, Company;
+
+NAMESPACE Employee;
+
+company = DATA Company (Employee) INDEXED;
+nameCompany 'Company' (Employee e) = name(company(e));
+
+EXTEND FORM employee
+    PROPERTIES(e) nameCompany
+;
+
+DESIGN employee {
+    additional {
+        MOVE PROPERTY(nameCompany(e));
+    }
+}
