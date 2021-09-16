@@ -146,6 +146,8 @@ text 'Notification text' = DATA TEXT (Notification);
 details 'Notification details' = DATA TEXT (Notification);
 enabled 'Enabled' = DATA BOOLEAN (Notification);
 
+skip 'Skip' = DATA BOOLEAN (Notification, Employee);
+
 FORM notification
     PROPERTIES logicsLogo()
     OBJECTS r = TEXT PANEL

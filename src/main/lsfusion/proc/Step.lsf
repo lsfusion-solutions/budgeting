@@ -87,7 +87,7 @@ META defineNotification (id,capName,ClassName,Category)
                                                                                    'planned(s)', STRING(INTEGER(planned(s)))));
     processNotification ABSTRACT (ClassName); 
     sendNotification 'Send Notification' (##ClassName s, Employee e) {
-        IF notification(step(s)) AND email(e) AND NOT disableNotification() AND NOT inactive(e) AND login(e) THEN {
+        IF notification(step(s)) AND email(e) AND NOT skip(notification(step(s)), e) AND NOT disableNotification() AND NOT inactive(e) AND login(e) THEN {
             notificationHeader() <- generateHeader(s);
             notificationText() <- generateNotification(s);
             notificationDetails() <- generateDetails(s);
@@ -103,6 +103,9 @@ META defineNotification (id,capName,ClassName,Category)
         
         OBJECTS step###id = Step
         PROPERTIES  name(step###id) READONLY, toNotify(note###id,step###id) DRAW step###id
+        
+        OBJECTS employee###id = Employee
+        PROPERTIES name(employee###id) READONLY, skip(note###id,employee###id)
     ;
     DESIGN notificationsForms {
         tabPane {
@@ -117,6 +120,7 @@ META defineNotification (id,capName,ClassName,Category)
                     alignment = STRETCH;
                     MOVE BOX (note###id) {fill = 4;}
                     MOVE BOX (step###id) {fill = 1;}
+                    MOVE BOX (employee###id) {fill = 1;}
                 }
                 MOVE PROPERTY(text(note###id)) {
                     fill = 1;
