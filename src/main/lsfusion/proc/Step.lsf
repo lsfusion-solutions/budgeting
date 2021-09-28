@@ -20,6 +20,11 @@ META defineStep (id,capName,ClassName)
     lastComment 'Last Comment' = GROUP LAST comment(StepLog l) BY sbj(l);
     
     @defineStepAttributes(in,'step');
+    
+    stepLogIn (ClassName o, Step s) = GROUP LAST StepLog l ORDER l WHERE sbj(l) = o AND stepIn(l) = s;
+    userNameLogIn (ClassName o, Step s) = userNameIn(stepLogIn(o, s));
+    dateTimeLogIn (ClassName o, Step s) = dateTimeIn(stepLogIn(o, s));
+
     @defineStepAttributes(out,'result');
     
     stepLog = DATA StepLog(##ClassName);

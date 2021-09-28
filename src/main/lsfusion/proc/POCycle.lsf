@@ -81,6 +81,13 @@ EXTEND CLASS Step
     pay 'Paid'
 }
 
+// add to invoices form
+EXTEND FORM invoices
+    OBJECTS s = Step BEFORE i
+    
+    PROPERTIES COLUMNS 'step' (s) 'Step (user)' = userNameLogIn(part(i), s) HEADER name(s) + '(user)', 'Step (time)' = dateTimeLogIn(part(i), s) HEADER name(s) + '(time)'   
+; 
+
 // Summing up
 
 gotApproval 'In the loop' (Invoice i) = TRUE IF NOT (step(part(i)) == Step.reject); //  OR tep(part(i)) == Step.update OR step(part(i)) == Step.enter
