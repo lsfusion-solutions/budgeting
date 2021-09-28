@@ -84,9 +84,15 @@ EXTEND CLASS Step
 // add to invoices form
 EXTEND FORM invoices
     OBJECTS s = Step BEFORE i
+    PROPERTIES(s) order
+    ORDERS order(s)
     
     PROPERTIES COLUMNS 'step' (s) 'Step (user)' = userNameLogIn(part(i), s) HEADER name(s) + '(user)', 'Step (time)' = dateTimeLogIn(part(i), s) HEADER name(s) + '(time)'   
 ; 
+
+DESIGN invoices {
+    REMOVE BOX(s);
+}
 
 // Summing up
 

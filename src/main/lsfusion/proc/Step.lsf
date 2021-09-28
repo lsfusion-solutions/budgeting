@@ -7,6 +7,7 @@ META defineStep (id,capName,ClassName)
     CLASS Step 'Stage Step';
     TABLE step(Step);
     name 'Stage Step' (Step s) = staticCaption(s) IF s IS Step CHARWIDTH 10;
+    order 'Order' = DATA INTEGER (Step);
     //isSmall 'Small update' = DATA BOOLEAN(Step); // @ToDo
     
     step = DATA Step(##ClassName);
@@ -69,7 +70,7 @@ META defineStep (id,capName,ClassName)
         OBJECTS sOut = Step
     
         OBJECTS sIn = Step
-        PROPERTIES (sIn) name READONLY
+        PROPERTIES (sIn) name READONLY, order
         PROPERTIES showVariants(sIn,sOut) COLUMNS (sOut) HEADER name(sOut)
     ; 
     NAVIGATOR { masterData { cycles { NEW steps###id; } } }
