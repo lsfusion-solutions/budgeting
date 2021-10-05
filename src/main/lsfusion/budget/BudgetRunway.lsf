@@ -14,7 +14,7 @@ DESIGN budgets {
 }
     
 // CostItem
-budgetDetail (Budget b, CostItem c) = GROUP LAST BudgetDetail d IF NOT costCenter(d) BY budget(d), costItem(d);
+budgetDetail (Budget b, CostItem c) = GROUP LAST BudgetDetail d IF NOT costCenter(d) ORDER d BY budget(d), costItem(d);
 changePlanned (Budget b, CostItem c)  { 
     INPUT q = NUMERIC[16,3] DO { 
         IF budgetDetail(b, c) THEN {
@@ -40,7 +40,7 @@ EXTEND FORM budgets
     PROPERTIES(ip) canonicalName SELECTOR
     
     EVENTS ON INIT {
-        SEEK budgets.ip = [ GROUP LAST CostItem ii WHERE ii IS CostItem AND NOT parent(ii)]();
+        SEEK budgets.ip = [ GROUP LAST CostItem ii ORDER ii WHERE ii IS CostItem AND NOT parent(ii)]();
     }
 
     OBJECTS i = CostItem
@@ -73,7 +73,7 @@ DESIGN budgets {
 
 // Cost type / Center
 
-budgetDetail (Budget b, CostItem i, CostCenter c) = GROUP LAST BudgetDetail d BY budget(d), costItem(d), costCenter(d);
+budgetDetail (Budget b, CostItem i, CostCenter c) = GROUP LAST BudgetDetail d ORDER d BY budget(d), costItem(d), costCenter(d);
 changePlanned (Budget b, CostItem i, CostCenter c)  { 
     INPUT q = NUMERIC[16,3] DO { 
         IF budgetDetail(b, i, c) THEN {
@@ -100,7 +100,7 @@ EXTEND FORM budgets
     PROPERTIES(ic) canonicalName SELECTOR
 
     EVENTS ON INIT {
-        SEEK budgets.ic = [ GROUP LAST CostItem ii WHERE ii IS CostItem AND NOT parent(ii)]();
+        SEEK budgets.ic = [ GROUP LAST CostItem ii ORDER ii WHERE ii IS CostItem AND NOT parent(ii)]();
     }
     
     OBJECTS c = CostCenter

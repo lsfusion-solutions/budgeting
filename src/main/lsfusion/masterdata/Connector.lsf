@@ -562,7 +562,7 @@ gsssMetadataSync 'Sync records with Google Spreadsheet' () {
             
             searchObject() <- NULL;
             FOR values(INTEGER j) DO {
-                searchObject() <- GROUP LAST List obj IF isSubstring(lower(values(j)), lower(key(obj)));
+                searchObject() <- GROUP LAST List obj IF isSubstring(lower(values(j)), lower(key(obj))) ORDER obj;
                 printToLog('Record from Google spreadsheet ' + values(j));
             }
             IF searchObject() THEN {

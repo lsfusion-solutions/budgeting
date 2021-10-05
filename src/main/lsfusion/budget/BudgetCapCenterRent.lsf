@@ -31,8 +31,7 @@ changeLocation (Employee e, Budget b)  {
 }
 
 isAssignedQRent 'Pay for rent' (CostCenter c, Budget b, Employee e) = TRUE IF GROUP MAX rent(c,e,Budget rb) IF quarterNumber(rb) == quarterNumber(b);
-locationQuarter 'Locations' (Employee e, Budget b) = GROUP CONCAT name(Location l),', ' IF l == location(e,Budget rb) AND quarterNumber(rb) == quarterNumber(b);
-
+locationQuarter 'Locations' (Employee e, Budget b) = GROUP CONCAT name(Location l),', ' IF l == location(e,Budget rb) AND quarterNumber(rb) == quarterNumber(b) ORDER l;
 searchByRent 'Search' = DATA LOCAL NESTED ISTRING ();
 EXTEND FORM costCenterBudget
     PROPERTIES() searchByRent

@@ -63,7 +63,7 @@ WHEN LOCAL CHANGED(costItem(contractor(BudgetDetail d))) AND NOT CHANGED(costIte
 CONSTRAINT contractor(BudgetDetail d) AND NOT [ GROUP SUM 1 IF hours(Period p, Contractor c) OR sum(p, c) BY costCenter(p), c](costCenter(d), contractor(d)) 
     CHECKED BY contractor[BudgetDetail] MESSAGE 'Selected contractor for budget detail doesn\'t have assigned hours or sum for the cost center';
 
-budgetDetail (CostCenter c, Budget b, Contractor cc) = GROUP LAST BudgetDetail d BY costCenter(d), budget(d), contractor(d);
+budgetDetail (CostCenter c, Budget b, Contractor cc) = GROUP LAST BudgetDetail d ORDER d BY costCenter(d), budget(d), contractor(d);
 contractors 'Total amount, USD' (CostCenter c, Budget b, Contractor cc) = GROUP SUM planned(BudgetDetail d) IF NOT hidden(d) BY costCenter(d), budget(d), contractor(d);
 contractors 'Total amount (for month), USD' (Period p, Budget b, Contractor cc) = contractors(costCenter(p), b, cc); 
 

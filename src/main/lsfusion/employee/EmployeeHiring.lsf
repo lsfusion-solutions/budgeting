@@ -156,7 +156,7 @@ toDateUS = FORMULA STRING[10] 'to_char(($1),\'MM/DD/YYYY\')';
 toMonthDay = FORMULA STRING[10] 'to_char(($1),\'Mon/DD\')';
 
 nameVisaFull 'Full Visa details' (Visa v) = nameCountry(v) + ' (' + nameVisaStatus(v) + ') until ' + toDateUS(to(v));
-nameVisaFull 'List of Visas for Employee' = GROUP CONCAT nameVisaFull(Visa v), ', ' BY employee(v) MATERIALIZED;
+nameVisaFull 'List of Visas for Employee' = GROUP CONCAT nameVisaFull(Visa v), ', ' ORDER v BY employee(v) MATERIALIZED;
 
 gsssValuesRange 'Data fields for Google Spreadsheet' (Employee e) = 
     '"' + (OVERRIDE firstName(e),' ') + '",' +

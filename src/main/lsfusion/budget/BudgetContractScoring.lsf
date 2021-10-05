@@ -34,7 +34,7 @@ assessment 'Assessment' (Contractor c, Employee e) = NUMERIC[17,2](NUMERIC[17,2]
 assessmentOverall 'Assessment' = GROUP SUM assessment(Contractor c, Employee e) IF votedAllCriteria(c,e) BY c;
 assessment 'Assessment' (Contractor c) = assessmentOverall(c) / voted(c);
 
-commentOverall 'All comments' = GROUP CONCAT name(Employee e) + ', ' + dateTimeAssessment(Contractor c, e) + ':\n' + comment(c, e),'\n\n' IF votedAllCriteria(c,e) AND comment(c, e) BY c;
+commentOverall 'All comments' = GROUP CONCAT name(Employee e) + ', ' + dateTimeAssessment(Contractor c, e) + ':\n' + comment(c, e),'\n\n' IF votedAllCriteria(c,e) AND comment(c, e) ORDER e BY c;
 
 assignSummary 'Number of Expenses linked' = GROUP SUM assigned(Expense s, Employee e) IF contractor(s) == Contractor c BY c,e; // AND scoring(c)
 assignScoring 'Ask Scoring' = DATA BOOLEAN (Contractor,Employee);

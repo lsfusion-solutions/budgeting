@@ -5,5 +5,5 @@ REQUIRE BudgetPurchaseInvoice, PurchaseInvoiceEmail, CostCenterEmployee;
 NAMESPACE Budget;
 
 overImportInvoiceFromMail (Invoice i, AttachmentEmail ae) + { 
-    costCenter(i) <- GROUP LAST CostCenter c IF access(c, Employee e) AND email(e) = fromAddress(email(ae)) AND countCenterAccess(e) == 1; 
+    costCenter(i) <- GROUP LAST CostCenter c IF access(c, Employee e) AND email(e) = fromAddress(email(ae)) AND countCenterAccess(e) == 1 ORDER c;
 }  

@@ -99,11 +99,11 @@ poIn  'PO in'  = DATA DATE (Team, Employee);
 poOut 'PO out' = DATA DATE (Team, Employee);
 po 'Product Owner' (Team t, Employee e, DATE date) = TRUE IF poIn(t, e) <= date AND NOT (poOut(t,e) <= date);
 
-smTeam 'SM' = GROUP CONCAT fullName (Employee e), ', ' IF sm(Team t, e, DATE date) BY t, date CHARWIDTH 30;
-poTeam 'PO' = GROUP CONCAT fullName (Employee e), ', ' IF po(Team t, e, DATE date) BY t, date CHARWIDTH 30;
+smTeam 'SM' = GROUP CONCAT fullName (Employee e), ', ' IF sm(Team t, e, DATE date) ORDER e BY t, date CHARWIDTH 30;
+poTeam 'PO' = GROUP CONCAT fullName (Employee e), ', ' IF po(Team t, e, DATE date) ORDER e BY t, date CHARWIDTH 30;
 
-smGroup 'SM' = GROUP CONCAT fullName (Employee e), ', ' IF sm(Team t, e, DATE date) AND group(t) == TeamGroup g BY g, date CHARWIDTH 30;
-poGroup 'PO' = GROUP CONCAT fullName (Employee e), ', ' IF po(Team t, e, DATE date) AND group(t) == TeamGroup g BY g, date CHARWIDTH 30;
+smGroup 'SM' = GROUP CONCAT fullName (Employee e), ', ' IF sm(Team t, e, DATE date) AND group(t) == TeamGroup g ORDER e BY g, date CHARWIDTH 30;
+poGroup 'PO' = GROUP CONCAT fullName (Employee e), ', ' IF po(Team t, e, DATE date) AND group(t) == TeamGroup g ORDER e BY g, date CHARWIDTH 30;
 
 titleTeam 'Team Description' (Team e) = TEXT (CONCAT '\n', 
     name(e) + ' (' + nameShort(e) + ')', 
@@ -257,7 +257,7 @@ onStarted() + {
 }
 employeeNamePosition 'Name with position' (Employee e) = CONCAT ' - ', name[User](e), namePosition(e);
 employeeNamePositionRow 'Name with position in Row' (Employee e) = CONCAT '","', name[User](e), (OVERRIDE namePosition(e),' ');
-employeeTeam 'Team' = GROUP CONCAT employeeNamePosition(Employee e) IF in(Team t, e, DATE date),'\n' BY t,date;
+employeeTeam 'Team' = GROUP CONCAT employeeNamePosition(Employee e) IF in(Team t, e, DATE date),'\n' ORDER e BY t,date;
 
 content 'Content' (TeamCombination c, Team t, DATE date) = CASE 
     WHEN c == TeamCombination.sm THEN smTeam(t,date)
@@ -342,7 +342,7 @@ DESIGN teamOrganigram {
 singleGroupSection 'Representation of single section' (TeamGroup g, DATE date) = smGroup(g,date);
 
 combineGroupSections 'Combine all group sections' = 
-    GROUP CONCAT singleGroupSection(TeamGroup g, DATE date),'' BY date;
+    GROUP CONCAT singleGroupSection(TeamGroup g, DATE date),'' ORDER g BY date;
 
 teamGroupsExecute 'Show Organigram' () { 
     NEWSESSION {
@@ -378,7 +378,7 @@ gsssOrgTeamValues 'Dataset for single Team in Google Spreadsheet' (Team t, DATE 
     '["' + (OVERRIDE slack(t),'') + '",""],' +
     '["' + (OVERRIDE email(t),'') + '",""],' +
     '["' + (OVERRIDE okr(t),'') + '",""],' + 
-    '["' + (OVERRIDE [GROUP CONCAT employeeNamePositionRow(Employee e) IF in(Team tt, e, DATE d),'"],["' BY tt,d](t,date), '') + '"]';
+    '["' + (OVERRIDE [GROUP CONCAT employeeNamePositionRow(Employee e) IF in(Team tt, e, DATE d),'"],["' ORDER e BY tt,d](t,date), '') + '"]';
 
 gsssOrgTeamsValues 'Dataset for Teams in Google Spreadsheet' (DATE date) = 
     GROUP CONCAT gsssOrgTeamValues(Team t,date),',' IF t IS Team ORDER name(t);

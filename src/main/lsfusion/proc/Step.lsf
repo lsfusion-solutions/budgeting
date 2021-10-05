@@ -18,7 +18,7 @@ META defineStep (id,capName,ClassName)
     sbj = DATA ClassName(StepLog);
     comment 'Notes' = DATA RICHTEXT(StepLog);
     commentString 'Notes' (StepLog l) = STRING(comment(l));
-    lastComment 'Last Comment' = GROUP LAST comment(StepLog l) BY sbj(l);
+    lastComment 'Last Comment' = GROUP LAST comment(StepLog l) ORDER l BY sbj(l);
     
     @defineStepAttributes(in,'step');
     
@@ -76,7 +76,7 @@ META defineStep (id,capName,ClassName)
     NAVIGATOR { masterData { cycles { NEW steps###id; } } }
     
     toNotify 'Notify' = DATA BOOLEAN (Notification, Step);
-    notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n);
+    notification 'Notification' (Step s) = GROUP LAST Notification n IF toNotify(n,s) AND enabled(n) ORDER n;
 END
 
 notificationHeader = DATA LOCAL TEXT ();
@@ -263,7 +263,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     dateTimeStart (Assign###makeStep a) += dateTime(sbj(a)) IF a IS Assign###makeStep; // currentDateTime()
     desc (Assign###makeStep a) += header + ': ' + nameExplain(sbj(a)) IF a IS Assign###makeStep;
     sum (Assign###makeStep a) += ##summator(sbj(a)) IF a IS Assign###makeStep;
-    currency (Assign###makeStep a) += GROUP LAST currency(sbj(a)) IF a IS Assign###makeStep;
+    currency (Assign###makeStep a) += GROUP LAST currency(sbj(a)) IF a IS Assign###makeStep ORDER a;
     colorOwn (Assign###makeStep a) += color(sbj(a)) IF a IS Assign###makeStep;
     
     stage (Assign###makeStep a) += Stage.staging IF a IS Assign###makeStep;

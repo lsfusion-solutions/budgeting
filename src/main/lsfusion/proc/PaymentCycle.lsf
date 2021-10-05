@@ -65,7 +65,7 @@ CONSTRAINT sumExpenses(Payment i) > planned(i) CHECKED BY amountProc[ExpensePaym
 
 // Attachment
 attachmentName (Payment p) = IF countExpenses(p) == 1 THEN 'Payment Confirmation' ELSE 'InvoicesArchive';
-attachment (Payment p) = IF countExpenses(p) == 1 THEN [GROUP LAST file(ExpensePayment i) BY part(i)](p) ELSE NULL;
+attachment (Payment p) = IF countExpenses(p) == 1 THEN [GROUP LAST file(ExpensePayment i) ORDER i BY part(i)](p) ELSE NULL;
 
 //--- Initialize Procedure ---
 

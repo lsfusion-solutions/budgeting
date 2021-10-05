@@ -28,7 +28,7 @@ part = DATA PurchaseOrder (Invoice); // Purchase order may include multiple item
 countInvoices 'Number of Invoices in Purchase Order' = GROUP SUM 1 BY part(Invoice i);
 
 planned 'Planned, USD' (PurchaseOrder b) = GROUP SUM NUMERIC[16,2](invoiced(Invoice d)) BY part(d);
-currency 'Currency' (PurchaseOrder b) = GROUP LAST currency(Invoice d) BY part(d);
+currency 'Currency' (PurchaseOrder b) = GROUP LAST currency(Invoice d) ORDER d BY part(d);
 numberCostCenter 'Number by Cost Center' (PurchaseOrder b, CostCenter c) = GROUP SUM 1 IF  part(Invoice d) == b AND costCenter(d) == c;
 numberContractor 'Number by Contractor' = GROUP SUM 1 BY part(Invoice d) , contractor(d); //  (PurchaseOrder b, Contractor c)
 numberEmployee 'Number by Employee' (PurchaseOrder b, Employee e) = GROUP SUM numberCostCenter(b,CostCenter c) IF approve(c,e) OR owner(c) == e; 
@@ -55,8 +55,8 @@ planned 'Budgeted, USD' (Invoice d) = planned(budgetDetail(d)) CHARWIDTH 10;
 
 // Attachment
 attachmentName (PurchaseOrder p) = IF countInvoices(p) == 1 THEN 'Invoice' ELSE 'InvoicesArchive';
-attachment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST file(Invoice i) BY part(i)](p) ELSE NULL;
-attachmentPayment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST payment(Invoice i) BY part(i)](p) ELSE NULL;
+attachment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST file(Invoice i) ORDER i BY part(i)](p) ELSE NULL;
+attachmentPayment (PurchaseOrder p) = IF countInvoices(p) == 1 THEN [GROUP LAST payment(Invoice i) ORDER i BY part(i)](p) ELSE NULL;
 
 // Threshold prepare
 limit 'Threshold limit, USD' = DATA NUMERIC[14,2](CostCenter);
@@ -115,7 +115,7 @@ balance 'Balance Remain, USD' (Invoice d) = balance(budgetDetail(d),(OVERRIDE da
 amountName 'Sum, USD' (Invoice d) = IF currency(d) == currencyName('USD') THEN (CONCAT ' ',STRING (amount(d)),nameCurrency(d)) ELSE (CONCAT ' ',STRING(invoiced(d)),'USD','('+STRING(amount(d)),nameCurrency(d)+')');
 fullName 'Invoice name' (Invoice i) = CONCAT ' ',number(i),'dated',date(i),'for',amountName(i);
 
-budgetDetailSum 'Budget Items' = GROUP CONCAT budgetDetailNameSum(Invoice i),', ' BY part(i);
+budgetDetailSum 'Budget Items' = GROUP CONCAT budgetDetailNameSum(Invoice i),', ' ORDER i BY part(i);
 
 quarterInvoiced 'Invoiced, USD' (CostCenter c, INTEGER q) = GROUP SUM invoiced(BudgetDetail d) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
 quarterBalance 'Balance Remain, USD' (CostCenter c, INTEGER q) = GROUP SUM balance(BudgetDetail d, currentDate()) IF q == quarterNumber(budget(d)) AND c == costCenter(d);
@@ -133,7 +133,7 @@ CONSTRAINT NOT existInvoices(PurchaseOrder p) AND step(p) MESSAGE 'Please add at
 // Continue initialization
 
 budgetItem 'Budget detail full name' (Invoice i) = CONCAT '<br>',nameCostCenter(i),costItemName(i),budgetDetailName(i);
-budgetItems 'Budget details involved' (PurchaseOrder o) = GROUP CONCAT TEXT(budgetItem(Invoice i) + ': <b>' + amountName(i)),'</b><br><br>' BY part(i);
+budgetItems 'Budget details involved' (PurchaseOrder o) = GROUP CONCAT TEXT(budgetItem(Invoice i) + ': <b>' + amountName(i)),'</b><br><br>' ORDER i BY part(i);
 generateDetails (PurchaseOrder s) = STRING(replace(replace(details(notification(step(s))),
                                                                                'budgetItems(s)', budgetItems(s)),
                                                                                'passThreshold(s)', (IF passThreshold(s) THEN 'Passed Limits automatically' ELSE 'Over automatical limits') ));
@@ -154,7 +154,7 @@ EXTEND FORM notificationsForms PROPERTIES testNotification() DRAW notePo;
 paid 'Paid' (PurchaseOrder o) = TRUE IF step(o) == Step.pay;
 paid 'Paid' (Invoice i) = paid(part(i));
 
-paidDate 'Paid Date' = GROUP LAST DATE(dateTimeOut(StepLog l)) IF stepOut(l) == Step.pay BY sbj(l) MATERIALIZED;
+paidDate 'Paid Date' = GROUP LAST DATE(dateTimeOut(StepLog l)) IF stepOut(l) == Step.pay ORDER l BY sbj(l) MATERIALIZED;
 paidDate 'Paid Date' (Invoice i) = paidDate(part(i));
 
 paid 'Paid, USD' (BudgetDetail d) = GROUP SUM NUMERIC[14,2](round0(amount(Invoice i) / defaultRateOn(currency(i), (OVERRIDE date(i),currentDate())))) IF paid(i) BY budgetDetail(i); 
@@ -396,7 +396,7 @@ hideVariant 'Logics for hiding variant buttons' (StepLog l, Step stepOut) = CASE
 //--- Automotive Purchase Order initialization ---
 
 author 'Author' = DATA Employee(Invoice);
-searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.enter AND author(p) == e;
+searchProposal 'Search active manual purchase orders' (Employee e) = GROUP LAST PurchaseOrder p IF step(p) == Step.enter AND author(p) == e ORDER p;
 WHEN SET (budgetDetail(Invoice b)) AND NOT part(b) DO {
     author(b) <- currentUser();
     //hidden(b) <- TRUE;

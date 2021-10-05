@@ -45,8 +45,7 @@ authorName 'Author' (BudgetDetail b) = name(author(b)) CHARWIDTH 20;
 WHEN SETCHANGED (planned(BudgetDetail b)) DO author(b) <- currentUser();
 
 numberAuthors 'Number from Employees' (BudgetPortion b, Employee e) = GROUP SUM 1 IF author(BudgetDetail d) == e AND part(d) = b; 
-authorName 'Authors' (BudgetPortion b) = GROUP CONCAT name(Employee e),', ' IF numberAuthors(b,e) > 0 CHARWIDTH 30;
-
+authorName 'Authors' (BudgetPortion b) = GROUP CONCAT name(Employee e),', ' IF numberAuthors(b,e) > 0 ORDER e CHARWIDTH 30;
 // Quarters
 quarterNumber 'Quarter ID' (Budget b) = extractYear(fromDate(b))*10 + floor( DOUBLE (extractMonthNumber(fromDate(b)) - 1) / 3) + 1 MATERIALIZED;
 getQuarter 'Quarter from date' (DATE d) = extractYear(d)*10 + floor( DOUBLE (extractMonthNumber(d) - 1) / 3) + 1;
@@ -77,7 +76,7 @@ capBudget 'Month Cap for Company, USD' = DATA NUMERIC[16,3] (Budget);
 capCostCenter 'Month Cap for Cost Center, USD' = DATA NUMERIC[16,3] (Budget,CostCenter);
 
 quarterLimitCompany 'Quarter Limit for Company' = DATA NUMERIC[16,3] (INTEGER);
-//quarterLimitCompanyGet 'Quarter Limit for Company, USD' (Budget b) = GROUP LAST quarterLimitCompany(Budget q) IF quarterNumber(q) == quarterNumber(b);
+//quarterLimitCompanyGet 'Quarter Limit for Company, USD' (Budget b) = GROUP LAST quarterLimitCompany(Budget q) IF quarterNumber(q) == quarterNumber(b) ORDER q;
 //quarterLimitCompanyShow 'Quarter Limit for Company, USD' (Budget b) = OVERRIDE quarterLimitCompanyGet(b),quarterLimitCompany(b);
 
 quarterLimitCostCenter 'Quarter Limit for Cost Center, USD' = DATA NUMERIC[16,3] (INTEGER,CostCenter);
@@ -345,8 +344,8 @@ assigned(Employee e,AssignReject a) += TRUE IF numberAuthors(sbj(a),e) > 0 OR (a
 
 //--- Automotive Proposal initialization ---
 
-searchProposal 'Search active proposals' (Employee e) = GROUP LAST BudgetPortion p IF step(p) == Step.update AND author(p) == e;
-searchCenterProposal 'Search active proposals' (CostCenter c) = GROUP LAST BudgetPortion p IF step(p) == Step.update AND costCenter(p) == c;
+searchProposal 'Search active proposals' (Employee e) = GROUP LAST BudgetPortion p IF step(p) == Step.update AND author(p) == e ORDER p;
+searchCenterProposal 'Search active proposals' (CostCenter c) = GROUP LAST BudgetPortion p IF step(p) == Step.update AND costCenter(p) == c ORDER p;
 WHEN SET (budget(BudgetDetail b)) AND NOT part(b) DO {
     hiddenSet(b) <- TRUE;
     IF NOT quarterBudgeting(quarterNumber(budget(b))) THEN { // Support of BudgetQuarter - quarter aggregation

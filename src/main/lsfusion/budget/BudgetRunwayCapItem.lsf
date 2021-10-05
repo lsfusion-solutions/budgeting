@@ -14,7 +14,7 @@ EXTEND FORM budgets
     PROPERTIES(cip) canonicalName SELECTOR
     
     EVENTS ON INIT {
-        SEEK budgets.cip = [ GROUP LAST CostItem ii WHERE ii IS CostItem AND NOT parent(ii)]();
+        SEEK budgets.cip = [ GROUP LAST CostItem ii ORDER ii WHERE ii IS CostItem AND NOT parent(ii)]();
     }
 
     OBJECTS ci = CostItem
