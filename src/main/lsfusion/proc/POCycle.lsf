@@ -735,7 +735,14 @@ moveBudgetDetail 'Move' (BudgetDetail d) {
     
     amountFix(d) <- MAX (OVERRIDE ceil(spent(d)),0), (OVERRIDE ceil(invoiced(d)),0);
     
-    IF amountFix(d) > 0 THEN {
+    LOCAL split = BOOLEAN ();
+    
+    IF amountFix(d) = 0 THEN {
+        ASK 'Do you want to split the budget detail ?' DO
+            split() <- TRUE;
+    }
+    
+    IF amountFix(d) > 0 OR split() THEN {
         DIALOG dialogMoveBudgetFix OBJECTS d = d, b INPUT DO {
             IF quarterNumber(b) == quarterNumber(budget(d)) THEN {
                 IF amountTransfer(d) AND amountFix(d) THEN {
