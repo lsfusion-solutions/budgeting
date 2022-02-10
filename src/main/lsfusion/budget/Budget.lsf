@@ -261,6 +261,9 @@ FORM budgetDetails 'Budget details'
             //(hideSensitive(mainRole(currentUser())) AND NOT sensitive(d)) OR NOT hideSensitive(mainRole(currentUser())),
             NOT sensitive(d),
             NOT hidden(d) 
+    
+    FILTERGROUP current
+        FILTER 'Current' toDate(budget(d)) >= currentDate() DEFAULT
         
     LIST BudgetDetail OBJECT d
 ;
