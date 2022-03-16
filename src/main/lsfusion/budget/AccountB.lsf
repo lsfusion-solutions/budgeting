@@ -1,6 +1,6 @@
 MODULE AccountB;
 
-REQUIRE Currency, CostCenter;
+REQUIRE CurrencyB, CostCenter;
 
 NAMESPACE Budget;
 

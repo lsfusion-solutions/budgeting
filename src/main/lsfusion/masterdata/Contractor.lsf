@@ -1,6 +1,6 @@
 MODULE Contractor;
 
-REQUIRE MasterData, Currency, CostItem, CostCenter, Cycle, Connector;
+REQUIRE MasterData, CurrencyB, CostItem, CostCenter, Cycle, Connector;
 
 CLASS Contractor 'Contractor';
 TABLE contractor(Contractor);

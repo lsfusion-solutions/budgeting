@@ -44,7 +44,7 @@ nameCostItem4 (CostItem child) = name(costItem4(child));
 nameCostItem5 (CostItem child) = name(costItem5(child));
 nameCostItem6 (CostItem child) = name(costItem6(child));
 
-orderName 'Cost type' (CostItem c) = CONCAT '', (GROUP CONCAT '    ' IF level(c, CostItem i) > 1, ''), name(c);
+orderName 'Cost type' (CostItem c) = CONCAT '', (GROUP CONCAT '    ' IF level(c, CostItem i) > 1, '' ORDER i), name(c);
 
 nameOrder (CostItem c) = PARTITION SUM 1 IF NOT order(c) ORDER c BY parent(c);
 overOrder (CostItem c) = OVERRIDE order(c), nameOrder(c);

@@ -1,6 +1,8 @@
-MODULE Currency;
+MODULE CurrencyB;
 
 REQUIRE System, MasterData, Time, Utils;
+
+NAMESPACE Currency;
 
 CLASS Currency 'Currency';
 TABLE currency(Currency);

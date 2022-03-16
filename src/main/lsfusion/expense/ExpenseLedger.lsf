@@ -1,6 +1,6 @@
 MODULE ExpenseLedger;
 
-REQUIRE CostItem, CostCenter, Currency, Utils, Security;
+REQUIRE CostItem, CostCenter, CurrencyB, Utils, Security;
 
 NAMESPACE Expense;
 

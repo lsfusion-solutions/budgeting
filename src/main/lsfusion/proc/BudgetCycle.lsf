@@ -523,12 +523,14 @@ META extendBudgetPortion (form)
     ORDERS dateTime(m) DESC
     FILTERS budgetDetail(m) == d
     
-    EVENTS ON APPLY AFTER seekLastMessageInFullChat()
     ;
     
-    seekLastMessageInFullChat() + { 
+    seekLastObject###form() { 
         SEEK FIRST ##form.m;
     }
+    EXTEND FORM ##form
+        EVENTS ON APPLY AFTER seekLastObject###form()
+    ;
 
     DESIGN ##form {
         OBJECTS {

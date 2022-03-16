@@ -1,6 +1,6 @@
 MODULE PurchaseInvoice;
 
-REQUIRE Currency, Utils;
+REQUIRE CurrencyB, Utils;
 
 NAMESPACE Purchase;
 

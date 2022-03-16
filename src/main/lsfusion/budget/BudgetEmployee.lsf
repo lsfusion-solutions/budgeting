@@ -1,6 +1,6 @@
 MODULE BudgetEmployee;
 
-REQUIRE Budget, CostItemEmployee, EmployeeLocation, Currency;
+REQUIRE Budget, CostItemEmployee, EmployeeLocation, CurrencyB;
 
 NAMESPACE Budget;
 

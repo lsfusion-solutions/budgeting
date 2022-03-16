@@ -1,6 +1,6 @@
 MODULE Cycle;
 
-REQUIRE Authentication, Time, Security, Country, EmployeeB, Currency;
+REQUIRE Authentication, Time, Security, Country, EmployeeB, CurrencyB;
 
 disableEvents = DATA LOCAL BOOLEAN ();
 backgroundFill = RGB(255, 255, 224);
@@ -147,6 +147,7 @@ details 'Notification details' = DATA TEXT (Notification);
 enabled 'Enabled' = DATA BOOLEAN (Notification);
 
 skip 'Skip' = DATA BOOLEAN (Notification, Employee);
+threshold 'Threshold' = DATA NUMERIC[16,2] (Notification, Employee) CHARWIDTH 6;  
 
 FORM notification
     PROPERTIES logicsLogo()

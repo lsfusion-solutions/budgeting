@@ -93,7 +93,7 @@ META defineNotification (id,capName,ClassName,Category)
                                                                                    'planned(s)', STRING(INTEGER(planned(s)))));
     processNotification ABSTRACT (ClassName); 
     sendNotification 'Send Notification' (##ClassName s, Employee e) {
-        IF notification(step(s)) AND email(e) AND NOT skip(notification(step(s)), e) AND NOT disableNotification() AND NOT inactive(e) AND login(e) THEN {
+        IF notification(step(s)) AND email(e) AND NOT skip(notification(step(s)), e) AND NOT planned(s) < threshold(notification(step(s)), e) AND NOT disableNotification() AND NOT inactive(e) AND login(e) THEN {
             notificationHeader() <- generateHeader(s);
             notificationText() <- generateNotification(s);
             notificationDetails() <- generateDetails(s);
@@ -111,7 +111,7 @@ META defineNotification (id,capName,ClassName,Category)
         PROPERTIES  name(step###id) READONLY, toNotify(note###id,step###id) DRAW step###id
         
         OBJECTS employee###id = Employee
-        PROPERTIES name(employee###id) READONLY, skip(note###id,employee###id)
+        PROPERTIES name(employee###id) READONLY, skip(note###id,employee###id), threshold(note###id,employee###id)
     ;
     DESIGN notificationsForms {
         tabPane {
