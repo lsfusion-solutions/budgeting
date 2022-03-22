@@ -109,7 +109,7 @@ EXTEND FORM invoiceLoad
 
 DESIGN invoiceLoad {
     tabs {
-        NEW expenses {
+        NEW expenses AFTER comment {
             showIf = afg(currentUser());
             caption = 'Expenses';
             fill = 1;

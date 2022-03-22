@@ -515,10 +515,19 @@ DESIGN purchaseOrders {
                         MOVE PROPERTY (loadPayment(d));
                         MOVE PROPERTY (openPayment(d));
                     }
-                    MOVE PROPERTY (text(d)) {
-                        alignment = STRETCH;
-                        panelCaptionVertical = TRUE;
+                    NEW tabs {
+                        type = TABBED;
                         fill = 1;
+                        NEW comment {
+                            //fill = 1;
+                            caption = 'Comment';
+                            MOVE PROPERTY(text(d)) { fill = 1; } 
+                        }
+//                        MOVE PROPERTY (text(d)){ 
+//                            fill = 1;
+//                            caption = 'Comment';
+//                            panelCaptionVertical = TRUE; 
+//                        }
                     }                                
                 }
             }
@@ -817,3 +826,68 @@ distribBudgetDetail 'Distribute' (BudgetDetail d) {
 }
 
 EXTEND FORM costCenterBudget PROPERTIES(bmd) DRAW bmd TOOLBAR moveBudgetDetail, distribBudgetDetail; // READONLYIF readonlyProc(bmd, c)
+
+CLASS ExtraDocumentsLine 'Extra Documents';
+
+invoice = DATA Invoice (ExtraDocumentsLine) NONULL DELETE ;
+
+description 'Description' = DATA STRING[100] (ExtraDocumentsLine);
+file 'Document' = DATA FILE (ExtraDocumentsLine);
+hasFile (ExtraDocumentsLine i) = TRUE IF file(i); 
+open 'Open Document' (ExtraDocumentsLine i)  { open(file(i)); }
+load 'Load Document' (ExtraDocumentsLine i)  { INPUT =file(i) CHANGE; }
+
+EXTEND FORM invoiceLoad
+    OBJECTS l = ExtraDocumentsLine
+    PROPERTIES(l) description, file READONLYIF paid(i), open GRID, NEW, DELETE
+    FILTERS invoice(l) = i
+;
+
+DESIGN invoiceLoad {
+    tabs {
+        MOVE BOX(l) { 
+            fill = 1; 
+            GRID(l) { height = 0; }
+            PROPERTY(description(l)) { flex = 4; charHeight = 3; }
+            PROPERTY(open(l)) { flex = 1; }
+            PROPERTY(file(l)) {flex = 1; }
+        }
+    }
+}
+
+EXTEND FORM purchaseOrder
+    OBJECTS l = ExtraDocumentsLine
+    PROPERTIES(l) description, file READONLYIF paid(d), open GRID, NEW, DELETE
+    FILTERS invoice(l) = d
+;
+
+DESIGN purchaseOrder {
+    detailTabs {
+        MOVE BOX(l) {
+            fill = 1;
+            GRID(l) { height = 0; } 
+            PROPERTY(description(l)) { flex = 4; charHeight = 2; }
+            PROPERTY(open(l)) { flex = 1; }
+            PROPERTY(file(l)) {flex = 1; }
+        }
+    }
+}
+
+EXTEND FORM purchaseOrders
+    OBJECTS l = ExtraDocumentsLine
+    PROPERTIES(l) description READONLY , file READONLY, open GRID
+    FILTERS invoice(l) = d
+;
+
+DESIGN purchaseOrders {
+    tabs {
+        MOVE BOX(l) { 
+            fill = 1;
+            GRID(l) { height = 0; } 
+            PROPERTY(description(l)) { flex = 4; charHeight = 2; }
+            PROPERTY(open(l)) { flex = 1; }
+            PROPERTY(file(l)) {flex = 1; }
+            REMOVE TOOLBARBOX(l);
+        }  
+    }
+}
