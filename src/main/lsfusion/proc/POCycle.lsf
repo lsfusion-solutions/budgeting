@@ -891,3 +891,32 @@ DESIGN purchaseOrders {
         }  
     }
 }
+
+overCopy(Invoice ni, Invoice i) + {
+    FOR invoice(ExtraDocumentsLine l) == i DO NEW nl = ExtraDocumentsLine {
+        invoice(nl) <- ni;
+        description(nl) <- description(l);
+        file(nl) <- file(l);
+    }
+}
+
+EXTEND FORM invoice
+    OBJECTS l = ExtraDocumentsLine
+    PROPERTIES(l) description, file READONLYIF paid(i), open GRID, NEW, DELETE
+    FILTERS invoice(l) = i
+;
+
+DESIGN invoice {
+    pane {
+        MOVE BOX(l) { 
+            fill = 1; 
+            GRID(l) { height = 0; }
+            PROPERTY(description(l)) { flex = 4; charHeight = 3; }
+            PROPERTY(open(l)) { flex = 1; }
+            PROPERTY(file(l)) {flex = 1; }
+        }
+    }
+    invoice {
+        MOVE PROPERTY(nameEmployee(i));
+    }
+}
