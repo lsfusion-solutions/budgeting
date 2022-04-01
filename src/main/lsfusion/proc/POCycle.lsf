@@ -753,7 +753,7 @@ moveBudgetDetail 'Move' (BudgetDetail d) {
     
     IF amountFix(d) > 0 OR split() THEN {
         DIALOG dialogMoveBudgetFix OBJECTS d = d, b INPUT DO {
-            IF quarterNumber(b) == quarterNumber(budget(d)) THEN {
+            IF extractYear(fromDate(b)) == extractYear(fromDate(budget(d))) THEN { //quarterNumber(b) == quarterNumber(budget(d)) THEN {
                 IF amountTransfer(d) AND amountFix(d) THEN {
                     NEW dn = BudgetDetail {
                         planned(dn) <- amountTransfer(d);
@@ -771,17 +771,17 @@ moveBudgetDetail 'Move' (BudgetDetail d) {
                 }
                 ELSE MESSAGE 'The sum to transfer was not defined';
             }
-            ELSE MESSAGE 'Movement is enabled within the current Quarter only';
+            ELSE MESSAGE 'Movement is enabled within the current Year only';
         }
     }
     ELSE {
         DIALOG dialogMoveBudget OBJECTS d = d, b INPUT DO {
-            IF quarterNumber(b) == quarterNumber(budget(d)) THEN {
+            IF extractYear(fromDate(b)) == extractYear(fromDate(budget(d))) THEN { // quarterNumber(b) == quarterNumber(budget(d)) THEN {
                 budget(d) <- b;
                 SEEK costCenterBudget.bm = b; 
                 SEEK costCenterBudget.bmd = d;
             }
-            ELSE MESSAGE 'Movement is enabled within the current Quarter only';
+            ELSE MESSAGE 'Movement is enabled within the current Year only';
         }
     }
 }
