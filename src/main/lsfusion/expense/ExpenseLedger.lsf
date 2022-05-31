@@ -28,6 +28,6 @@ note 'Note' = ABSTRACT ISTRING[1000] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
 
 reference 'Reference' = ABSTRACT ISTRING[1000] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
 
-info 'Info' = ABSTRACT ISTRING[2010] (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
+info 'Info' = ABSTRACT ISTRING (ExpenseLedger) CHARWIDTH 20 MATERIALIZED;
 
 @addRoleApplicationSetting(hideSensitive, 'Hide sensitive', BOOLEAN);

@@ -41,6 +41,16 @@ loadPayment 'Load Payment Confirmation' (Invoice i)  { INPUT =payment(i) CHANGE;
 
 text '' = DATA RICHTEXT (Invoice);
 
+CLASS ExtraDocumentsLine 'Extra Documents';
+
+invoice = DATA Invoice (ExtraDocumentsLine) NONULL DELETE ;
+
+description 'Description' = DATA STRING[100] (ExtraDocumentsLine);
+file 'Document' = DATA FILE (ExtraDocumentsLine);
+hasFile (ExtraDocumentsLine i) = TRUE IF file(i); 
+open 'Open Document' (ExtraDocumentsLine i)  { open(file(i)); }
+load 'Load Document' (ExtraDocumentsLine i)  { INPUT =file(i) CHANGE; }
+
 FORM invoice 'Purchase invoice'
     OBJECTS i = Invoice PANEL
     PROPERTIES(i) date, number, nameSupplier, note, nameCurrency, amount, text

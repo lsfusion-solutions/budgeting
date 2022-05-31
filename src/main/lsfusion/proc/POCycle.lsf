@@ -192,6 +192,10 @@ META extendPurchaseOrder (form)
         PROPERTIES (o) TOOLBAR addPO DRAW d SHOWIF NOT paid(o)
         PROPERTIES (d) DELETE SHOWIF afg(currentUser()) // TOOLBAR NEWSESSION EDIT,
         FILTERS part(d) == o
+
+        OBJECTS ed = ExtraDocumentsLine
+        PROPERTIES(ed) READONLY description, open GRID
+        FILTERS invoice(ed) = d
         
         OBJECTS log = StepLog
         PROPERTIES (log) userNameIn, dateTimeIn, nameIn
@@ -278,6 +282,7 @@ META extendPurchaseOrder (form)
                                     PROPERTY (userNameIn(log)) { caption = 'Executed by'; }
                                     PROPERTY (dateTimeIn(log)) { caption = 'Date/Time'; }
                                 }
+                                MOVE BOX(ed);
                             }
                         }
                     }
@@ -826,16 +831,6 @@ distribBudgetDetail 'Distribute' (BudgetDetail d) {
 }
 
 EXTEND FORM costCenterBudget PROPERTIES(bmd) DRAW bmd TOOLBAR moveBudgetDetail, distribBudgetDetail; // READONLYIF readonlyProc(bmd, c)
-
-CLASS ExtraDocumentsLine 'Extra Documents';
-
-invoice = DATA Invoice (ExtraDocumentsLine) NONULL DELETE ;
-
-description 'Description' = DATA STRING[100] (ExtraDocumentsLine);
-file 'Document' = DATA FILE (ExtraDocumentsLine);
-hasFile (ExtraDocumentsLine i) = TRUE IF file(i); 
-open 'Open Document' (ExtraDocumentsLine i)  { open(file(i)); }
-load 'Load Document' (ExtraDocumentsLine i)  { INPUT =file(i) CHANGE; }
 
 EXTEND FORM invoiceLoad
     OBJECTS l = ExtraDocumentsLine
