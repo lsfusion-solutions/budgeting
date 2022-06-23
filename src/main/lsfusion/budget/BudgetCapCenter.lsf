@@ -261,10 +261,13 @@ DESIGN costCenterBudget {
         NEW monthlyPane {
             caption = 'Monthly';
             type = SPLITH;
-            MOVE BOX(bm);
+            MOVE BOX(bm) {
+                width = 100;
+            }
             NEW monthlyTabPane {
                 type = TABBED;
                 fill = 3;
+                width = 300;
                 NEW budgetDetail {
                     caption = 'Budget Items';
                     alignment = STRETCH;

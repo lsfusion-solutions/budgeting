@@ -709,9 +709,11 @@ DESIGN costCenterBudget {
             type = SPLITH;
             MOVE BOX(q) {
                 caption = 'Quarters';
+                width = 100;
             }
             NEW quarterDetailPane {
                 fill = 3;
+                width = 300;
                 type = SPLITV;
                 NEW quarterTabPane {
                     type = TABBED;
