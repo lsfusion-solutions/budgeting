@@ -355,7 +355,8 @@ assigned(Employee e,AssignApprove a) += TRUE IF (afg(e) OR hasApprove(e)) AND a 
 isPayed (PurchaseOrder po) = step(po) == Step.pay;
 WHEN SET(isPayed (PurchaseOrder po)) DO {
     FOR Employee e AND (author(po) == e OR (hasEnter(e) AND access(po,e))) AND NOT afg(e) DO {
-        IF notification(Step.pay) AND email(e) AND NOT skip(notification(Step.pay), e) AND NOT disableNotification() THEN {
+        IF notification(Step.pay) AND email(e) AND NOT skip(notification(Step.pay), e) 
+           AND NOT planned(po) < threshold(notification(Step.pay), e) AND NOT disableNotification() THEN {
             sendNotificationFile(generateHeader(po),generateNotification(po),generateDetails(po),email(e),attachmentPayment(po),'Payment Confirmation');
         }
     }
