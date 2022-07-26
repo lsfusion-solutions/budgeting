@@ -38,19 +38,21 @@ sensitive = ABSTRACT BOOLEAN (BudgetDetail) MATERIALIZED;
 isProcessing = DATA BOOLEAN (BudgetDetail); // enable Budget Detail items for user editing: TRUE is ALLOW
 isBudgeting (BudgetDetail d) = NOT isProcessing(d); // disable Budget Detail items for user editing: TRUE is READONLY
 
-budget = DATA Budget (BudgetDetail) NONULL DELETE;
+budget = DATA Budget (BudgetDetail) NONULL;
 nameBudget 'Budget' (BudgetDetail d) = name(budget(d));
 descBudget 'Budget' (BudgetDetail d) = description(budget(d)) CHARWIDTH 35;
 
-costCenter = DATA CostCenter (BudgetDetail);
+costCenter = DATA CostCenter (BudgetDetail) INDEXED;
 nameCostCenter 'Cost Center' (BudgetDetail d) = name(costCenter(d));
 
 TABLE budgetCostCenter (Budget, CostCenter);
 selected 'Selected' = DATA BOOLEAN (Budget, CostCenter);  
 
-costItem = DATA CostItem (BudgetDetail);
+costItem = DATA CostItem (BudgetDetail) INDEXED;
 nameCostItem 'Cost type' (BudgetDetail d) = name(costItem(d));
 canonicalNameCostItem 'Cost type' (BudgetDetail d) = canonicalName(costItem(d));
+
+INDEX budget(BudgetDetail d), costCenter(d), costItem(d);
 
 CONSTRAINT costCenter(BudgetDetail d) AND NOT selected(budget(d), costCenter(d)) CHECKED BY costCenter[BudgetDetail]
     MESSAGE 'Detail\'s cost center is not selected for budget'; 
