@@ -126,12 +126,7 @@ DESIGN contractors {
                         alignment = STRETCH;
                         type = CONTAINERV;
                         MOVE PROPERTY (sensitive(c));
-                        MOVE PROPERTY (regID(c));
-                        MOVE PROPERTY (nameType(c));
-                        MOVE PROPERTY (isRegular(c));
                         MOVE PROPERTY (nameCostItem(c));
-                        MOVE PROPERTY (nameCurrency(c));
-                        MOVE PROPERTY (rate(c));
                         MOVE PROPERTY (hours(c));
                         MOVE PROPERTY (sum(c));
                         MOVE PROPERTY (contractors(c));

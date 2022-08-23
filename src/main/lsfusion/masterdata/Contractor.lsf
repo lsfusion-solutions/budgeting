@@ -124,8 +124,8 @@ enableEditContract 'Edit Contractors' = DATA LOCAL BOOLEAN ();
 
 FORM contractors 'Contractors'
     OBJECTS c = Contractor
-    PROPERTIES(c) READONLYIF NOT enableEditContract() name//, taxID
-    PROPERTIES (c) PANEL READONLYIF NOT enableEditContract() sensitive SHOWIF afg(currentUser()), regID, nameType, isRegular, nameCostItem, nameCurrency, rate
+    PROPERTIES(c) READONLYIF NOT enableEditContract() name, nameType, regID, taxID, isRegular, nameCurrency, rate
+    PROPERTIES (c) PANEL READONLYIF NOT enableEditContract() sensitive SHOWIF afg(currentUser()), nameCostItem
     ORDERS name(c)
 
     PROPERTIES(c) TOOLBAR SHOWIF enableEditContract() NEW, EDIT, DELETE 
