@@ -91,6 +91,10 @@ FORM costCenterBudget 'Project budget' // Replace old costCenterBudget form when
     OBJECTS c = CostCenter PANEL
     PROPERTIES(c) name SELECTOR
     FILTERS access(c, currentUser())
+    
+    EVENTS ON INIT {
+        SEEK costCenterBudget.c = GROUP MIN CostCenter cc IF access(cc, currentUser()) AND NOT archive(cc);
+    }
 ;
 DESIGN costCenterBudget {
     OBJECTS {
