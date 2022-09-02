@@ -310,8 +310,7 @@ END
 META buttonDecisions(makeStep,variant,nameCaption)
     button###makeStep###variant (StepLog l) {
         stepOut(l) <- Step.##variant;
-        APPLY;
-        formClose();
+        formOk();
     }
     
     EXTEND FORM complete###makeStep PROPERTIES(l) button###makeStep###variant SHOWIF NOT hideVariant(l,Step.##variant);
