@@ -830,7 +830,9 @@ distribBudgetDetail 'Distribute' (BudgetDetail d) {
     }
 }
 
-EXTEND FORM costCenterBudget PROPERTIES(bmd) DRAW bmd READONLYIF readonlyProcInh(bmd) TOOLBAR moveBudgetDetail, distribBudgetDetail; // READONLYIF readonlyProc(bmd, c)
+EXTEND FORM costCenterBudget PROPERTIES(bmd) DRAW bmd 
+    READONLYIF (readonly(bmd) AND NOT freeCostCenter(costCenter(bmd)) OR isInherited(bmd)) TOOLBAR 
+    moveBudgetDetail, distribBudgetDetail; // READONLYIF readonlyProc(bmd, c)
 
 EXTEND FORM invoiceLoad
     OBJECTS l = ExtraDocumentsLine
