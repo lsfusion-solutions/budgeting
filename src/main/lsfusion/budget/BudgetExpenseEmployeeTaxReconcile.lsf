@@ -37,7 +37,7 @@ DESIGN expenses {
             fill = 1;
             type = CONTAINERH;
             NEW employeeTaxDetail {
-                type = TABBED;
+                tabbed = TRUE;
                 fill = 1;
                 MOVE BOX(let) { caption = 'Locations'; }
                 MOVE BOX(ete) { caption = 'Employees'; }

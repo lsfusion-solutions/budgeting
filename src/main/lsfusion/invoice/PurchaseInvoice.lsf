@@ -95,7 +95,7 @@ DESIGN invoice {
         }
         NEW pane {
             fill = 2;
-            type = TABBED;
+            tabbed = TRUE;
             NEW text {
                 caption = 'Text';
                 fill = 1;

@@ -125,18 +125,18 @@ DESIGN projectStatus {
     OBJECTS {
         NEW pane {
             fill = 1;
-            type = TABBED;
+            tabbed = TRUE;
             NEW employees {
                 caption = 'Employees';
                 fill = 1;
-                type = TABBED;
+                tabbed = TRUE;
                 NEW employeesInfo {
                     caption = 'Info';
                     type = SPLITH;
                     MOVE BOX(e);
                     NEW details {
                         fill = 1;
-                        type = TABBED;
+                        tabbed = TRUE;
                         NEW home {
                             caption = 'Home';
                             MOVE BOX(a);
@@ -161,7 +161,7 @@ DESIGN projectStatus {
             NEW contractors {
                 caption = 'Contractors';
                 fill = 1;
-                type = TABBED;
+                tabbed = TRUE;
                 NEW contractorSum {
                     type = SPLITH;
                     caption = 'Contracts';

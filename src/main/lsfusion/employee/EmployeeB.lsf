@@ -106,7 +106,7 @@ DESIGN employee {
             }
         }
         NEW tabbedPane {
-            type = TABBED;
+            tabbed = TRUE;
             fill = 1;
             NEW roles {
                 caption = 'Roles';
@@ -142,7 +142,7 @@ DESIGN employees {
     OBJECTS {
         NEW pane {
             fill = 1;
-            type = TABBED;
+            tabbed = TRUE;
             MOVE BOX(e) {
                 caption = 'Employees';
             }

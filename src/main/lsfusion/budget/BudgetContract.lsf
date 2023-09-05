@@ -104,7 +104,7 @@ EXTEND FORM contractors
 DESIGN contractors {
     OBJECTS {
         NEW tabPane {
-            type = TABBED;
+            tabbed = TRUE;
             alignment = STRETCH;
             fill = 1;
             NEW contractors {
@@ -114,7 +114,7 @@ DESIGN contractors {
                 type = CONTAINERH;
                 MOVE BOX (c);
                 NEW detailContractor {
-                    type = TABBED;
+                    tabbed = TRUE;
                     fill = 2;
                     alignment = STRETCH;
                     MOVE BOX (ctl);

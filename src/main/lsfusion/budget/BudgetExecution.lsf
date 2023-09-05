@@ -107,7 +107,7 @@ FORM budgetExecution 'Budget execution'
 DESIGN budgetExecution {
     OBJECTS {
         NEW pane {
-            type = TABBED;
+            tabbed = TRUE;
             fill = 1;
             
             NEW costItem {
@@ -116,7 +116,7 @@ DESIGN budgetExecution {
                 type = SPLITH;
                 MOVE BOX(b) { caption = 'Budgets'; }
                 NEW costItemTabs {
-                    type = TABBED;
+                    tabbed = TRUE;
                     fill = 5;
                     NEW costItemPane {
                         caption = 'Details';
@@ -125,7 +125,7 @@ DESIGN budgetExecution {
                             fill = 1;
                         }
                         NEW costItemDetails {
-                            type = TABBED;
+                            tabbed = TRUE;
                             MOVE BOX(bd);
                             MOVE BOX(e);
                         } 
@@ -135,7 +135,7 @@ DESIGN budgetExecution {
             NEW period {
                 fill = 1;
                 caption = 'By period';
-                type = TABBED;
+                tabbed = TRUE;
                 NEW period1 {
                     caption = 'Period';
                     type = SPLITH;
@@ -146,7 +146,7 @@ DESIGN budgetExecution {
                         MOVE BOX(TREE periodCostItems);
                         NEW periodCostItemDetails {
                             fill = 1;
-                            type = TABBED;
+                            tabbed = TRUE;
                             MOVE BOX(pbd);
                             MOVE BOX(pe);
                         }
@@ -166,7 +166,7 @@ DESIGN budgetExecution {
                         MOVE BOX(TREE periodCostItemsM);
                         NEW periodCostItemDetailsM {
                             fill = 1;
-                            type = TABBED;
+                            tabbed = TRUE;
                             MOVE BOX(bdm);
                             MOVE BOX(em);
                         }

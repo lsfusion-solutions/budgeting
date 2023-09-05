@@ -51,7 +51,7 @@ EXTEND FORM cashFlow
 
 DESIGN cashFlow {
     OBJECTS {
-    type = TABBED;
+    tabbed = TRUE;
     NEW flow {
         caption = 'Cash flow';
         MOVE BOX (b);

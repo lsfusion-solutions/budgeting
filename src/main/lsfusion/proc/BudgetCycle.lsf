@@ -575,7 +575,7 @@ META extendBudgetPortion (form)
                     width = 500;
                     alignment = STRETCH;
                     NEW commentsAll {
-                        type = TABBED;
+                        tabbed = TRUE;
                         fill = 1;
                         NEW commentsChat {
                             fill = 1;
@@ -715,7 +715,7 @@ DESIGN costCenterBudget {
                 width = 300;
                 type = SPLITV;
                 NEW quarterTabPane {
-                    type = TABBED;
+                    tabbed = TRUE;
                     fill = 3;
                     NEW budgetDetailQ {
                         caption = 'Budget Items';
@@ -731,7 +731,7 @@ DESIGN costCenterBudget {
                 }
                 NEW detailsQ {
                     fill = 1;
-                    type = TABBED;
+                    tabbed = TRUE;
                     NEW invoicesQ FIRST {
                         caption = 'Invoices';
                         MOVE BOX(iq) { caption = ''; }
@@ -796,7 +796,7 @@ DESIGN budgetPortionsOverview {
         NEW tabpane {
             fill = 1;
             alignment = STRETCH;
-            type = TABBED;
+            tabbed = TRUE;
             NEW monitor {
                 caption = 'Monitor';
                 type = CONTAINERV ;

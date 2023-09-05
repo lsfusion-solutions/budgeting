@@ -262,7 +262,7 @@ META extendPurchaseOrder (form)
                             }
                         }
                         NEW detailTabs {
-                            type = TABBED;
+                            tabbed = TRUE;
                             width  = 600;
                             height = 250;
                             alignment = STRETCH;
@@ -522,7 +522,7 @@ DESIGN purchaseOrders {
                         MOVE PROPERTY (openPayment(d));
                     }
                     NEW tabs {
-                        type = TABBED;
+                        tabbed = TRUE;
                         fill = 1;
                         NEW comment {
                             //fill = 1;
@@ -708,7 +708,7 @@ DESIGN invoiceLoad {
                 MOVE PROPERTY(openPayment(i)) { fill = 1; height = 60; }
             }
             NEW tabs {
-                type = TABBED;
+                tabbed = TRUE;
                 fill = 1;
                 NEW comment {
                     caption = 'Comment';

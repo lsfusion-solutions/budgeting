@@ -113,7 +113,7 @@ DESIGN contractors {
             MOVE BOX (s) { fill = 1; }
             NEW scoreTab {
                 caption = 'Experience';
-                type = TABBED;
+                tabbed = TRUE;
                 fill = 1;
                 alignment = STRETCH;
                 NEW commentEmployee {

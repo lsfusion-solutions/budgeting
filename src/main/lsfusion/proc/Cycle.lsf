@@ -182,7 +182,7 @@ DESIGN notificationsForms {
         NEW tabPane {
             fill = 1;
             alignment = STRETCH;
-            type = TABBED;
+            tabbed = TRUE;
         }
     }
 }

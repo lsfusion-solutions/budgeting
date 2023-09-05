@@ -8,7 +8,7 @@ DESIGN budgets {
     pane {
         NEW runway {
             caption = 'Runway';
-            type = TABBED;
+            tabbed = TRUE;
         }
     }
 }

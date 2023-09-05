@@ -197,7 +197,7 @@ DESIGN budget {
                 MOVE BOX(d);
                 NEW detailTabs {
                     fill = 0.5;
-                    type = TABBED;
+                    tabbed = TRUE;
                     NEW description {
                         caption = 'Description';
                         MOVE PROPERTY(description(d)) { panelCaptionVertical = TRUE; fill = 1;}
@@ -219,7 +219,7 @@ DESIGN budgets {
     OBJECTS {
         NEW pane {
             fill = 1;
-            type = TABBED;
+            tabbed = TRUE;
             MOVE BOX(b) {
                 caption = 'Budgets';
             }
