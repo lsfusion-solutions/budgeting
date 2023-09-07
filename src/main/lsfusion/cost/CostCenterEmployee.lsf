@@ -43,7 +43,7 @@ DESIGN costCenter {
         alignment = STRETCH;
         MOVE PROPERTY (name(c));
         NEW flag {
-            type = CONTAINERH;
+            horizontal = TRUE;
             alignment = STRETCH;
             MOVE PROPERTY (archive(c));
         }

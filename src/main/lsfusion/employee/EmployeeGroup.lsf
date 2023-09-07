@@ -175,11 +175,11 @@ FORM teamGroups 'Organigram'
 DESIGN teamGroups {
     OBJECTS {
         NEW date {
-            type = CONTAINERH;
+            horizontal = TRUE;
             MOVE PROPERTY (dateName) FIRST { caption = 'Select report date'; }
         }
         NEW exec {
-            type = CONTAINERH;
+            horizontal = TRUE;
             MOVE PROPERTY (titleEmployee(ceo)) { panelCaptionVertical = TRUE; caption = ''; }
             MOVE PROPERTY (titleEmployee(cto)) { panelCaptionVertical = TRUE; caption = ''; }
             MOVE PROPERTY (titleEmployee(coo)) { panelCaptionVertical = TRUE; caption = ''; }
@@ -193,7 +193,7 @@ DESIGN teamGroups {
             MOVE BOX (o);
         }
         NEW teams {
-            type = CONTAINERH;
+            horizontal = TRUE;
             alignment = STRETCH;
             fill = 1;
             MOVE BOX (t) { alignment = STRETCH; }
@@ -324,11 +324,11 @@ FORM teamOrganigram 'Organigram'
 DESIGN teamOrganigram {
     OBJECTS {
         NEW date {
-            type = CONTAINERH;
+            horizontal = TRUE;
             MOVE PROPERTY (dateName) FIRST { caption = 'Organigram date'; }
         }
         NEW exec {
-            type = CONTAINERH;
+            horizontal = TRUE;
             MOVE PROPERTY (titleEmployee(ceo)) { panelCaptionVertical = TRUE; caption = ''; }
             MOVE PROPERTY (titleEmployee(cto)) { panelCaptionVertical = TRUE; caption = ''; }
             MOVE PROPERTY (titleEmployee(coo)) { panelCaptionVertical = TRUE; caption = ''; }

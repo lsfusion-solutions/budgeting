@@ -175,7 +175,7 @@ DESIGN budget {
                         GROUP(, b) {
                             type = CONTAINERV;
                             NEW dates {
-                                type = CONTAINERH;
+                                horizontal = TRUE;
                                 MOVE PROPERTY(fromDate(b));
                                 MOVE PROPERTY(toDate(b));
                             }
@@ -274,7 +274,7 @@ DESIGN budgetDetails {
     size = (1000, 600);
     OBJECTS {
         NEW filters FIRST {
-            type = CONTAINERH;
+            horizontal = TRUE;
             alignment = STRETCH;
             //MOVE PROPERTY(nameFilterCostCenter());
             //MOVE PROPERTY(nameFilterCostItem());
@@ -282,7 +282,7 @@ DESIGN budgetDetails {
             //MOVE PROPERTY(canonicalName(t)) {alignment = STRETCH;}
         }
         NEW items {
-            type = CONTAINERH;
+            horizontal = TRUE;
             fill = 1;
             alignment = STRETCH;
             NEW selectors {

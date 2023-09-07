@@ -237,7 +237,7 @@ DESIGN integrationData {
                 alignment = STRETCH;
                 NEW gsssSpreadsheetTeam {
                     caption = 'Team List';
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     alignment = STRETCH;
                     MOVE PROPERTY(gsssTeam()) { panelCaptionVertical = TRUE; }
                     MOVE PROPERTY(gsssTeamSheet()) { panelCaptionVertical = TRUE; }
@@ -246,7 +246,7 @@ DESIGN integrationData {
                 }
                 NEW gsssSpreadsheetOrg {
                     caption = 'Organigram';
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     alignment = STRETCH;
                     MOVE PROPERTY(gsssOrg());
                     MOVE PROPERTY(gsssOrgSheet());
@@ -258,7 +258,7 @@ DESIGN integrationData {
                 MOVE PROPERTY(gsssAccessTokenUpdate());
             }
             NEW gsssAccess {
-                type = CONTAINERH;
+                horizontal = TRUE;
                 caption = 'Access Tokens';
                 alignment = STRETCH;
                 MOVE PROPERTY(gsssAccessTokenRefresh()) { panelCaptionVertical = TRUE; }

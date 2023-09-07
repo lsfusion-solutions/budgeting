@@ -162,7 +162,7 @@ DESIGN sortedBudgetDetails {
         NEW budget {
             fill = 1;
             alignment = STRETCH;
-            type = CONTAINERH;
+            horizontal = TRUE;
             MOVE BOX (b) {fill = 1;}
             MOVE BOX (d) {fill = 4;}
         }
@@ -229,7 +229,7 @@ META extendPayment (form)
                 alignment = STRETCH;
                 type = CONTAINERV;
                 NEW payment {
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     fill = 1;
                     alignment = STRETCH;
                     NEW headerPart {
@@ -253,7 +253,7 @@ META extendPayment (form)
                         caption = 'This Payment';
                         MOVE BOX (e);
                         NEW filePayment {
-                            type = CONTAINERH;
+                            horizontal = TRUE;
                             alignment = STRETCH;
                             caption = 'Payment Confirmation';
                             MOVE PROPERTY (loadPayment(e));// { height = 40;}
@@ -266,7 +266,7 @@ META extendPayment (form)
                     fill = 1;
                     alignment = STRETCH;
                     NEW detailsPanel {
-                        type = CONTAINERH;
+                        horizontal = TRUE;
                         alignment = STRETCH;
                         fill = 1;
                         NEW details {
@@ -285,7 +285,7 @@ META extendPayment (form)
                                 MOVE PROPERTY(nameContract(d)) {alignment = STRETCH; }
                             }
                             NEW files {
-                                type = CONTAINERH;
+                                horizontal = TRUE;
                                 alignment = STRETCH;
                                 caption = 'Attachment file';
                                 //MOVE PROPERTY (load(d));// { height = 40;}

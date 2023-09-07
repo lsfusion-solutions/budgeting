@@ -121,7 +121,7 @@ META defineNotification (id,capName,ClassName,Category)
                 alignment = STRETCH;
                 caption = ##capName;
                 NEW list###id {
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     fill = 1;
                     alignment = STRETCH;
                     MOVE BOX (note###id) {fill = 4;}
@@ -219,7 +219,7 @@ META defineAssignmentForm(subject,makeStep,header)
         OBJECTS {        
             NEW step {
                 alignment = STRETCH;
-                type = CONTAINERH;
+                horizontal = TRUE;
                 //MOVE PROPERTY(nameOut(l));
                 //height = 150;
                 NEW decisionButtons {
@@ -297,7 +297,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
             type = CONTAINERV;
             //MOVE PROPERTY(nameOut(l)) {alignment = STRETCH;}
             NEW decisionButtons {
-                type = CONTAINERH;
+                horizontal = TRUE;
                 alignment = CENTER;
                 MOVE PROPERTY(plan) {alignment = STRETCH; caption = 'Total planned, USD';}
             }

@@ -217,7 +217,7 @@ DESIGN expenses {
         NEW reconcile {
             caption = 'Reconcile';
             NEW filters {
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE BOX(dates);
                 MOVE BOX(c);
                 MOVE FILTERGROUPS(ie) {
@@ -235,7 +235,7 @@ DESIGN expenses {
                     //height = 150;
                     caption = 'Expense parameters';
                     //fill = 1;
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     NEW expenseMark {
                         height = 120;
                         caption = 'Mark as';
@@ -248,14 +248,14 @@ DESIGN expenses {
                         //height = 150;
                         NEW budgetDetails {
                             alignment = STRETCH;
-                            type = CONTAINERH;
+                            horizontal = TRUE;
                             MOVE PROPERTY (expenseType(ie)) {panelCaptionVertical = TRUE; }
                             MOVE PROPERTY (nameGLAccount(ie)) {panelCaptionVertical = TRUE; }
                             MOVE PROPERTY (nameCurrency(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
                             MOVE PROPERTY (reference(ie)) {alignment = STRETCH; panelCaptionVertical = TRUE; }
                         }
                         NEW purchaseDetails AFTER budgetDetails {
-                            type = CONTAINERH;
+                            horizontal = TRUE;
                             alignment = STRETCH;
                         }
                     }

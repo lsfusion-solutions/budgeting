@@ -119,7 +119,7 @@ DESIGN costCenterBudget {
     budgetDetail {
         NEW lineTotal FIRST {
             alignment = STRETCH;
-            type = CONTAINERH ;
+            horizontal = TRUE ;
             MOVE PROPERTY (limitInt) FIRST { 
                 alignment = END; 
                 caption = 'LIVE LIMIT (click the value for details)'; 
@@ -232,7 +232,7 @@ DESIGN budgetPortions {
             alignment = STRETCH;
             type = CONTAINERV;
             NEW proposal {
-                type = CONTAINERH;
+                horizontal = TRUE;
                 fill = 1;
                 alignment = STRETCH;
                 MOVE BOX (o) {
@@ -253,7 +253,7 @@ DESIGN budgetPortions {
             NEW details {
                 fill = 1;
                 alignment = STRETCH;
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE BOX (bcid) {
                     fill = 1;
                     alignment = STRETCH;
@@ -536,21 +536,21 @@ META extendBudgetPortion (form)
             NEW pane FIRST {
                 fill = 5;
                 alignment = STRETCH;
-                type = CONTAINERH;
+                horizontal = TRUE;
                 NEW allDetails {
                     type = CONTAINERV;
                     fill = 3;
                     alignment = STRETCH;
                     NEW headerPart {
                         alignment = STRETCH;
-                        type = CONTAINERH;
+                        horizontal = TRUE;
                         MOVE PROPERTY(planned(o)) { caption = 'Planned by new Budget items, USD'; }
                         MOVE PROPERTY(authorName(o));// { alignment = CENTER; }
                         //MOVE PROPERTY(dateTime(o));
                     }
                     NEW category {
                         caption = 'Block of filters';
-                        type = CONTAINERH;
+                        horizontal = TRUE;
                         alignment = STRETCH;
                         //flex = 1;
                         MOVE PROPERTY(nameCostCenter(o)) { alignment = START; alignment = STRETCH;} //charWidth = 50;
@@ -622,7 +622,7 @@ DESIGN steplog {
         NEW details { 
             fill = 1; 
             caption = 'Details of budgeting log';
-            type = CONTAINERH; 
+            horizontal = TRUE; 
             alignment = STRETCH; 
             MOVE BOX(d) {
                 caption = '';
@@ -803,7 +803,7 @@ DESIGN budgetPortionsOverview {
                 alignment = STRETCH;
                 fill = 1;
                 NEW filters {
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     alignment = STRETCH;
                     MOVE PROPERTY (nameFilterQuarter()) {caption = 'Autofilter by Quarter';}
                     MOVE PROPERTY (nameFilterCostCenter()) {alignment = STRETCH; caption = 'Autofilter by CostCenter';}
@@ -818,7 +818,7 @@ DESIGN budgetPortionsOverview {
             }
             NEW limit {
                 caption = 'Limits';
-                type = CONTAINERH ;
+                horizontal = TRUE ;
                 alignment = STRETCH;
                 fill = 1;
                 NEW quarterlimit {

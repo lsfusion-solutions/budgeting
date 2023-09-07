@@ -96,7 +96,7 @@ DESIGN expenses {
     pane {
         NEW contractor AFTER budget {
             caption = 'Contractors';
-            type = CONTAINERH;
+            horizontal = TRUE;
             fill = 1;
             alignment = STRETCH;
             NEW listContractor {

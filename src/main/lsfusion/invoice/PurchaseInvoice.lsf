@@ -60,13 +60,13 @@ FORM invoice 'Purchase invoice'
 ;
 DESIGN invoice {
     OBJECTS {
-        type = CONTAINERH;
+        horizontal = TRUE;
         fill = 1;
         NEW invoice {           
             NEW parameters {
                 alignment = STRETCH;
                 caption = 'Parameters';
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY(date(i)) { notNull = TRUE; }
                 MOVE PROPERTY(number(i)) { notNull = TRUE; }
                 MOVE PROPERTY(nameSupplier(i)) { notNull = TRUE; }
@@ -74,14 +74,14 @@ DESIGN invoice {
             NEW sum {
                 alignment = STRETCH;
                 caption = 'Sum';
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY(nameCurrency(i)) { notNull = TRUE; }
                 MOVE PROPERTY(amount(i)) { notNull = TRUE; }
             }
             NEW file {
                 alignment = STRETCH;
                 caption = 'File';
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY(open(i)) { fill = 1; height = 40; }
                 MOVE PROPERTY(load(i)) { fill = 1; height = 40; }
                 MOVE PROPERTY(openPayment(i)) { fill = 1; height = 40; }

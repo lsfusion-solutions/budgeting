@@ -66,7 +66,7 @@ DESIGN employee {
     tabbedPane {
         NEW locations {
             caption = 'Location';
-            type = CONTAINERH;
+            horizontal = TRUE;
             NEW loc {
                 fill = 1;
                 MOVE PROPERTY (nameLocation(e));

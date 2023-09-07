@@ -211,7 +211,7 @@ META extendPurchaseOrder (form)
                 type = CONTAINERV;
                 NEW headerPart {
                     alignment = STRETCH;
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     MOVE PROPERTY(datePlan(o)) {notNull = TRUE; hide = TRUE;}
                     MOVE PROPERTY(paidDate(o)) {notNull = TRUE;}
                     MOVE PROPERTY(planned(o));
@@ -227,7 +227,7 @@ META extendPurchaseOrder (form)
                         alignment = STRETCH;
                     }
                     NEW detailsPanel {
-                        type = CONTAINERH;
+                        horizontal = TRUE;
                         alignment = STRETCH;
                         fill = 1;
                         NEW details {
@@ -247,14 +247,14 @@ META extendPurchaseOrder (form)
                                 MOVE PROPERTY(nameEmployee(d)) {alignment = STRETCH; }
                             }
                             NEW files {
-                                type = CONTAINERH;
+                                horizontal = TRUE;
                                 alignment = STRETCH;
                                 caption = 'Attachment file';
                                 MOVE PROPERTY (load(d));// { height = 40;}
                                 MOVE PROPERTY (open(d));// { height = 40;}
                             }
                             NEW filePayment {
-                                type = CONTAINERH;
+                                horizontal = TRUE;
                                 alignment = STRETCH;
                                 caption = 'Payment Confirmation';
                                 MOVE PROPERTY (loadPayment(d));// { height = 40;}
@@ -468,7 +468,7 @@ DESIGN purchaseOrders {
             alignment = STRETCH;
             type = CONTAINERV;
             NEW proposal {
-                type = CONTAINERH;
+                horizontal = TRUE;
                 fill = 1;
                 alignment = STRETCH;
                 MOVE BOX (o) {
@@ -488,7 +488,7 @@ DESIGN purchaseOrders {
             NEW details {
                 fill = 1;
                 alignment = STRETCH;
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE BOX (d) {
                     fill = 4;
                     alignment = STRETCH;
@@ -510,13 +510,13 @@ DESIGN purchaseOrders {
                         MOVE PROPERTY(nameEmployee(d)) {alignment = STRETCH; }
                     }
                     NEW files {
-                        type = CONTAINERH;
+                        horizontal = TRUE;
                         alignment = START;
                         MOVE PROPERTY (load(d)) {caption = 'Load Attachment';}
                         MOVE PROPERTY (open(d)) {caption = 'Open Attachment';}
                     }
                     NEW payment {
-                        type = CONTAINERH;
+                        horizontal = TRUE;
                         alignment = START;
                         MOVE PROPERTY (loadPayment(d));
                         MOVE PROPERTY (openPayment(d));
@@ -599,7 +599,7 @@ DESIGN steplog {
         NEW details { 
             fill = 1; 
             caption = 'Details of purchase order log';
-            type = CONTAINERH; 
+            horizontal = TRUE; 
             alignment = STRETCH; 
             MOVE BOX(d) {
                 caption = '';
@@ -611,7 +611,7 @@ DESIGN steplog {
                 alignment = STRETCH;
                 type = CONTAINERV;
                 NEW files {
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     alignment = STRETCH;
                     MOVE PROPERTY (open(d)) { height = 40; width = 160; caption = 'Attachment';}
                 }
@@ -650,7 +650,7 @@ EXTEND FORM invoiceLoad
 DESIGN invoiceLoad {
     size = (800, 600);
     OBJECTS {
-        type = CONTAINERH;
+        horizontal = TRUE;
         fill = 1;
         alignment = STRETCH;
         NEW invoice {        
@@ -660,7 +660,7 @@ DESIGN invoiceLoad {
             NEW parameters {
                 alignment = STRETCH;
                 caption = 'Parameters';
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY(urgent(i)) { panelCaptionVertical = TRUE; fontStyle = 'bold';}
                 MOVE PROPERTY(date(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 2;}
                 MOVE PROPERTY(number(i)) { notNull = TRUE; panelCaptionVertical = TRUE; flex = 4;}
@@ -671,7 +671,7 @@ DESIGN invoiceLoad {
             NEW budget {
                 alignment = STRETCH;
                 NEW budgetItemLine {
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     fill = 1;
                     MOVE PROPERTY (longBudgetDetailName(i)) {
                         flex = 6;
@@ -681,7 +681,7 @@ DESIGN invoiceLoad {
                     MOVE PROPERTY (balance(i)) {panelCaptionVertical = TRUE; flex = 1;}
                 }
                 NEW budgetItemDetails {
-                    type = CONTAINERH;
+                    horizontal = TRUE;
                     fill = 1;
                     MOVE PROPERTY (nameCostCenter(i)) {panelCaptionVertical = TRUE; flex = 1;}
                     MOVE PROPERTY (costItemName(i)) {panelCaptionVertical = TRUE; flex = 1;}
@@ -690,7 +690,7 @@ DESIGN invoiceLoad {
             NEW contract {
                 alignment = STRETCH;
                 caption = 'Supplier';
-                type = CONTAINERH;
+                horizontal = TRUE;
                 alignment = STRETCH;
                 //MOVE PROPERTY (supply(i)) {caption = 'Known Supplier'; panelCaptionVertical = TRUE; }
                 //MOVE PROPERTY (nameSupplier(i)) {caption = 'Name of new Supplier if it is not known'; alignment = STRETCH;  panelCaptionVertical = TRUE;}
@@ -701,7 +701,7 @@ DESIGN invoiceLoad {
             NEW file {
                 alignment = STRETCH;
                 caption = 'Attachment';
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY(file(i)) { fill = 1; height = 60; panelCaptionVertical = TRUE; caption = 'Load Attachment'; }
                 MOVE PROPERTY(open(i)) { fill = 1; height = 60; caption = 'Open Attachment'; }
                 MOVE PROPERTY(payment(i)) { fill = 1; height = 60; panelCaptionVertical = TRUE; caption = 'Load Payment'; }

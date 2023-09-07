@@ -55,12 +55,12 @@ FORM invoices 'Purchase Invoices'
 DESIGN invoices {
     OBJECTS {
         NEW filters FIRST {
-            type = CONTAINERH;
+            horizontal = TRUE;
             alignment = STRETCH;
             MOVE PROPERTY(nameFilterCostCenter()) {alignment = STRETCH; caption = 'Select Cost Center'; }
         }
         NEW items {
-            type = CONTAINERH;
+            horizontal = TRUE;
             fill = 1;
             alignment = STRETCH;
             NEW selectors {

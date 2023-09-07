@@ -126,7 +126,7 @@ DESIGN costCenter {
     OBJECTS {
         NEW periods BEFORE BOX(e) {
             fill = 1;
-            type = CONTAINERH;
+            horizontal = TRUE;
             MOVE BOX (p);
             MOVE BOX (b);
         }

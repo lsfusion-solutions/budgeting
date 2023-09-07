@@ -31,7 +31,7 @@ DESIGN invoice {
             NEW contract {
                 alignment = STRETCH;
                 caption = 'Contract';
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY (nameContractor(i));
                 MOVE PROPERTY (nameContract(i));
             }

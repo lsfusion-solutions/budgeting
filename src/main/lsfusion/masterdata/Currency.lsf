@@ -85,13 +85,13 @@ DESIGN dialogTypeExchangeCurrency {
         MOVE BOX(c){
             type = CONTAINERV;
             MOVE BOX(d) {
-                type = CONTAINERH;
+                horizontal = TRUE;
 
                 MOVE PROPERTY(rate(t,c,d));
             }
             NEW row {
                 caption = 'Currencies';
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY(name(c)) { caption = 'From'; charWidth = 20;}
                 MOVE PROPERTY(nameCurrency(t)) { caption = 'To'; charWidth = 20;}
             }
@@ -274,7 +274,7 @@ DESIGN typeExchangeCurrencyDate {
             caption = 'Import';
             MOVE PROPERTY(importCBRFExchangeRate());
             NEW dates {
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY(importCBRFExchangeRateDateFrom()) { align = CENTER; }
                 MOVE PROPERTY(importCBRFExchangeRateDateTo()) { align = CENTER; }
                 MOVE PROPERTY(importCBRFExchangeRateDates());

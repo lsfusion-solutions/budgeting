@@ -282,7 +282,7 @@ EXTEND FORM employee
 DESIGN employee {
     hiring {
         NEW documents {
-            type = CONTAINERH;
+            horizontal = TRUE;
             MOVE NDA;
             MOVE employeeContract;
             MOVE independentContract;
@@ -291,7 +291,7 @@ DESIGN employee {
             MOVE w8ben;        
         }
         NEW contactInfo {
-            type = CONTAINERH;
+            horizontal = TRUE;
             caption = 'Contact info';
             MOVE PROPERTY(slackAccount(e));
             MOVE PROPERTY(trelloEstablished(e));
@@ -302,7 +302,7 @@ DESIGN employee {
             MOVE PROPERTY(gsssRemoveEmployee(e));
         }
         NEW personalInfo {
-            type = CONTAINERH;
+            horizontal = TRUE;
             caption = 'Personal info';
             MOVE PROPERTY(citizenships(e));
             MOVE PROPERTY(nameLanguageLevel(e));
@@ -312,7 +312,7 @@ DESIGN employee {
         }
         MOVE BOX(v);
         NEW productOwner {
-            type = CONTAINERH;
+            horizontal = TRUE;
             MOVE PROPERTY(scrum(e));
             MOVE PROPERTY(brexCard(e));
         }
@@ -421,7 +421,7 @@ DESIGN employee {
             caption = 'Equipment';
             fill = 1;
             NEW pc {
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE PROPERTY (laptop(e));
                 MOVE PROPERTY (pc(e));
             }

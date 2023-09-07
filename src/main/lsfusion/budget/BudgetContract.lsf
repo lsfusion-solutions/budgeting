@@ -111,7 +111,7 @@ DESIGN contractors {
                 caption = 'Contractors';
                 fill = 1;
                 alignment = STRETCH;
-                type = CONTAINERH;
+                horizontal = TRUE;
                 MOVE BOX (c);
                 NEW detailContractor {
                     tabbed = TRUE;

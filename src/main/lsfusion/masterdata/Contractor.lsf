@@ -97,19 +97,19 @@ DESIGN contractor {
         MOVE PROPERTY (name(c)) { notNull = TRUE; }
         MOVE PROPERTY (nameType(c)) { notNull = TRUE; }
         NEW id {
-            type = CONTAINERH;
+            horizontal = TRUE;
             alignment = STRETCH;
             MOVE PROPERTY (regID(c));
             MOVE PROPERTY (taxID(c));
         }
         NEW regular {
-            type = CONTAINERH;
+            horizontal = TRUE;
             alignment = STRETCH;
             MOVE PROPERTY (isRegular(c));
             MOVE PROPERTY (nameCostItem(c)) { notNull = TRUE; }
         }
         NEW rate {
-            type = CONTAINERH;
+            horizontal = TRUE;
             alignment = STRETCH;
             MOVE PROPERTY (nameCurrency(c));
             MOVE PROPERTY (rate(c));

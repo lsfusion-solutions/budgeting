@@ -86,7 +86,7 @@ FORM assignments 'Assignments'
 
 DESIGN assignments {
     NEW filters FIRST {
-        type = CONTAINERH;
+        horizontal = TRUE;
         MOVE PROPERTY(nameStage());
         MOVE PROPERTY(nameCurrency());
     }
