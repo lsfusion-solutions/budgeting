@@ -156,7 +156,7 @@ DESIGN budgetExecution {
                     caption = 'Monthly';
                     type = SPLITH;
                     NEW left {
-                        type = CONTAINERV;
+                        horizontal = FALSE;
                         MOVE PROPERTY (name(cm));
                         MOVE BOX (bm);
                     }

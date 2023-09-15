@@ -187,7 +187,7 @@ DESIGN teamGroups {
             MOVE PROPERTY (titleEmployee(finance)) { panelCaptionVertical = TRUE; caption = ''; }
         }
         NEW groups {
-            type = CONTAINERV;
+            horizontal = FALSE;
             alignment = STRETCH;
             height = 200;
             MOVE BOX (o);

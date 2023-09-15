@@ -98,7 +98,7 @@ DESIGN budgetExecution {
     costItemTabs {
         NEW currency {
             caption = 'Groups (currency)';
-            type = CONTAINERV;
+            horizontal = FALSE;
             MOVE PROPERTY (name(cur)){
                 caption = 'Currency';
             }

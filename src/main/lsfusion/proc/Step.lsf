@@ -116,7 +116,7 @@ META defineNotification (id,capName,ClassName,Category)
     DESIGN notificationsForms {
         tabPane {
             NEW ##id {
-                type = CONTAINERV;
+                horizontal = FALSE;
                 fill = 1;
                 alignment = STRETCH;
                 caption = ##capName;
@@ -223,7 +223,7 @@ META defineAssignmentForm(subject,makeStep,header)
                 //MOVE PROPERTY(nameOut(l));
                 //height = 150;
                 NEW decisionButtons {
-                    type = CONTAINERV;
+                    horizontal = FALSE;
                     alignment = CENTER;
                     //MOVE PROPERTY(comment(l)) { fill = 1; alignment = STRETCH; panelCaptionVertical = TRUE; caption = 'Overall comment for this Decision'; } //  height = 200;
                 }
@@ -235,7 +235,7 @@ META defineAssignmentForm(subject,makeStep,header)
                 //    REMOVE TOOLBARLEFT(lc);
                 //}
                 NEW commentsArea {
-                    type = CONTAINERV;
+                    horizontal = FALSE;
                     alignment = STRETCH;
                     fill = 1;
                     //MOVE PROPERTY(lastComment(o)) { fill = 1; alignment = STRETCH; panelCaptionVertical = TRUE; } //  height = 200;
@@ -294,7 +294,7 @@ META defineAssignment(subject, staging, makeStep, header, summator)
     //height = 400; width =480; 
         NEW pane FIRST {
             fill = 1;
-            type = CONTAINERV;
+            horizontal = FALSE;
             //MOVE PROPERTY(nameOut(l)) {alignment = STRETCH;}
             NEW decisionButtons {
                 horizontal = TRUE;

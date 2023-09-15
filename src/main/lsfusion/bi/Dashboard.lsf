@@ -182,7 +182,7 @@ FORM dashboard 'Dashboard'
 
 DESIGN dashboard {
     OBJECTS {
-        type = CONTAINERV ;
+        horizontal = FALSE;
         NEW deassetails {
             alignment = STRETCH;
             type = SPLITH;

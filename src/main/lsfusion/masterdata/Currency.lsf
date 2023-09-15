@@ -83,7 +83,7 @@ DESIGN dialogTypeExchangeCurrency {
             MOVE PROPERTY(name(t)) { focusable = FALSE; charWidth = 40;}
         }
         MOVE BOX(c){
-            type = CONTAINERV;
+            horizontal = FALSE;
             MOVE BOX(d) {
                 horizontal = TRUE;
 
@@ -130,7 +130,7 @@ FORM typeExchangeCurrencyDate 'Exchange rate'
 
 DESIGN typeExchangeCurrencyDate {
     BOX {
-        type = CONTAINERV;
+        horizontal = FALSE;
         NEW split {
             fill = 1;
             type = SPLITV;
@@ -270,7 +270,7 @@ EXTEND FORM typeExchangeCurrencyDate
 DESIGN typeExchangeCurrencyDate {
     topContainer {
         NEW import { 
-            type = CONTAINERV;
+            horizontal = FALSE;
             caption = 'Import';
             MOVE PROPERTY(importCBRFExchangeRate());
             NEW dates {

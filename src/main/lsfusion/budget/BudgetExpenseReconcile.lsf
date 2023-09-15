@@ -239,7 +239,7 @@ DESIGN expenses {
                     NEW expenseMark {
                         height = 120;
                         caption = 'Mark as';
-                        type = CONTAINERV;
+                        horizontal = FALSE;
                         MOVE PROPERTY(markAsExpense(ie));
                     }
                     NEW expenseParams {

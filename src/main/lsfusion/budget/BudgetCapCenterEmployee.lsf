@@ -226,7 +226,7 @@ DESIGN employees {
             caption = 'Budgeting';
             alignment = STRETCH;
             fill = 1;
-            type = CONTAINERV;
+            horizontal = FALSE;
             MOVE PROPERTY (quarterName(bq)) { caption = 'Select Quarter for budgeting'; }
             MOVE PROPERTY (searchByName());
             NEW flow {

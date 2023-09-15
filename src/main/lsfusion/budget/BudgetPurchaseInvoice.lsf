@@ -64,7 +64,7 @@ DESIGN invoices {
             fill = 1;
             alignment = STRETCH;
             NEW selectors {
-                type = CONTAINERV;
+                horizontal = FALSE;
                 fill = 1;
                 alignment = STRETCH;
                 MOVE PROPERTY (nameFilterBudget()) { alignment = STRETCH; }

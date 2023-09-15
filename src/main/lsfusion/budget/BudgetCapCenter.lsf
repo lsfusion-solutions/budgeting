@@ -275,7 +275,7 @@ DESIGN costCenterBudget {
                 NEW budgetDetail {
                     caption = 'Budget Items';
                     alignment = STRETCH;
-                    type = CONTAINERV ;
+                    horizontal = FALSE;
                     fill = 1;
                     MOVE BOX(bmd) { fill = 3; alignment = STRETCH; }
                     NEW details {
@@ -357,7 +357,7 @@ FORM dialogMoveBudgetFix 'Budgets and fixed sum'
 ;
 DESIGN dialogMoveBudgetFix {
     OBJECTS {
-        type = CONTAINERV;
+        horizontal = FALSE;
         alignment = STRETCH;
         MOVE PROPERTY (amountFix(d));
         MOVE PROPERTY (amountTransfer(d));

@@ -73,7 +73,7 @@ DESIGN costCenterBudget {
             fill = 1;
             alignment = STRETCH;
             caption = 'Approval log';
-            type = CONTAINERV;
+            horizontal = FALSE;
             MOVE BOX(ol);
         }
     }

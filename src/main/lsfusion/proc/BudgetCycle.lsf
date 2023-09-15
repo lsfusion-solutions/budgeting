@@ -230,7 +230,7 @@ DESIGN budgetPortions {
         NEW pane {
             fill = 1;
             alignment = STRETCH;
-            type = CONTAINERV;
+            horizontal = FALSE;
             NEW proposal {
                 horizontal = TRUE;
                 fill = 1;
@@ -538,7 +538,7 @@ META extendBudgetPortion (form)
                 alignment = STRETCH;
                 horizontal = TRUE;
                 NEW allDetails {
-                    type = CONTAINERV;
+                    horizontal = FALSE;
                     fill = 3;
                     alignment = STRETCH;
                     NEW headerPart {
@@ -570,7 +570,7 @@ META extendBudgetPortion (form)
                 }
                 NEW chat {
                     caption = 'Comments';
-                    type = CONTAINERV;
+                    horizontal = FALSE;
                     //fill = 1;
                     width = 500;
                     alignment = STRETCH;
@@ -649,7 +649,7 @@ DESIGN budgetPortions {
             fill = 1;
             alignment = STRETCH;
             caption = 'Process steps log';
-            type = CONTAINERV;
+            horizontal = FALSE;
             MOVE BOX(l);
         }
     }
@@ -799,7 +799,7 @@ DESIGN budgetPortionsOverview {
             tabbed = TRUE;
             NEW monitor {
                 caption = 'Monitor';
-                type = CONTAINERV ;
+                horizontal = FALSE;
                 alignment = STRETCH;
                 fill = 1;
                 NEW filters {
@@ -827,7 +827,7 @@ DESIGN budgetPortionsOverview {
                     MOVE BOX (qq) { caption = 'Quarters'; }
                 }
                 NEW limitBudget {
-                    type = CONTAINERV ;
+                    horizontal = FALSE;
                     alignment = STRETCH;
                     fill = 1;
                     NEW months {

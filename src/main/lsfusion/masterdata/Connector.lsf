@@ -209,7 +209,7 @@ DESIGN integrationData {
         NEW gsss {
             caption = 'Google Sheets';
             NEW gsssEndpoints {
-                type = CONTAINERV;
+                horizontal = FALSE;
                 caption = 'API Endpoints';
                 alignment = STRETCH;
                 MOVE PROPERTY(gsssEndpoint());
@@ -219,7 +219,7 @@ DESIGN integrationData {
                 MOVE PROPERTY(gsssValues());
             }
             NEW gsssCredentials {
-                type = CONTAINERV;
+                horizontal = FALSE;
                 caption = 'Our Credentials';
                 alignment = STRETCH;
                 MOVE PROPERTY(gsssLogin());
@@ -232,7 +232,7 @@ DESIGN integrationData {
                 MOVE PROPERTY(gsssRedirectURI());
             }
             NEW gsssSpreadsheets {
-                type = CONTAINERV;
+                horizontal = FALSE;
                 caption = 'Application';
                 alignment = STRETCH;
                 NEW gsssSpreadsheetTeam {

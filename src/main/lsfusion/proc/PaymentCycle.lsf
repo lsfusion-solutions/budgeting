@@ -227,14 +227,14 @@ META extendPayment (form)
             NEW pane FIRST {
                 fill = 1;
                 alignment = STRETCH;
-                type = CONTAINERV;
+                horizontal = FALSE;
                 NEW payment {
                     horizontal = TRUE;
                     fill = 1;
                     alignment = STRETCH;
                     NEW headerPart {
                         alignment = STRETCH;
-                        type = CONTAINERV;
+                        horizontal = FALSE;
                         fill = 1;
                         MOVE PROPERTY(nameInvoice(o));
                         MOVE PROPERTY(plannedAmount(o));
@@ -262,7 +262,7 @@ META extendPayment (form)
                     }
                 }
                 NEW proposal {
-                    type = CONTAINERV;
+                    horizontal = FALSE;
                     fill = 1;
                     alignment = STRETCH;
                     NEW detailsPanel {
@@ -273,7 +273,7 @@ META extendPayment (form)
                             fill = 1;
                             //width = 400;
                             alignment = STRETCH;
-                            type = CONTAINERV;
+                            horizontal = FALSE;
                             //MOVE PROPERTY (costItemName(d)) {alignment = STRETCH;}
                             NEW contractor {
                                 type = COLUMNS;
@@ -293,7 +293,7 @@ META extendPayment (form)
                             }
                         }
                         NEW historyTab {
-                            type = CONTAINERV;
+                            horizontal = FALSE;
                             width  = 600;
                             height = 250;
                             caption = 'Approval steps'; 
