@@ -186,7 +186,7 @@ DESIGN costCenterBudgetArch {
                 caption = 'Period';
                 type = SPLITH;
                 NEW periodLeftPane {
-                    type = SPLITV;
+                    horizontal = FALSE;
                     MOVE BOX(p);
                     NEW periodLeftTab {
                         tabbed = TRUE;
@@ -201,7 +201,7 @@ DESIGN costCenterBudgetArch {
                     tabbed = TRUE;
                     NEW costTypes {
                         caption = 'Cost types';
-                        type = SPLITV;
+                        horizontal = FALSE;
                         MOVE BOX(TREE costItems) {
                             fill = 2;
                         }

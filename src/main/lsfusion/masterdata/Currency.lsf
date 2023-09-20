@@ -133,7 +133,7 @@ DESIGN typeExchangeCurrencyDate {
         horizontal = FALSE;
         NEW split {
             fill = 1;
-            type = SPLITV;
+            horizontal = FALSE;
             MOVE BOX(t);
             NEW topContainer {
                 fill = 2;

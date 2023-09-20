@@ -713,7 +713,7 @@ DESIGN costCenterBudget {
             NEW quarterDetailPane {
                 fill = 3;
                 width = 300;
-                type = SPLITV;
+                horizontal = FALSE;
                 NEW quarterTabPane {
                     tabbed = TRUE;
                     fill = 3;

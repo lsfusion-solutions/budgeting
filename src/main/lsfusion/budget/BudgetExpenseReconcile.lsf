@@ -227,7 +227,7 @@ DESIGN expenses {
             }
             NEW reconcilePane { 
                 fill = 1;
-                type = SPLITV;
+                horizontal = FALSE;
                 MOVE BOX(ie) {
                     fill = 2;
                 }

@@ -37,7 +37,7 @@ DESIGN budgetExecution {
     costItemTabs {
         NEW groups {
             caption = 'Groups';
-            type = SPLITV;
+            horizontal = FALSE;
             MOVE BOX(cig);
             NEW details {
                 fill = 1;

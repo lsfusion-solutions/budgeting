@@ -120,7 +120,7 @@ DESIGN budgetExecution {
                     fill = 5;
                     NEW costItemPane {
                         caption = 'Details';
-                        type = SPLITV;
+                        horizontal = FALSE;
                         MOVE BOX(TREE costItems) {
                             fill = 1;
                         }
@@ -142,7 +142,7 @@ DESIGN budgetExecution {
                     MOVE BOX(p);
                     NEW periodDetails {
                         fill = 1;
-                        type = SPLITV;
+                        horizontal = FALSE;
                         MOVE BOX(TREE periodCostItems);
                         NEW periodCostItemDetails {
                             fill = 1;
@@ -162,7 +162,7 @@ DESIGN budgetExecution {
                     }
                     NEW right {
                         fill = 1;
-                        type = SPLITV;
+                        horizontal = FALSE;
                         MOVE BOX(TREE periodCostItemsM);
                         NEW periodCostItemDetailsM {
                             fill = 1;

@@ -104,7 +104,7 @@ DESIGN employees {
     pane {
         NEW load {
             caption = 'Load';
-            type = SPLITV;
+            horizontal = FALSE;
             MOVE BOX(be) { fill = 2; }
             MOVE BOX(pb);
         }

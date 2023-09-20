@@ -165,7 +165,7 @@ DESIGN budget {
     OBJECTS {
         NEW pane {
             fill = 1;
-            type = SPLITV;
+            horizontal = FALSE;
             NEW header {
                 fill = 1;
                 type = SPLITH;

@@ -63,7 +63,7 @@ DESIGN budgets {
             MOVE BOX(ip);
             NEW runwayItemPane {
                 fill = 1;
-                type = SPLITV;
+                horizontal = FALSE;
                 MOVE BOX(i) { fill = 3; }
                 MOVE BOX(id);
             }
@@ -126,7 +126,7 @@ DESIGN budgets {
             MOVE BOX(ic);
             NEW runwayItemCenterPane {
                 fill = 1;
-                type = SPLITV;
+                horizontal = FALSE;
                 MOVE BOX(c) { fill = 3; }
                 MOVE BOX(icd);
             }
