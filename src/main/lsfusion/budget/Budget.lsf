@@ -168,7 +168,7 @@ DESIGN budget {
             horizontal = FALSE;
             NEW header {
                 fill = 1;
-                type = SPLITH;
+                horizontal = TRUE;
                 NEW leftPane {
                     fill = 1;
                     MOVE BOX(b) {
@@ -193,7 +193,7 @@ DESIGN budget {
             }
             NEW detail {
                 fill = 3;
-                type = SPLITH;
+                horizontal = TRUE;
                 MOVE BOX(d);
                 NEW detailTabs {
                     fill = 0.5;

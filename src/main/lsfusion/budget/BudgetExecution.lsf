@@ -113,7 +113,7 @@ DESIGN budgetExecution {
             NEW costItem {
                 fill = 1;
                 caption = 'By cost type';
-                type = SPLITH;
+                horizontal = TRUE;
                 MOVE BOX(b) { caption = 'Budgets'; }
                 NEW costItemTabs {
                     tabbed = TRUE;
@@ -138,7 +138,7 @@ DESIGN budgetExecution {
                 tabbed = TRUE;
                 NEW period1 {
                     caption = 'Period';
-                    type = SPLITH;
+                    horizontal = TRUE;
                     MOVE BOX(p);
                     NEW periodDetails {
                         fill = 1;
@@ -154,7 +154,7 @@ DESIGN budgetExecution {
                 }
                 NEW monthly {
                     caption = 'Monthly';
-                    type = SPLITH;
+                    horizontal = TRUE;
                     NEW left {
                         horizontal = FALSE;
                         MOVE PROPERTY (name(cm));

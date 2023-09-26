@@ -705,7 +705,7 @@ DESIGN costCenterBudget {
     pane {
         NEW quarterPane {
             caption = 'Quarterly';
-            type = SPLITH;
+            horizontal = TRUE;
             MOVE BOX(q) {
                 caption = 'Quarters';
                 width = 100;
@@ -723,7 +723,7 @@ DESIGN costCenterBudget {
                         MOVE BOX(bqd);
                     }
                     NEW monthlyExpenseQ {
-                        type = SPLITH;
+                        horizontal = TRUE;
                         caption = 'Expense Ledger';
                         MOVE BOX (TREE costItemsQ);
                         MOVE BOX (peq) { fill = 3; }
@@ -809,7 +809,7 @@ DESIGN budgetPortionsOverview {
                     MOVE PROPERTY (nameFilterCostCenter()) {alignment = STRETCH; caption = 'Autofilter by CostCenter';}
                 }
                 NEW quarters {
-                    type = SPLITH;
+                    horizontal = TRUE;
                     alignment = STRETCH;
                     fill = 1;
                     MOVE BOX (qc);

@@ -41,7 +41,7 @@ DESIGN budgetExecution {
             MOVE BOX(cig);
             NEW details {
                 fill = 1;
-                type = SPLITH;
+                horizontal = TRUE;
                 MOVE BOX(gci);
                 MOVE BOX(gcie) {
                     fill = 3;
@@ -105,7 +105,7 @@ DESIGN budgetExecution {
             MOVE BOX(cigc);
             NEW curDetails {
                 fill = 1;
-                type = SPLITH;
+                horizontal = TRUE;
                 MOVE BOX(gcic);
                 MOVE BOX(gciec) {
                     fill = 3;

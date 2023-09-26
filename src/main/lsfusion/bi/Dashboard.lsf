@@ -185,7 +185,7 @@ DESIGN dashboard {
         horizontal = FALSE;
         NEW deassetails {
             alignment = STRETCH;
-            type = SPLITH;
+            horizontal = TRUE;
             height = 200;
             MOVE BOX (bm) {
                 PROPERTY (monthExpenses(bm)) { caption = 'Total Amount, USD'; }
@@ -201,7 +201,7 @@ DESIGN dashboard {
         NEW details {
             alignment = STRETCH;
             fill = 1;
-            type = SPLITH;
+            horizontal = TRUE;
             MOVE BOX (i) {
                 PROPERTY (nameCostItem2(i)) { caption = 'Category'; }
                 PROPERTY (sumItemUSD) { caption = 'U.S. Amount, USD'; }

@@ -159,7 +159,7 @@ DESIGN periodApproval {
     OBJECTS {
         NEW pane {
             fill = 1;
-            type = SPLITH;
+            horizontal = TRUE;
             NEW left {
                 fill = 1;
                 MOVE PROPERTY(monthReadonlyDate());

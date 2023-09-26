@@ -184,7 +184,7 @@ DESIGN costCenterBudgetArch {
             fill = 1;
             NEW periodPane {
                 caption = 'Period';
-                type = SPLITH;
+                horizontal = TRUE;
                 NEW periodLeftPane {
                     horizontal = FALSE;
                     MOVE BOX(p);
@@ -264,7 +264,7 @@ DESIGN costCenterBudget {
     pane {
         NEW monthlyPane {
             caption = 'Monthly';
-            type = SPLITH;
+            horizontal = TRUE;
             MOVE BOX(bm) {
                 width = 100;
             }
@@ -288,7 +288,7 @@ DESIGN costCenterBudget {
                     }
                 }
                 NEW monthlyExpense {
-                    type = SPLITH;
+                    horizontal = TRUE;
                     caption = 'Expense Ledger';
                     MOVE BOX (TREE costItemsM);
                     MOVE BOX (pem) { fill = 3; }

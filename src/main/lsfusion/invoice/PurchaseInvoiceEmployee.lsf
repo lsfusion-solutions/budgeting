@@ -150,7 +150,7 @@ DESIGN employees {
             fill = 1;
             NEW totals {
                 fill = 1;
-                type = SPLITH;
+                horizontal = TRUE;
                 MOVE BOX (emp);
                 MOVE BOX (t);
             } 

@@ -140,7 +140,7 @@ DESIGN typeExchangeCurrencyDate {
                 tabbed = TRUE;
                 NEW currentExchangeRates {
                     caption = 'Current rates';
-                    type = SPLITH;
+                    horizontal = TRUE;
                     MOVE BOX(c);
                     MOVE BOX(d);
                 }

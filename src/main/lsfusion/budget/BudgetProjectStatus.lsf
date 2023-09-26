@@ -132,7 +132,7 @@ DESIGN projectStatus {
                 tabbed = TRUE;
                 NEW employeesInfo {
                     caption = 'Info';
-                    type = SPLITH;
+                    horizontal = TRUE;
                     MOVE BOX(e);
                     NEW details {
                         fill = 1;
@@ -163,7 +163,7 @@ DESIGN projectStatus {
                 fill = 1;
                 tabbed = TRUE;
                 NEW contractorSum {
-                    type = SPLITH;
+                    horizontal = TRUE;
                     caption = 'Contracts';
                     MOVE BOX(pcf);
                     NEW right {

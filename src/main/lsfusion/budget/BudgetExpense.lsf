@@ -62,7 +62,7 @@ DESIGN expenses {
             NEW budget {
                 caption = 'Budget';
                 fill = 1;
-                type = SPLITH;
+                horizontal = TRUE;
                 NEW leftPane {
                     fill = 3;
                     MOVE BOX(b);
