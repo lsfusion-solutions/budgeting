@@ -237,7 +237,6 @@ META extendPurchaseOrder (form)
                             horizontal = FALSE;
                             MOVE PROPERTY (costItemName(d)) {alignment = STRETCH;}
                             NEW contractor {
-                                type = COLUMNS;
                                 alignment = STRETCH;
                                 caption = 'Supplier details';
                                 //MOVE PROPERTY (supply(d));
