@@ -208,7 +208,6 @@ META extendPurchaseOrder (form)
             NEW pane FIRST {
                 fill = 1;
                 alignment = STRETCH;
-                horizontal = FALSE;
                 NEW headerPart {
                     alignment = STRETCH;
                     horizontal = TRUE;
@@ -219,7 +218,6 @@ META extendPurchaseOrder (form)
                     MOVE PROPERTY(dateTime(o));
                 }
                 NEW proposal {
-                    horizontal = FALSE;
                     fill = 1;
                     alignment = STRETCH;
                     MOVE BOX (d) {
@@ -234,7 +232,6 @@ META extendPurchaseOrder (form)
                             fill = 1;
                             //width = 400;
                             alignment = STRETCH;
-                            horizontal = FALSE;
                             MOVE PROPERTY (costItemName(d)) {alignment = STRETCH;}
                             NEW contractor {
                                 alignment = STRETCH;
@@ -465,7 +462,6 @@ DESIGN purchaseOrders {
         NEW pane {
             fill = 1;
             alignment = STRETCH;
-            horizontal = FALSE;
             NEW proposal {
                 horizontal = TRUE;
                 fill = 1;
@@ -493,13 +489,11 @@ DESIGN purchaseOrders {
                     alignment = STRETCH;
                 }
                 NEW itemDetails {
-                    horizontal = FALSE;
                     caption = 'Details for purchase invoice';
                     width = 400;
                     alignment = STRETCH;
                     MOVE PROPERTY (costItemName(d)) {alignment = STRETCH; panelCaptionVertical = TRUE;}
                     NEW contractor {
-                        horizontal = FALSE;
                         alignment = STRETCH;
                         caption = 'Supplier details';
                         //MOVE PROPERTY (supply(d));
@@ -608,7 +602,6 @@ DESIGN steplog {
             NEW comments {
                 fill = 1;
                 alignment = STRETCH;
-                horizontal = FALSE;
                 NEW files {
                     horizontal = TRUE;
                     alignment = STRETCH;
@@ -652,8 +645,7 @@ DESIGN invoiceLoad {
         horizontal = TRUE;
         fill = 1;
         alignment = STRETCH;
-        NEW invoice {        
-            horizontal = FALSE;
+        NEW invoice {
             fill = 1;
             alignment = STRETCH;   
             NEW parameters {

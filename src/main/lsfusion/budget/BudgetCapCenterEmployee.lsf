@@ -104,7 +104,6 @@ DESIGN employees {
     pane {
         NEW load {
             caption = 'Load';
-            horizontal = FALSE;
             MOVE BOX(be) { fill = 2; }
             MOVE BOX(pb);
         }
@@ -226,7 +225,6 @@ DESIGN employees {
             caption = 'Budgeting';
             alignment = STRETCH;
             fill = 1;
-            horizontal = FALSE;
             MOVE PROPERTY (quarterName(bq)) { caption = 'Select Quarter for budgeting'; }
             MOVE PROPERTY (searchByName());
             NEW flow {

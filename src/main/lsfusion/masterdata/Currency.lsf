@@ -133,7 +133,6 @@ DESIGN typeExchangeCurrencyDate {
         horizontal = FALSE;
         NEW split {
             fill = 1;
-            horizontal = FALSE;
             MOVE BOX(t);
             NEW topContainer {
                 fill = 2;
@@ -269,8 +268,7 @@ EXTEND FORM typeExchangeCurrencyDate
 
 DESIGN typeExchangeCurrencyDate {
     topContainer {
-        NEW import { 
-            horizontal = FALSE;
+        NEW import {
             caption = 'Import';
             MOVE PROPERTY(importCBRFExchangeRate());
             NEW dates {

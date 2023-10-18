@@ -105,7 +105,6 @@ DESIGN expenses {
                 MOVE BOX (ct);
             }
             NEW detailContractor {
-                horizontal = FALSE;
                 fill = 1;
                 MOVE BOX (ec);
                 MOVE PROPERTY (noteText(ec)) { panelCaptionVertical = TRUE; alignment = STRETCH; }

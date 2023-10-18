@@ -165,7 +165,6 @@ DESIGN budget {
     OBJECTS {
         NEW pane {
             fill = 1;
-            horizontal = FALSE;
             NEW header {
                 fill = 1;
                 horizontal = TRUE;
@@ -286,7 +285,6 @@ DESIGN budgetDetails {
             fill = 1;
             alignment = STRETCH;
             NEW selectors {
-                horizontal = FALSE;
                 fill = 1;
                 alignment = STRETCH;
                 MOVE PROPERTY (nameFilterBudget()) { alignment = STRETCH; }

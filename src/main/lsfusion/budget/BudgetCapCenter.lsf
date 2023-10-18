@@ -186,7 +186,6 @@ DESIGN costCenterBudgetArch {
                 caption = 'Period';
                 horizontal = TRUE;
                 NEW periodLeftPane {
-                    horizontal = FALSE;
                     MOVE BOX(p);
                     NEW periodLeftTab {
                         tabbed = TRUE;
@@ -201,7 +200,6 @@ DESIGN costCenterBudgetArch {
                     tabbed = TRUE;
                     NEW costTypes {
                         caption = 'Cost types';
-                        horizontal = FALSE;
                         MOVE BOX(TREE costItems) {
                             fill = 2;
                         }
@@ -275,7 +273,6 @@ DESIGN costCenterBudget {
                 NEW budgetDetail {
                     caption = 'Budget Items';
                     alignment = STRETCH;
-                    horizontal = FALSE;
                     fill = 1;
                     MOVE BOX(bmd) { fill = 3; alignment = STRETCH; }
                     NEW details {

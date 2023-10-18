@@ -37,7 +37,6 @@ DESIGN budgetExecution {
     costItemTabs {
         NEW groups {
             caption = 'Groups';
-            horizontal = FALSE;
             MOVE BOX(cig);
             NEW details {
                 fill = 1;
@@ -98,7 +97,6 @@ DESIGN budgetExecution {
     costItemTabs {
         NEW currency {
             caption = 'Groups (currency)';
-            horizontal = FALSE;
             MOVE PROPERTY (name(cur)){
                 caption = 'Currency';
             }

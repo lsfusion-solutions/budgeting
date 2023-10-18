@@ -120,7 +120,6 @@ DESIGN budgetExecution {
                     fill = 5;
                     NEW costItemPane {
                         caption = 'Details';
-                        horizontal = FALSE;
                         MOVE BOX(TREE costItems) {
                             fill = 1;
                         }
@@ -142,7 +141,6 @@ DESIGN budgetExecution {
                     MOVE BOX(p);
                     NEW periodDetails {
                         fill = 1;
-                        horizontal = FALSE;
                         MOVE BOX(TREE periodCostItems);
                         NEW periodCostItemDetails {
                             fill = 1;
@@ -156,13 +154,11 @@ DESIGN budgetExecution {
                     caption = 'Monthly';
                     horizontal = TRUE;
                     NEW left {
-                        horizontal = FALSE;
                         MOVE PROPERTY (name(cm));
                         MOVE BOX (bm);
                     }
                     NEW right {
                         fill = 1;
-                        horizontal = FALSE;
                         MOVE BOX(TREE periodCostItemsM);
                         NEW periodCostItemDetailsM {
                             fill = 1;

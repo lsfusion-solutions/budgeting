@@ -146,7 +146,6 @@ DESIGN employees {
     pane {
         NEW expenses {
             caption = 'Expenses';
-            horizontal = FALSE;
             fill = 1;
             NEW totals {
                 fill = 1;

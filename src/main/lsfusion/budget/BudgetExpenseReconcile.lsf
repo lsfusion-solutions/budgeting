@@ -227,7 +227,6 @@ DESIGN expenses {
             }
             NEW reconcilePane { 
                 fill = 1;
-                horizontal = FALSE;
                 MOVE BOX(ie) {
                     fill = 2;
                 }
@@ -239,7 +238,6 @@ DESIGN expenses {
                     NEW expenseMark {
                         height = 120;
                         caption = 'Mark as';
-                        horizontal = FALSE;
                         MOVE PROPERTY(markAsExpense(ie));
                     }
                     NEW expenseParams {

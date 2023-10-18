@@ -124,7 +124,6 @@ DESIGN contractors {
                         caption = 'Details';
                         fill = 1;
                         alignment = STRETCH;
-                        horizontal = FALSE;
                         MOVE PROPERTY (sensitive(c));
                         MOVE PROPERTY (nameCostItem(c));
                         MOVE PROPERTY (hours(c));
