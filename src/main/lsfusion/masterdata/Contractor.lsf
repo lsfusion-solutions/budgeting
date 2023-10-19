@@ -91,7 +91,6 @@ FORM contractor 'Contractor'
 DESIGN contractor {
     size = (800, 480);
     OBJECTS {
-        horizontal = FALSE;
         alignment = STRETCH;
         fill = 1;
         MOVE PROPERTY (name(c)) { notNull = TRUE; }
@@ -161,8 +160,7 @@ FORM dialogContractor 'Select contractor'
 DESIGN dialogContractor { 
     OBJECTS { 
         alignment = STRETCH; 
-        fill = 1; 
-        horizontal = FALSE;
+        fill = 1;
         MOVE PROPERTY(filterContractor()) { alignment = STRETCH; } 
         MOVE BOX (c);
     }

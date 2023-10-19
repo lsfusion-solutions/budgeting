@@ -55,7 +55,6 @@ FORM reconcilePurchaseOrder 'Reconcile Purchase Invoice'
 DESIGN reconcilePurchaseOrder {
     size = (1200, 480);
     OBJECTS {
-        horizontal = FALSE;
         alignment = STRETCH;
         fill = 1;
         MOVE PROPERTY (searchByName()) { alignment = STRETCH; }

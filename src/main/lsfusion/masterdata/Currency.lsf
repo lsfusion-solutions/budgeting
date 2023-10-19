@@ -83,7 +83,6 @@ DESIGN dialogTypeExchangeCurrency {
             MOVE PROPERTY(name(t)) { focusable = FALSE; charWidth = 40;}
         }
         MOVE BOX(c){
-            horizontal = FALSE;
             MOVE BOX(d) {
                 horizontal = TRUE;
 
@@ -130,7 +129,6 @@ FORM typeExchangeCurrencyDate 'Exchange rate'
 
 DESIGN typeExchangeCurrencyDate {
     BOX {
-        horizontal = FALSE;
         NEW split {
             fill = 1;
             MOVE BOX(t);

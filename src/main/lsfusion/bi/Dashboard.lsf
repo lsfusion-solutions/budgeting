@@ -182,7 +182,6 @@ FORM dashboard 'Dashboard'
 
 DESIGN dashboard {
     OBJECTS {
-        horizontal = FALSE;
         NEW deassetails {
             alignment = STRETCH;
             horizontal = TRUE;

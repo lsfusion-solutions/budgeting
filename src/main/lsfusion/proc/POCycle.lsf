@@ -794,7 +794,6 @@ FORM dialogDistributeBudget 'Transfer into another Budget Item'
 ;
 DESIGN dialogDistributeBudget {
     OBJECTS {
-        horizontal = FALSE;
         alignment = STRETCH;
         MOVE PROPERTY (amountFix(d));
         MOVE PROPERTY (amountTransfer(d));

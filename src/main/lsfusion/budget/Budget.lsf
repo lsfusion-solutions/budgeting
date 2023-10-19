@@ -172,7 +172,6 @@ DESIGN budget {
                     fill = 1;
                     MOVE BOX(b) {
                         GROUP(, b) {
-                            horizontal = FALSE;
                             NEW dates {
                                 horizontal = TRUE;
                                 MOVE PROPERTY(fromDate(b));
@@ -309,7 +308,6 @@ FORM budgetDetailAdd 'Add Single Budget Item'
 DESIGN budgetDetailAdd {
     size = (1000, 600);
     OBJECTS {
-        horizontal = FALSE;
         fill = 1;
         MOVE PROPERTY (nameCostCenter(d)) { notNull = TRUE; alignment = STRETCH; }
         MOVE PROPERTY (canonicalNameCostItem(d)) { notNull = TRUE; alignment = STRETCH; }

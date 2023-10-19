@@ -38,7 +38,6 @@ EXTEND FORM costCenter
 
 DESIGN costCenter {
     OBJECTS {
-        horizontal = FALSE;
         fill = 1;
         alignment = STRETCH;
         MOVE PROPERTY (name(c));
