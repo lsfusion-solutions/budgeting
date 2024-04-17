@@ -164,7 +164,7 @@ sendNotificationFile 'Send Notification' (STRING header, TEXT text, TEXT details
         SUBJECT header
         TO email
         BODY bodyFile()
-        ATTACH attachment NAME filename+'.'+getExtension(attachment);
+        ATTACH attachment NAME filename + '.' + extension(attachment);
 }
 
 sendNotification 'Send Notification' (STRING header, TEXT text, TEXT details, STRING[400] email)  { 
